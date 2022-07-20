@@ -15,7 +15,7 @@ where
 
 
 import Cardano.Api (PlutusScriptV2, writeFileTextEnvelope)
-import Cardano.Api.Shelley (PlutusScript (..), ScriptDataJsonSchema (ScriptDataJsonDetailedSchema), fromPlutusData, scriptDataToJson)
+import Cardano.Api.Shelley (PlutusScript (..))
 import Codec.Serialise
 import Data.Functor (void)
 import PlutusTx qualified
@@ -23,10 +23,10 @@ import PlutusTx.Prelude qualified
 import Plutus.V2.Ledger.Api qualified as PlutusV2
 --import Plutus.Script.Utils.V2.Scripts as Utils
 import Plutus.Script.Utils.V2.Typed.Scripts.Validators as Utils
-import Ledger.Address as Addr
+--import Ledger.Address as Addr
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Short qualified as SBS
-import Prelude (IO, Semigroup (..), print, (.), ($), Maybe(Nothing))
+import Prelude (IO, (.), ($), Maybe(Nothing))
 
 
 
