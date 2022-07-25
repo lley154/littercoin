@@ -41,7 +41,10 @@ common lang
 library
     import: lang
     exposed-modules:
+      Littercoin.Types
       Littercoin.OnChain
+      --Littercoin.NFTMint
+      --Littercoin.TokenNamePolicy
 
     build-depends:       
       aeson
@@ -51,6 +54,7 @@ library
       , cardano-api
       , data-default
       , freer-extras
+      , playground-common -any
       , plutus-contract
       , plutus-ledger
       , plutus-ledger-api
