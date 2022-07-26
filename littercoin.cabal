@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               plutus-starter
+name:               littercoin
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
@@ -73,7 +73,7 @@ test-suite plutus-example-projects-test
     plutus-contract -any,
     plutus-pab -any,
     plutus-ledger -any,
-    plutus-starter -any
+    littercoin -any
   build-depends:
     base >=4.9 && <5,
     tasty -any,
@@ -82,7 +82,7 @@ test-suite plutus-example-projects-test
     tasty-hedgehog >=0.2.0.0
     
 
-executable plutus-starter-pab
+executable littercoin-pab
   import: lang
   main-is: Main.hs
   hs-source-dirs: pab
@@ -93,7 +93,7 @@ executable plutus-starter-pab
     data-default -any,
     plutus-contract -any,
     plutus-pab -any,
-    plutus-starter -any,
+    littercoin -any,
     aeson -any,
     freer-simple -any,
     prettyprinter -any,

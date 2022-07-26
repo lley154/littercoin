@@ -33,7 +33,7 @@ import qualified Wallet.Emulator.Wallet as Wallet
 
 main :: IO ()
 main = void $ Simulator.runSimulationWith handlers $ do
-    Simulator.logString @(Builtin StarterContracts) "Starting plutus-starter PAB webserver on port 9080. Press enter to exit."
+    Simulator.logString @(Builtin StarterContracts) "Starting littercoin PAB webserver on port 9080. Press enter to exit."
 
     (wallet, _paymentPubKeyHash) <- Simulator.addWallet
     Simulator.waitNSlots 1

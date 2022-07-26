@@ -2,7 +2,7 @@
 
 ## How to update dependencies
 
-  1. Go to https://github.com/input-output-hk/plutus-apps/tags and take note of the latest `plutus-starter-devcontainer` tag and its commit hash.
+  1. Go to https://github.com/input-output-hk/plutus-apps/tags and take note of the latest `littercoin-devcontainer` tag and its commit hash.
   2. Update the tag and/or hash in the following files:
       - `.devcontainer/devcontainer.json`
       - `nix/sources.json`
