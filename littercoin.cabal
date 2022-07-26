@@ -41,51 +41,38 @@ common lang
 library
     import: lang
     exposed-modules:
-      MyModule
-      Plutus.Contracts.Game
+      Littercoin.Types
+      Littercoin.Utils
+      Littercoin.OnChain
+      Littercoin.OffChain
+      Littercoin.Deploy
     build-depends:
       base >= 4.9 && < 5,
       aeson -any,
+      base16-bytestring -any,
       bytestring -any,
+      cardano-api -any,
       containers -any,
       freer-extras -any,
+      MissingH -any,
       playground-common -any,
       plutus-contract -any,
+      plutus-core -any,
       plutus-ledger -any,
       plutus-ledger-api -any,
       plutus-ledger-constraints -any,
       plutus-tx -any,
       plutus-tx-plugin -any,
+      serialise -any,
       text -any,
       lens -any,
-    hs-source-dirs: src examples/src
-
-test-suite plutus-example-projects-test
-  import: lang
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  hs-source-dirs: examples/test
-  other-modules:
-    Spec.Game
-  build-depends:
-    plutus-tx -any,
-    plutus-tx-plugin,
-    plutus-contract -any,
-    plutus-pab -any,
-    plutus-ledger -any,
-    littercoin -any
-  build-depends:
-    base >=4.9 && <5,
-    tasty -any,
-    tasty-hunit -any,
-    text -any,
-    tasty-hedgehog >=0.2.0.0
-    
+    hs-source-dirs: src
 
 executable littercoin-pab
   import: lang
-  main-is: Main.hs
+  main-is: Main-sim.hs
   hs-source-dirs: pab
+  other-modules: PabContract
   ghc-options:
     -threaded
   build-depends:
