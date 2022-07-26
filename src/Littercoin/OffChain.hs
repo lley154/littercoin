@@ -7,7 +7,7 @@
 
 module Littercoin.OffChain where
 
-import           Littercoin.OnChain                 (lcCurSymbol, lcPolicy, nftCurSymbol, nftPolicy)
+import           Littercoin.OnChain                 (lcCurSymbol, lcPolicy, nftCurSymbol, nftPolicy, nftTokenValue)
 import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
 import           Control.Monad                      (forever)
 import           Data.Aeson                         (FromJSON, ToJSON)
@@ -23,7 +23,7 @@ import           Ledger                             (getCardanoTxId)
 import           Ledger.Constraints as Constraints  (mintingPolicy, mustMintValueWithRedeemer, mustBeSignedBy, mustSpendPubKeyOutput, unspentOutputs)
 import           Ledger.Address as Address          (PaymentPubKeyHash(..), pubKeyHashAddress)
 import           Ledger.Scripts as Scripts          (Redeemer(..))
-import           Ledger.Value as Value              (singleton, TokenName(..))
+import           Ledger.Value as Value              (singleton, split, TokenName(..))
 import           Playground.Contract as Playground  (ToSchema)
 import           Plutus.Contract.Request as Request (ownPaymentPubKeyHash)
 import           PlutusPrelude                      (void)
@@ -35,31 +35,40 @@ import           Text.Printf                        (printf)
 --   minting policy script
 data TokenParams = TokenParams
     { 
-      tpTokenName       :: !BuiltinByteString
-    , tpQty             :: !Integer
-    , tpAdminPkh        :: !Address.PaymentPubKeyHash     
+      tpLCTokenName         :: !BuiltinByteString
+    , tpNFTTokenName        :: !BuiltinByteString  
+    , tpQty                 :: !Integer
+    , tpAdminPkh            :: !Address.PaymentPubKeyHash     
     } deriving (Generic, FromJSON, ToJSON, Haskell.Show, Playground.ToSchema)
 
 
 -- | mintLC mints littercoin tokens.   This offchain function is only used by the PAB
 --   simulator to test the validation rules of the minting policy validator. 
-mintLC :: TokenParams -> Contract.Contract () TokenSchema Text ()
-mintLC tp = do
+mintLCToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
+mintLCToken tp = do
 
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
     case Map.keys utxos of
         []       -> Contract.logError @Haskell.String "mintToken: No utxo found"
         oref : _ -> do
-            let tn = Value.TokenName $ tpTokenName tp
+            let tn = Value.TokenName $ tpLCTokenName tp
+                tn' = Value.TokenName $ tpNFTTokenName tp
+                nftMintParams = NFTMintPolicyParams
+                    {
+                        nftTokenName = tn' -- the name of the NFT token
+                    ,   nftAdminPkh = tpAdminPkh tp
+                    }
+                (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = True  -- mint token
                      }
                 mintParams = LCMintPolicyParams 
                     {
-                        lcTokenName = tn
-                    ,   lcAdminPkh = tpAdminPkh tp
+                        lcTokenName = tn -- the name of the littercoin
+                    ,   lcAdminPkh = tpAdminPkh tp  -- the admin pkh who can only mint littercoins
+                    ,   lcNFTTokenValue = nftTokVal  -- this contains the NFT that merchants used for burning
                     }
 
             let val     = Value.singleton (lcCurSymbol mintParams) tn (tpQty tp)
@@ -77,15 +86,22 @@ mintLC tp = do
 
 -- | burnLC burns littercoin tokens.   This offchain function is only used by the PAB
 --   simulator to test the validation rules of the minting policy validator.  
-burnLC :: TokenParams -> Contract.Contract () TokenSchema Text ()
-burnLC tp = do
+burnLCToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
+burnLCToken tp = do
     
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
     case Map.keys utxos of
         []       -> Contract.logError @Haskell.String "burnToken: No utxo found"
         _ : _ -> do
-            let tn = Value.TokenName $ tpTokenName tp
+            let tn = Value.TokenName $ tpLCTokenName tp
+                tn' = Value.TokenName $ tpNFTTokenName tp
+                nftMintParams = NFTMintPolicyParams
+                    {
+                        nftTokenName = tn' -- the name of the NFT token
+                    ,   nftAdminPkh = tpAdminPkh tp
+                    }
+                (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = False -- burn token
@@ -94,6 +110,7 @@ burnLC tp = do
                     {
                         lcTokenName = tn
                     ,   lcAdminPkh = tpAdminPkh tp
+                    ,   lcNFTTokenValue = nftTokVal
                     }
             let val     = Value.singleton (lcCurSymbol mintParams) tn (-(tpQty tp))
                 lookups = Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
@@ -105,16 +122,89 @@ burnLC tp = do
             Contract.logInfo @Haskell.String $ printf "burnToken: Burning params %s" (Haskell.show mintParams)
 
 
+-- | mintNFT mints the merchant approved NFT.   This offchain function is only used by the PAB
+--   simulator to test the validation rules of the minting policy validator. 
+mintNFTToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
+mintNFTToken tp = do
+
+    ownPkh <- Request.ownPaymentPubKeyHash
+    utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
+    case Map.keys utxos of
+        []       -> Contract.logError @Haskell.String "mintToken: No utxo found"
+        oref : _ -> do
+            let tn = Value.TokenName $ tpNFTTokenName tp
+                red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
+                     {
+                        mpPolarity = True  -- mint token
+                     }
+                mintParams = NFTMintPolicyParams 
+                    {
+                        nftTokenName = tn -- the name of the littercoin
+                    ,   nftAdminPkh = tpAdminPkh tp  -- the admin pkh who can only mint merch NFTs
+                    }
+
+            let val     = Value.singleton (nftCurSymbol mintParams) tn (tpQty tp)
+                lookups = Constraints.mintingPolicy (nftPolicy mintParams) Haskell.<> 
+                          Constraints.unspentOutputs utxos
+                tx      = Constraints.mustMintValueWithRedeemer red val Haskell.<> 
+                          Constraints.mustSpendPubKeyOutput oref Haskell.<>
+                          Constraints.mustBeSignedBy ownPkh
+            ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
+            void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
+            Contract.logInfo @Haskell.String $ printf "mintNFT: Forged %s" (Haskell.show val)
+            Contract.logInfo @Haskell.String $ printf "mintNFT: Token params %s" (Haskell.show mintParams)
+
+
+
+-- | burnNFT burns the merchant approved NFT.   This offchain function is only used by the PAB
+--   simulator to test the validation rules of the minting policy validator.  
+burnNFTToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
+burnNFTToken tp = do
+    
+    ownPkh <- Request.ownPaymentPubKeyHash
+    utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
+    case Map.keys utxos of
+        []       -> Contract.logError @Haskell.String "burnToken: No utxo found"
+        _ : _ -> do
+            let tn = Value.TokenName $ tpNFTTokenName tp
+                red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
+                     {
+                        mpPolarity = False -- burn token
+                     }
+                mintParams = NFTMintPolicyParams 
+                    {
+                        nftTokenName = tn
+                    ,   nftAdminPkh = tpAdminPkh tp
+                    }
+            let val     = Value.singleton (nftCurSymbol mintParams) tn (-(tpQty tp))
+                lookups = Constraints.mintingPolicy (nftPolicy mintParams) Haskell.<> 
+                          Constraints.unspentOutputs utxos
+                tx      = Constraints.mustMintValueWithRedeemer red val 
+            ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
+            void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
+            Contract.logInfo @Haskell.String $ printf "burnToken: Burned %s" (Haskell.show val)
+            Contract.logInfo @Haskell.String $ printf "burnToken: Burning params %s" (Haskell.show mintParams)
+
+
 -- | NFTSchema type is defined and used by the PAB Contracts
-type TokenSchema = Contract.Endpoint "mint" TokenParams
-                   Contract..\/ Contract.Endpoint "burn" TokenParams
+type TokenSchema = Contract.Endpoint "mintLC" TokenParams
+                   Contract..\/ Contract.Endpoint "burnLC" TokenParams
+                   Contract..\/ Contract.Endpoint "mintNFT" TokenParams
+                   Contract..\/ Contract.Endpoint "burnNFT" TokenParams
 
 
 -- | The endpoints are called via the PAB simulator in the Main-sim.hs file in the app directory
 endpoints :: Contract.Contract () TokenSchema Text ()
-endpoints = forever $ Contract.handleError Contract.logError $ Contract.awaitPromise $ mint `Contract.select` burn
+endpoints = forever $ Contract.handleError Contract.logError $ Contract.awaitPromise $ 
+                mintLC `Contract.select` 
+                burnLC `Contract.select` 
+                mintNFT `Contract.select` 
+                burnNFT 
+
   where
-    mint = Contract.endpoint @"mint" $ \(tp) -> mintLC tp
-    burn = Contract.endpoint @"burn" $ \(tp) -> burnLC tp 
+    mintLC = Contract.endpoint @"mintLC" $ \(tp) -> mintLCToken tp
+    burnLC = Contract.endpoint @"burnLC" $ \(tp) -> burnLCToken tp 
+    mintNFT = Contract.endpoint @"mintNFT" $ \(tp) -> mintNFTToken tp
+    burnNFT = Contract.endpoint @"burnNFT" $ \(tp) -> burnNFTToken tp 
 
 

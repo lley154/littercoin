@@ -10,6 +10,7 @@ module Littercoin.OnChain
     , lcPolicy
     , nftCurSymbol
     , nftPolicy
+    , nftTokenValue
     ) where
 
 import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
@@ -17,7 +18,7 @@ import           Ledger                             (mkMintingPolicyScript, Scri
                                                      TxInfo(..),  txSignedBy)
 import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))                                                     
 import qualified Ledger.Typed.Scripts as Scripts    (MintingPolicy, wrapMintingPolicy)
-import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, TokenName(..))
+import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, singleton, TokenName(..), Value)
 import qualified PlutusTx                           (applyCode, compile, liftCode)
 import           PlutusTx.Prelude                   (Bool(..), traceIfFalse, (&&), (==), ($), (<=), (>=))
 
@@ -126,5 +127,11 @@ nftPolicy mpParams = mkMintingPolicyScript $
 
 -- | Provide the currency symbol of the minting policy which requires MintPolicyParams
 --   as a parameter to the minting policy
+{-# INLINABLE nftCurSymbol #-}
 nftCurSymbol :: NFTMintPolicyParams -> Value.CurrencySymbol
 nftCurSymbol mpParams = scriptCurrencySymbol $ nftPolicy mpParams 
+
+
+{-# INLINABLE nftTokenValue #-}
+nftTokenValue :: Value.CurrencySymbol -> Value.TokenName -> Value.Value
+nftTokenValue cs' tn' = Value.singleton cs' tn' 1

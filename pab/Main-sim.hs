@@ -22,8 +22,8 @@ import           Wallet.Emulator.Wallet                 (knownWallet)
 adminPkh1 :: PaymentPubKeyHash
 adminPkh1 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 1)
 
-adminPkh2 :: PaymentPubKeyHash
-adminPkh2 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 2)
+--adminPkh2 :: PaymentPubKeyHash
+--adminPkh2 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 2)
 
 
 main :: IO ()
@@ -32,6 +32,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
     let w1 = knownWallet 1
         w2 = knownWallet 2
         tokenName = "Littercoin"
+        nftTokenName = "Littercoin Approved Merchant"
         qty1 = 100
         qty2 = 75
 
@@ -50,10 +51,11 @@ main = void $ Simulator.runSimulationWith handlers $ do
     h2 <- Simulator.activateContract w2 UseContract
 
 
-    -- Littercoin official minting
+    -- Mint some littercoins for wallet 1
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "mint" $ TokenParams
-        { tpTokenName = tokenName
+    void $ Simulator.callEndpointOnInstance h1 "mintLC" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
         , tpQty = qty1
         , tpAdminPkh = adminPkh1
         }
@@ -62,10 +64,11 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to continue"
     void $ liftIO getLine
 
-    -- Littercoin invalid minting
+    -- Try minting some littercoins with incorrect pkh
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2, but does not have adminPkh"
-    void $ Simulator.callEndpointOnInstance h2 "mint" $ TokenParams
-        { tpTokenName = tokenName
+    void $ Simulator.callEndpointOnInstance h2 "mintLC" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
         , tpQty = qty1
         , tpAdminPkh = adminPkh1
         }
@@ -75,12 +78,13 @@ main = void $ Simulator.runSimulationWith handlers $ do
     void $ liftIO getLine
 
     
-    -- Littercoin minting but with a different policy id and adminPkh
+    -- Mint the merchant NFT to allow for burning of littercoin
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h2 "mint" $ TokenParams
-        { tpTokenName = tokenName
-        , tpQty = qty1
-        , tpAdminPkh = adminPkh2
+    void $ Simulator.callEndpointOnInstance h1 "mintNFT" $ TokenParams
+        { tpLCTokenName = tokenName -- ignored for NFT minting
+        , tpNFTTokenName = nftTokenName
+        , tpQty = 1
+        , tpAdminPkh = adminPkh1
         }
 
     
@@ -90,10 +94,11 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Burn official Littercoin
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "burn" $ TokenParams
-        { tpTokenName = tokenName
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
         , tpQty = qty2
-        , tpAdminPkh = adminPkh1
+        , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
         }
 
 

@@ -13,11 +13,9 @@ module Littercoin.Types
 )where
 
 import              Data.Aeson                          (FromJSON, ToJSON)  
---import qualified    Data.ByteString.Char8 as B          (ByteString)
 import              GHC.Generics                        (Generic)
 import qualified    Ledger.Address as Address           (PaymentPubKeyHash(..))
---import qualified    Ledger.Tx as Tx                     (TxOutRef(..))
-import qualified    Ledger.Value as Value               (TokenName(..))
+import qualified    Ledger.Value as Value               (TokenName(..), Value)
 import              Playground.Contract as Playground   (ToSchema)
 import qualified    PlutusTx                            (makeIsDataIndexed, makeLift)
 import              PlutusTx.Prelude                    (Bool(..))
@@ -38,7 +36,8 @@ PlutusTx.makeLift ''MintPolicyRedeemer
 data LCMintPolicyParams = LCMintPolicyParams
     { 
       lcTokenName                 :: !Value.TokenName
-    , lcAdminPkh                  :: !Address.PaymentPubKeyHash 
+    , lcAdminPkh                  :: !Address.PaymentPubKeyHash
+    , lcNFTTokenValue             :: !Value.Value  
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
 PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
