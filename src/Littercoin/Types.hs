@@ -8,7 +8,8 @@
 module Littercoin.Types 
 (
      MintPolicyRedeemer(..)
-   , MintPolicyParams(..)   
+   , LCMintPolicyParams(..)
+   , NFTMintPolicyParams(..)     
 )where
 
 import              Data.Aeson                          (FromJSON, ToJSON)  
@@ -32,13 +33,25 @@ PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)]
 PlutusTx.makeLift ''MintPolicyRedeemer
 
 
--- | The mint policy params passes the a utxo, token name and CO2 information as a parameter into the minting poicy which will make the NFT policy unique
-data MintPolicyParams = MintPolicyParams
+-- | The mint policy params passes the token name and AdminPkh as a parameter
+--   into the minting poicy which will make the NFT policy unique
+data LCMintPolicyParams = LCMintPolicyParams
     { 
-      mpTokenName                 :: !Value.TokenName
-    , mpAdminPkh                  :: !Address.PaymentPubKeyHash     
+      lcTokenName                 :: !Value.TokenName
+    , lcAdminPkh                  :: !Address.PaymentPubKeyHash 
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
-PlutusTx.makeIsDataIndexed ''MintPolicyParams [('MintPolicyParams,0)] 
-PlutusTx.makeLift ''MintPolicyParams
+PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
+PlutusTx.makeLift ''LCMintPolicyParams
 
+
+-- | The mint policy params passes the token name and adminPkh as a parameter 
+--   into the minting poicy which will make the NFT policy unique
+data NFTMintPolicyParams = NFTMintPolicyParams
+    { 
+      nftTokenName                 :: !Value.TokenName
+    , nftAdminPkh                  :: !Address.PaymentPubKeyHash 
+    } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
+
+PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
+PlutusTx.makeLift ''NFTMintPolicyParams

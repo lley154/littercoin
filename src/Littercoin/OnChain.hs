@@ -6,12 +6,13 @@
 
 module Littercoin.OnChain 
     (
-      curSymbol
-    , policy
+      lcCurSymbol
+    , lcPolicy
+    , nftCurSymbol
+    , nftPolicy
     ) where
 
-import           Littercoin.Types                  (MintPolicyParams(..), MintPolicyRedeemer(..))
---import           Littercoin.Utils                  (integerToBS)
+import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
 import           Ledger                             (mkMintingPolicyScript, ScriptContext(..), scriptCurrencySymbol, 
                                                      TxInfo(..),  txSignedBy)
 import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))                                                     
@@ -25,13 +26,13 @@ import           PlutusTx.Prelude                   (Bool(..), traceIfFalse, (&&
 -- On Chain Code
 ------------------------------------------------------------------------
 
--- | The mkPolicy is the minting policy validator for minting and burning
+-- | The mkLittercoinPolicy is the minting policy validator for minting and burning
 --   of littercoin tokens.  It is a parameterized validator so each policy
 --   id is unqiue based on the admin pkh provided.
 
-{-# INLINABLE mkPolicy #-}
-mkPolicy :: MintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
-mkPolicy params (MintPolicyRedeemer polarity) ctx = 
+{-# INLINABLE mkLittercoinPolicy #-}
+mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
+mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx = 
 
     case polarity of
         True ->    traceIfFalse "mkPolicy mint: invalid admin signature" signedByAdmin
@@ -43,14 +44,14 @@ mkPolicy params (MintPolicyRedeemer polarity) ctx =
   where
 
     tn :: Value.TokenName
-    tn = mpTokenName params
+    tn = lcTokenName params
 
     info :: TxInfo
     info = scriptContextTxInfo ctx  
 
     -- For now this is a single signature witnes, with future plans to make this multi-sig
     signedByAdmin :: Bool
-    signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (mpAdminPkh params)
+    signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (lcAdminPkh params)
 
     -- Check that the token name minted is greater than 1
     checkMintedAmount :: Bool
@@ -68,15 +69,62 @@ mkPolicy params (MintPolicyRedeemer polarity) ctx =
     --  
 
 -- | Wrap the minting policy using the boilerplate template haskell code
-policy :: MintPolicyParams -> Scripts.MintingPolicy
-policy mpParams = mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| \mpParams' -> Scripts.wrapMintingPolicy $ mkPolicy mpParams' ||])
+lcPolicy :: LCMintPolicyParams -> Scripts.MintingPolicy
+lcPolicy mpParams = mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| \mpParams' -> Scripts.wrapMintingPolicy $ mkLittercoinPolicy mpParams' ||])
     `PlutusTx.applyCode`
     PlutusTx.liftCode mpParams
 
 
 -- | Provide the currency symbol of the minting policy which requires MintPolicyParams
 --   as a parameter to the minting policy
-curSymbol :: MintPolicyParams -> Value.CurrencySymbol
-curSymbol mpParams = scriptCurrencySymbol $ policy mpParams 
+lcCurSymbol :: LCMintPolicyParams -> Value.CurrencySymbol
+lcCurSymbol mpParams = scriptCurrencySymbol $ lcPolicy mpParams 
 
+
+{-# INLINABLE mkNFTPolicy #-}
+mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
+mkNFTPolicy params (MintPolicyRedeemer polarity) ctx = 
+
+    case polarity of
+        True ->    traceIfFalse "mkPolicy: wrong amount minted" checkMintedAmount
+                && traceIfFalse "mkPolicy: invalid admin signature" signedByAdmin
+                
+        False ->   traceIfFalse "mkPolicy: wrong amount burned" checkBurnedAmount
+
+  where
+    tn :: Value.TokenName
+    tn = nftTokenName params
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx  
+
+    -- For now this is a single signature witnes, with future plans to make this multi-sig
+    signedByAdmin :: Bool
+    signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (nftAdminPkh params)
+
+    -- Check that there is only 1 token minted
+    checkMintedAmount :: Bool
+    checkMintedAmount = case Value.flattenValue (txInfoMint info) of
+        [(_, tn', amt)] -> tn' == tn && amt == 1
+        _               -> False
+
+    -- Check that there is only 1 token burned
+    checkBurnedAmount :: Bool
+    checkBurnedAmount = case Value.flattenValue (txInfoMint info) of
+        [(_, tn', amt)] -> tn' == tn && amt == (-1)
+        _               -> False
+           
+
+-- | Wrap the minting policy using the boilerplate template haskell code
+nftPolicy :: NFTMintPolicyParams -> Scripts.MintingPolicy
+nftPolicy mpParams = mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| \mpParams' -> Scripts.wrapMintingPolicy $ mkNFTPolicy mpParams' ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode mpParams
+
+
+-- | Provide the currency symbol of the minting policy which requires MintPolicyParams
+--   as a parameter to the minting policy
+nftCurSymbol :: NFTMintPolicyParams -> Value.CurrencySymbol
+nftCurSymbol mpParams = scriptCurrencySymbol $ nftPolicy mpParams 

@@ -7,8 +7,8 @@
 
 module Littercoin.OffChain where
 
-import           Littercoin.OnChain                (curSymbol, policy)
-import           Littercoin.Types                  (MintPolicyParams(..), MintPolicyRedeemer(..))
+import           Littercoin.OnChain                 (lcCurSymbol, lcPolicy, nftCurSymbol, nftPolicy)
+import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
 import           Control.Monad                      (forever)
 import           Data.Aeson                         (FromJSON, ToJSON)
 import qualified Data.Map as Map                    (keys)
@@ -41,10 +41,10 @@ data TokenParams = TokenParams
     } deriving (Generic, FromJSON, ToJSON, Haskell.Show, Playground.ToSchema)
 
 
--- | mintToken mints littercoin tokens.   This offchain function is only used by the PAB
+-- | mintLC mints littercoin tokens.   This offchain function is only used by the PAB
 --   simulator to test the validation rules of the minting policy validator. 
-mintToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
-mintToken tp = do
+mintLC :: TokenParams -> Contract.Contract () TokenSchema Text ()
+mintLC tp = do
 
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
@@ -56,14 +56,14 @@ mintToken tp = do
                      {
                         mpPolarity = True  -- mint token
                      }
-                mintParams = MintPolicyParams 
+                mintParams = LCMintPolicyParams 
                     {
-                        mpTokenName = tn
-                    ,   mpAdminPkh = tpAdminPkh tp
+                        lcTokenName = tn
+                    ,   lcAdminPkh = tpAdminPkh tp
                     }
 
-            let val     = Value.singleton (curSymbol mintParams) tn (tpQty tp)
-                lookups = Constraints.mintingPolicy (policy mintParams) Haskell.<> 
+            let val     = Value.singleton (lcCurSymbol mintParams) tn (tpQty tp)
+                lookups = Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
                           Constraints.unspentOutputs utxos
                 tx      = Constraints.mustMintValueWithRedeemer red val Haskell.<> 
                           Constraints.mustSpendPubKeyOutput oref Haskell.<>
@@ -75,10 +75,10 @@ mintToken tp = do
 
 
 
--- | burnToken burns littercoin tokens.   This offchain function is only used by the PAB
+-- | burnLC burns littercoin tokens.   This offchain function is only used by the PAB
 --   simulator to test the validation rules of the minting policy validator.  
-burnToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
-burnToken tp = do
+burnLC :: TokenParams -> Contract.Contract () TokenSchema Text ()
+burnLC tp = do
     
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
@@ -90,13 +90,13 @@ burnToken tp = do
                      {
                         mpPolarity = False -- burn token
                      }
-                mintParams = MintPolicyParams 
+                mintParams = LCMintPolicyParams 
                     {
-                        mpTokenName = tn
-                    ,   mpAdminPkh = tpAdminPkh tp
+                        lcTokenName = tn
+                    ,   lcAdminPkh = tpAdminPkh tp
                     }
-            let val     = Value.singleton (curSymbol mintParams) tn (-(tpQty tp))
-                lookups = Constraints.mintingPolicy (policy mintParams) Haskell.<> 
+            let val     = Value.singleton (lcCurSymbol mintParams) tn (-(tpQty tp))
+                lookups = Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
                           Constraints.unspentOutputs utxos
                 tx      = Constraints.mustMintValueWithRedeemer red val 
             ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
@@ -114,7 +114,7 @@ type TokenSchema = Contract.Endpoint "mint" TokenParams
 endpoints :: Contract.Contract () TokenSchema Text ()
 endpoints = forever $ Contract.handleError Contract.logError $ Contract.awaitPromise $ mint `Contract.select` burn
   where
-    mint = Contract.endpoint @"mint" $ \(tp) -> mintToken tp
-    burn = Contract.endpoint @"burn" $ \(tp) -> burnToken tp 
+    mint = Contract.endpoint @"mint" $ \(tp) -> mintLC tp
+    burn = Contract.endpoint @"burn" $ \(tp) -> burnLC tp 
 
 
