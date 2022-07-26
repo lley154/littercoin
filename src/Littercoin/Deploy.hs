@@ -8,8 +8,7 @@ module Littercoin.Deploy
     ) where
 
 import           Littercoin.OnChain                (policy)
-import           Littercoin.Types                  (FileData(..), MintPolicyRedeemer(..), MintPolicyParams(..), OptionalMetadata(..),
-                                                     RequiredMetadata(..))
+import           Littercoin.Types                  (MintPolicyRedeemer(..), MintPolicyParams(..))
 import           Littercoin.Utils                  (decodeHex, integerToBS)
 import           Cardano.Api.Shelley                (FileError, PlutusScript (..), PlutusScriptV1, ScriptData(..), scriptDataToJson, 
                                                      ScriptDataJsonSchema(..), writeFileTextEnvelope)

@@ -11,14 +11,14 @@ module Littercoin.OnChain
     ) where
 
 import           Littercoin.Types                  (MintPolicyParams(..), MintPolicyRedeemer(..))
-import           Littercoin.Utils                  (integerToBS)
+--import           Littercoin.Utils                  (integerToBS)
 import           Ledger                             (mkMintingPolicyScript, ScriptContext(..), scriptCurrencySymbol, 
-                                                     txInInfoOutRef, TxInfo(..), TxOutRef(..), txSignedBy)
+                                                     TxInfo(..),  txSignedBy)
 import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))                                                     
 import qualified Ledger.Typed.Scripts as Scripts    (MintingPolicy, wrapMintingPolicy)
 import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, TokenName(..))
 import qualified PlutusTx                           (applyCode, compile, liftCode)
-import           PlutusTx.Prelude                   (any, Bool(..), sha2_256, traceIfFalse, (&&), (==), ($), (<>))
+import           PlutusTx.Prelude                   (Bool(..), traceIfFalse, (&&), (==), ($), (<=), (>=))
 
 
 ------------------------------------------------------------------------
@@ -26,30 +26,21 @@ import           PlutusTx.Prelude                   (any, Bool(..), sha2_256, tr
 ------------------------------------------------------------------------
 
 -- | The mkPolicy is the minting policy validator for minting and burning
---   of carbon credit tokens.  It is a parameterized validator so each policy
---   id is unqiue based on the provided inputs.  In particular, an unspent
---   UTXO must be provided as part of the MintPolicyParams and this can only
---   be valid once.  After it is spent, it cannot be spent again so
---   the minting policy will fail if that UTXO is re-used because it cannot be
---   a valid input.
+--   of littercoin tokens.  It is a parameterized validator so each policy
+--   id is unqiue based on the admin pkh provided.
 
 {-# INLINABLE mkPolicy #-}
 mkPolicy :: MintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
 mkPolicy params (MintPolicyRedeemer polarity) ctx = 
 
     case polarity of
-        True ->    traceIfFalse "mkPolicy: UTxO not consumed"   hasUTxO
-                && traceIfFalse "mkPolicy: wrong amount minted" checkMintedAmount
-                && traceIfFalse "mkPolicy: invalid admin signature" signedByAdmin
-                && traceIfFalse "mkPolicy: invalid NFT meta data" validNFTParams
+        True ->    traceIfFalse "mkPolicy mint: invalid admin signature" signedByAdmin
+                && traceIfFalse "mkPolicy mint: invalid token amount" checkMintedAmount
                 
-        False ->   traceIfFalse "mkPolicy: wrong amount burned" checkBurnedAmount
-                && traceIfFalse "mkPolicy: invalid NFT meta data" validNFTParams
-
+        False ->  traceIfFalse "mkPolicy burn: invalid token amount" checkBurnedAmount
+                -- check for merchant auth NFT
 
   where
-    oref :: TxOutRef
-    oref = mpOref params
 
     tn :: Value.TokenName
     tn = mpTokenName params
@@ -57,38 +48,24 @@ mkPolicy params (MintPolicyRedeemer polarity) ctx =
     info :: TxInfo
     info = scriptContextTxInfo ctx  
 
-    -- Verify that the UTXO in the mint params is part of the tx inputs
-    hasUTxO :: Bool
-    hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info
-
     -- For now this is a single signature witnes, with future plans to make this multi-sig
     signedByAdmin :: Bool
     signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (mpAdminPkh params)
 
-    -- Check that there is only 1 token minted
+    -- Check that the token name minted is greater than 1
     checkMintedAmount :: Bool
     checkMintedAmount = case Value.flattenValue (txInfoMint info) of
-        [(_, tn', amt)] -> tn' == tn && amt == 1
+        [(_, tn', amt)] -> tn' == tn && amt >= 1
         _               -> False
 
-    -- Check that there is only 1 token burned
+    -- Check that the token name burned is less than -1
     checkBurnedAmount :: Bool
     checkBurnedAmount = case Value.flattenValue (txInfoMint info) of
-        [(_, tn', amt)] -> tn' == tn && amt == (-1)
+        [(_, tn', amt)] -> tn' == tn && amt <= (-1)
         _               -> False
 
-    -- Validate that the hash of the minting params is the same
-    -- as the token name that is being minted or burned
-    validNFTParams :: Bool
-    validNFTParams = tn == (Value.TokenName $ sha2_256 tn'')
-        where
-            tn'' =  (mpAddress params) <> 
-                    (integerToBS $ mpLat params) <> 
-                    (integerToBS $ mpLong params) <> 
-                    (mpCategory params) <> 
-                    (mpMethod params) <> 
-                    (integerToBS $ mpCO2Qty params)
-           
+    -- Check for NFT Auth token for burning
+    --  
 
 -- | Wrap the minting policy using the boilerplate template haskell code
 policy :: MintPolicyParams -> Scripts.MintingPolicy

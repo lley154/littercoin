@@ -45,7 +45,7 @@ library
       Littercoin.Utils
       Littercoin.OnChain
       Littercoin.OffChain
-      Littercoin.Deploy
+      --Littercoin.Deploy
     build-depends:
       base >= 4.9 && < 5,
       aeson -any,

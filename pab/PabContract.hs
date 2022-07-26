@@ -30,7 +30,7 @@ instance Pretty Contracts where
 instance Builtin.HasDefinitions Contracts where
     getDefinitions = [ UseContract ]
     getSchema =  \case
-        UseContract     -> Builtin.endpointsToSchemas @NFTSchema   
+        UseContract     -> Builtin.endpointsToSchemas @TokenSchema   
    
     getContract = \case
         UseContract     -> Builtin.SomeBuiltin endpoints
