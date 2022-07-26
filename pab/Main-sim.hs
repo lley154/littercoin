@@ -32,7 +32,8 @@ main = void $ Simulator.runSimulationWith handlers $ do
     let w1 = knownWallet 1
         w2 = knownWallet 2
         tokenName = "Littercoin"
-        qty = 50
+        qty1 = 100
+        qty2 = 75
 
     --setLocaleEncoding utf8
     Simulator.logString @(Builtin Contracts) "Starting PAB webserver on port 8080"
@@ -48,10 +49,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Initializing contract handle for wallet 2"
     h2 <- Simulator.activateContract w2 UseContract
 
+
+    -- Littercoin official minting
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 1"
     void $ Simulator.callEndpointOnInstance h1 "mint" $ TokenParams
         { tpTokenName = tokenName
-        , tpQty = qty
+        , tpQty = qty1
         , tpAdminPkh = adminPkh1
         }
 
@@ -59,36 +62,45 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to continue"
     void $ liftIO getLine
 
-    {-
-    
-    Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h2 "mint" $ NFTParams
-        { npAddress = address2
-        , npLat = lat2
-        , npLong = long2
-        , npCategory = category2
-        , npMethod = method2
-        , npCO2Qty = cO2Qty2 
-        , npAdminPkh = adminPkh2
+    -- Littercoin invalid minting
+    Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2, but does not have adminPkh"
+    void $ Simulator.callEndpointOnInstance h2 "mint" $ TokenParams
+        { tpTokenName = tokenName
+        , tpQty = qty1
+        , tpAdminPkh = adminPkh1
         }
+
+    Simulator.waitNSlots 2
+    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to continue"
+    void $ liftIO getLine
+
+    
+    -- Littercoin minting but with a different policy id and adminPkh
+    Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2"
+    void $ Simulator.callEndpointOnInstance h2 "mint" $ TokenParams
+        { tpTokenName = tokenName
+        , tpQty = qty1
+        , tpAdminPkh = adminPkh2
+        }
+
+    
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 2, press return to continue"
     void $ liftIO getLine
 
+    -- Burn official Littercoin
+    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
+    void $ Simulator.callEndpointOnInstance h1 "burn" $ TokenParams
+        { tpTokenName = tokenName
+        , tpQty = qty2
+        , tpAdminPkh = adminPkh1
+        }
 
-    mpParams <- flip Simulator.waitForState h2 $ \json -> case (fromJSON json :: Result (Monoid.Last MintPolicyParams)) of
-                    Success (Monoid.Last (Just mpParams))   -> Just mpParams
-                    _                                       -> Nothing
-      
-
-    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h2 "burn" $ mpParams
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token burned for wallet 2, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to continue"
     void $ liftIO getLine
 
-    -}
 
     -- Pressing enter results in the balances being printed
     Simulator.logString @(Builtin Contracts) "Balances at the end of the simulation"

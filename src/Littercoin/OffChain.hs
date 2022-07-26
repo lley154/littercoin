@@ -95,7 +95,7 @@ burnToken tp = do
                         mpTokenName = tn
                     ,   mpAdminPkh = tpAdminPkh tp
                     }
-            let val     = Value.singleton (curSymbol mintParams) tn (tpQty tp)
+            let val     = Value.singleton (curSymbol mintParams) tn (-(tpQty tp))
                 lookups = Constraints.mintingPolicy (policy mintParams) Haskell.<> 
                           Constraints.unspentOutputs utxos
                 tx      = Constraints.mustMintValueWithRedeemer red val 
