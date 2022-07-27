@@ -8,6 +8,7 @@ module Littercoin.OnChain
     (
       lcCurSymbol
     , lcPolicy
+    , minAda
     , nftCurSymbol
     , nftPolicy
     , nftTokenValue
@@ -16,16 +17,32 @@ module Littercoin.OnChain
 import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
 import           Ledger                             (mkMintingPolicyScript, ScriptContext(..), scriptCurrencySymbol, 
                                                      TxInfo(..),  txSignedBy)
-import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))                                                     
+import qualified Ledger.Ada as Ada                  (lovelaceValueOf)
+import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))
+import qualified Ledger.Contexts as Contexts        (TxOut)                                                     
+import qualified Ledger.Tx as Tx                    (TxOut(txOutValue ))
 import qualified Ledger.Typed.Scripts as Scripts    (MintingPolicy, wrapMintingPolicy)
 import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, singleton, TokenName(..), Value)
 import qualified PlutusTx                           (applyCode, compile, liftCode)
-import           PlutusTx.Prelude                   (Bool(..), traceIfFalse, (&&), (==), ($), (<=), (>=))
+import           PlutusTx.Prelude                   (Bool(..), otherwise, traceIfFalse, (&&), (==), ($), (<=), (>=), (<>))
 
 
 ------------------------------------------------------------------------
 -- On Chain Code
 ------------------------------------------------------------------------
+
+{-# INLINABLE minAda #-}
+minAda :: Value.Value
+minAda = Ada.lovelaceValueOf 2000000
+
+-- | Check that the NFT value is in the provided outputs
+{-# INLINABLE validOutputs #-}
+validOutputs :: Value.Value -> [Contexts.TxOut] -> Bool
+validOutputs _ [] = False
+validOutputs txVal (x:xs)
+    | Tx.txOutValue x == txVal = True
+    | otherwise = validOutputs txVal xs
+                             
 
 -- | The mkLittercoinPolicy is the minting policy validator for minting and burning
 --   of littercoin tokens.  It is a parameterized validator so each policy
@@ -40,7 +57,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx =
                 && traceIfFalse "mkPolicy mint: invalid token amount" checkMintedAmount
                 
         False ->  traceIfFalse "mkPolicy burn: invalid token amount" checkBurnedAmount
-                -- check for merchant auth NFT
+                && traceIfFalse "mkPolicy burn: NFT merchant token value not found" checkNFTValue
 
   where
 
@@ -66,8 +83,10 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx =
         [(_, tn', amt)] -> tn' == tn && amt <= (-1)
         _               -> False
 
-    -- Check for NFT Auth token for burning
-    --  
+    -- Check for NFT Merchant token if burning littercoin
+    checkNFTValue :: Bool
+    checkNFTValue = validOutputs (minAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
+
 
 -- | Wrap the minting policy using the boilerplate template haskell code
 lcPolicy :: LCMintPolicyParams -> Scripts.MintingPolicy
@@ -81,6 +100,7 @@ lcPolicy mpParams = mkMintingPolicyScript $
 --   as a parameter to the minting policy
 lcCurSymbol :: LCMintPolicyParams -> Value.CurrencySymbol
 lcCurSymbol mpParams = scriptCurrencySymbol $ lcPolicy mpParams 
+
 
 
 {-# INLINABLE mkNFTPolicy #-}

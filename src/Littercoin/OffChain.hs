@@ -7,7 +7,7 @@
 
 module Littercoin.OffChain where
 
-import           Littercoin.OnChain                 (lcCurSymbol, lcPolicy, nftCurSymbol, nftPolicy, nftTokenValue)
+import           Littercoin.OnChain                 (lcCurSymbol, lcPolicy, minAda, nftCurSymbol, nftPolicy, nftTokenValue)
 import           Littercoin.Types                   (LCMintPolicyParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
 import           Control.Monad                      (forever)
 import           Data.Aeson                         (FromJSON, ToJSON)
@@ -20,8 +20,8 @@ import qualified Plutus.Contract as Contract        (awaitPromise, awaitTxConfir
 import           PlutusTx                           (toBuiltinData)
 import           PlutusTx.Prelude                   (Bool(..), BuiltinByteString, Integer, Maybe ( Nothing ), ($))
 import           Ledger                             (getCardanoTxId)
-import           Ledger.Constraints as Constraints  (mintingPolicy, mustMintValueWithRedeemer, mustBeSignedBy, mustSpendPubKeyOutput, unspentOutputs)
 import           Ledger.Address as Address          (PaymentPubKeyHash(..), pubKeyHashAddress)
+import           Ledger.Constraints as Constraints  (mintingPolicy, mustMintValueWithRedeemer, mustBeSignedBy, mustPayToPubKey, mustSpendPubKeyOutput, unspentOutputs)
 import           Ledger.Scripts as Scripts          (Redeemer(..))
 import           Ledger.Value as Value              (singleton, split, TokenName(..))
 import           Playground.Contract as Playground  (ToSchema)
@@ -96,10 +96,11 @@ burnLCToken tp = do
         _ : _ -> do
             let tn = Value.TokenName $ tpLCTokenName tp
                 tn' = Value.TokenName $ tpNFTTokenName tp
+                pkh = tpAdminPkh tp
                 nftMintParams = NFTMintPolicyParams
                     {
                         nftTokenName = tn' -- the name of the NFT token
-                    ,   nftAdminPkh = tpAdminPkh tp
+                    ,   nftAdminPkh = pkh
                     }
                 (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
@@ -109,13 +110,14 @@ burnLCToken tp = do
                 mintParams = LCMintPolicyParams 
                     {
                         lcTokenName = tn
-                    ,   lcAdminPkh = tpAdminPkh tp
+                    ,   lcAdminPkh = pkh
                     ,   lcNFTTokenValue = nftTokVal
                     }
             let val     = Value.singleton (lcCurSymbol mintParams) tn (-(tpQty tp))
                 lookups = Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
                           Constraints.unspentOutputs utxos
-                tx      = Constraints.mustMintValueWithRedeemer red val 
+                tx      = Constraints.mustMintValueWithRedeemer red val Haskell.<>
+                          Constraints.mustPayToPubKey pkh (minAda Haskell.<> nftTokVal)
             ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
             void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
             Contract.logInfo @Haskell.String $ printf "burnToken: Burned %s" (Haskell.show val)

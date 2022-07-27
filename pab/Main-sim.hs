@@ -34,7 +34,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
         tokenName = "Littercoin"
         nftTokenName = "Littercoin Approved Merchant"
         qty1 = 100
-        qty2 = 75
+        qty2 = 25
 
     --setLocaleEncoding utf8
     Simulator.logString @(Builtin Contracts) "Starting PAB webserver on port 8080"
@@ -76,8 +76,21 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to continue"
     void $ liftIO getLine
-
     
+    -- Burn official Littercoin but merchant does not have approved NFT
+    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
+        , tpQty = qty2
+        , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
+        }
+
+    Simulator.waitNSlots 2
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? press return to continue"
+    void $ liftIO getLine
+
+
     -- Mint the merchant NFT to allow for burning of littercoin
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2"
     void $ Simulator.callEndpointOnInstance h1 "mintNFT" $ TokenParams
@@ -87,12 +100,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpAdminPkh = adminPkh1
         }
 
-    
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2, press return to continue"
+    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 2, press return to continue"
     void $ liftIO getLine
 
-    -- Burn official Littercoin
+
+    -- Burn Littercoin with merchant approved NFT
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
     void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
         { tpLCTokenName = tokenName
@@ -100,7 +113,6 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpQty = qty2
         , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
         }
-
 
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to continue"
