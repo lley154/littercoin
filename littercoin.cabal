@@ -42,7 +42,6 @@ library
     import: lang
     exposed-modules:
       Littercoin.Types
-      Littercoin.Utils
       Littercoin.OnChain
       Littercoin.OffChain
       --Littercoin.Deploy

@@ -46,10 +46,9 @@ cabal build littercoin-pab
 2. Run the PAB binary:
 
 ```
-cabal exec -- littercoin-pab
+cabal exec littercoin-pab
 ````
 
-This will then start up the server on port 9080. The devcontainer process will then automatically expose this port so that you can connect to it from any terminal (it doesn't have to be a terminal running in the devcontainer).
 
 
 ## Support/Issues/Community
