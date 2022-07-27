@@ -117,6 +117,22 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to continue"
     void $ liftIO getLine
+    
+
+    {-
+    -- Burn the merchant NFT to allow for burning of littercoin
+    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 2"
+    void $ Simulator.callEndpointOnInstance h1 "burnNFT" $ TokenParams
+        { tpLCTokenName = tokenName -- ignored for NFT minting
+        , tpNFTTokenName = nftTokenName
+        , tpQty = 1
+        , tpAdminPkh = adminPkh1 -- ignored for NFT burning
+        }
+
+    Simulator.waitNSlots 2
+    Simulator.logString @(Builtin Contracts) "NFT burned for wallet 2, press return to continue"
+    void $ liftIO getLine
+    -}
 
 
     -- Pressing enter results in the balances being printed
