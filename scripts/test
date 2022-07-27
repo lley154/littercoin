@@ -6,10 +6,10 @@ set -eEuo pipefail
 
 cabal update
 
-cabal build plutus-starter-pab
+cabal build littercoin-pab
 
-# We run plutus-starter-pab under a coproc to enable backgrounding when in an interactive shell
-coproc cabal exec -- plutus-starter-pab
+# We run littercoin-pab under a coproc to enable backgrounding when in an interactive shell
+coproc cabal exec -- littercoin-pab
 kill_pab() {
     echo >&${COPROC[1]}
 
@@ -17,7 +17,7 @@ kill_pab() {
 }
 trap kill_pab EXIT
 
-# Start a background loop to print out the output from plutus-starter-pab
+# Start a background loop to print out the output from littercoin-pab
 exec 3<&${COPROC[0]}
 (while IFS= read -u 3 -r line; do echo $line; done) &
 

@@ -1,5 +1,5 @@
 # Plutus Platform starter project
-![CI](https://github.com/input-output-hk/plutus-starter/actions/workflows/test.yml/badge.svg?branch=main)
+![CI](https://github.com/input-output-hk/littercoin/actions/workflows/test.yml/badge.svg?branch=main)
 
 
 This project gives a simple starter project for using the Plutus Platform.
@@ -21,7 +21,7 @@ Use the provided VSCode devcontainer to get an environment with the correct tool
   - `cabal build` from the terminal should work (unless you didn't have a `~/.cabal` folder, in which case you'll need to run `cabal update` first.)
   - Opening a Haskell file should give you IDE features (it takes a little while to set up the first time)
 
-Note: This uses the [plutus-starter-devcontainer image on dockerhub](https://hub.docker.com/r/inputoutput/plutus-starter-devcontainer), if
+Note: This uses the [littercoin-devcontainer image on dockerhub](https://hub.docker.com/r/inputoutput/littercoin-devcontainer), if
 you wish to build the image yourself, you can do so as follows:
   - Clone https://github.com/input-output-hk/plutus-apps,
   - Set up your machine to build things with Nix, following the [Plutus README](https://github.com/input-output-hk/plutus/blob/master/README.adoc) (make sure to set up the binary cache!),
@@ -69,13 +69,13 @@ have `jq` installed.
 1. Build the PAB executable:
 
 ```
-cabal build plutus-starter-pab
+cabal build littercoin-pab
 ```
 
 2. Run the PAB binary:
 
 ```
-cabal exec -- plutus-starter-pab
+cabal exec -- littercoin-pab
 ````
 
 This will then start up the server on port 9080. The devcontainer process will then automatically expose this port so that you can connect to it from any terminal (it doesn't have to be a terminal running in the devcontainer).
@@ -185,7 +185,7 @@ didn't validate.
 As an exercise, you can now spin up another instance for Wallet 2 and make a correct guess, and
 confirm that the transaction validates and the Ada is transferred into the right wallet.
 
-Note that you can verify the balances by looking at the log of `plutus-starter-pab`
+Note that you can verify the balances by looking at the log of `littercoin-pab`
 when exiting it by pressing return.
 
 Finally, also node that the PAB also exposes a websocket, which you can read about in
@@ -194,7 +194,7 @@ the general [PAB Architecture documentation](https://github.com/input-output-hk/
 
 ## Support/Issues/Community
 
-Issues can be filed in the [GitHub Issue tracker](https://github.com/input-output-hk/plutus-starter/issues).
+Issues can be filed in the [GitHub Issue tracker](https://github.com/input-output-hk/littercoin/issues).
 
 For more interactive discussion, you can join the [IOG Technical Community
 Discord](https://discord.gg/sSF5gmDBYg).
