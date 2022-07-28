@@ -9,6 +9,8 @@ module Littercoin.Types
 (
      MintPolicyRedeemer(..)
    , LCMintPolicyParams(..)
+   , LCRedeemer(..)
+   , LCValidatorParams(..)
    , NFTMintPolicyParams(..)     
 )where
 
@@ -18,7 +20,7 @@ import qualified    Ledger.Address as Address           (PaymentPubKeyHash(..))
 import qualified    Ledger.Value as Value               (TokenName(..), Value)
 import              Playground.Contract as Playground   (ToSchema)
 import qualified    PlutusTx                            (makeIsDataIndexed, makeLift)
-import              PlutusTx.Prelude                    (Bool(..))
+import              PlutusTx.Prelude                    (Bool(..), Integer)
 import qualified    Prelude as Haskell                  (Show)
 
 
@@ -54,3 +56,34 @@ data NFTMintPolicyParams = NFTMintPolicyParams
 
 PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
 PlutusTx.makeLift ''NFTMintPolicyParams
+
+-- | LCValidatorParams is used to pass the admin pkh as a parameter to the 
+--   littercoin validator script
+data LCValidatorParams = LCValidatorParams
+    {   lcvAdminPkh                 :: !Address.PaymentPubKeyHash
+    ,   lcvNFTTokenValue            :: !Value.Value
+    ,   lcvLCTokenName              :: !Value.TokenName    
+    } deriving Haskell.Show
+
+PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 
+PlutusTx.makeLift ''LCValidatorParams
+
+
+-- | The LCRedemeer used to indicate if the action is to mint or burn littercoin or
+--   to add and remove Ada from the littercoin contract.   Also specify the amount 
+--   as well in the redeemer.
+data LCRedeemer = 
+       MintLC Integer    -- mint littercoin
+     | BurnLC Integer    -- burn littercoin and retreive Ada
+     | AddAda Integer     -- add Ada to the smart contract
+     
+    deriving Haskell.Show
+
+
+PlutusTx.makeIsDataIndexed
+  ''LCRedeemer
+  [ ('MintLC, 0),
+    ('BurnLC, 1),
+    ('AddAda, 2)
+  ]
+PlutusTx.makeLift ''LCRedeemer

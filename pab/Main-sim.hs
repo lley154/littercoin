@@ -61,8 +61,16 @@ main = void $ Simulator.runSimulationWith handlers $ do
         }
 
     Simulator.waitNSlots 2
+
+    Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to show balances"
+    void $ liftIO getLine
+
+    balances <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances
+    
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to continue"
     void $ liftIO getLine
+
 
     -- Try minting some littercoins with incorrect pkh
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2, but does not have adminPkh"
@@ -101,6 +109,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
         }
 
     Simulator.waitNSlots 2
+    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 2, press return to show balances"
+    void $ liftIO getLine
+
+    balances2 <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances2
+
     Simulator.logString @(Builtin Contracts) "NFT minted for wallet 2, press return to continue"
     void $ liftIO getLine
 
@@ -138,8 +152,8 @@ main = void $ Simulator.runSimulationWith handlers $ do
     -- Pressing enter results in the balances being printed
     Simulator.logString @(Builtin Contracts) "Balances at the end of the simulation"
 
-    balances <- Simulator.currentBalances
-    Simulator.logBalances @(Builtin Contracts) balances
+    balances3 <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances3
 
     shutdown
 
