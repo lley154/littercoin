@@ -318,3 +318,44 @@ lcHash params = TScripts.validatorHash $ typedLCValidator params
 
 untypedLCHash :: BuiltinData -> Scripts.ValidatorHash
 untypedLCHash params = Scripts.validatorHash $ untypedLCValidator params
+
+
+-- | Mint a unique NFT representing a littercoin validator thread token
+mkThreadTokenPolicy :: ThreadTokenRedeemer -> ScriptContext -> Bool
+mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx = 
+    traceIfFalse "TP1" txOutputSpent        --  UTxO not consumed
+    && traceIfFalse "TP2" checkMintedAmount    -- wrong amount minted    
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    -- True if the pending transaction spends the output
+    -- identified by @(refHash, refIdx)@
+    txOutputSpent = Context.spendsOutput info refHash refIdx
+    ownSymbol = Context.ownCurrencySymbol ctx
+    minted = txInfoMint info
+    threadToken = sha2_256 $ getTxId refHash <> intToBBS refIdx
+
+    checkMintedAmount :: Bool
+    checkMintedAmount = minted == threadTokenValue ownSymbol (Value.TokenName threadToken) 
+
+
+{-# INLINABLE wrapThreadTokenPolicy #-}
+wrapThreadTokenPolicy :: BuiltinData -> BuiltinData -> ()
+wrapThreadTokenPolicy redeemer ctx =
+   check $ mkThreadTokenPolicy (unsafeFromBuiltinData redeemer) (unsafeFromBuiltinData ctx)
+
+
+threadTokenPolicy :: Scripts.MintingPolicy
+threadTokenPolicy = Scripts.mkMintingPolicyScript $
+     $$(PlutusTx.compile [|| wrapThreadTokenPolicy ||])
+
+
+{-# INLINABLE threadTokenCurSymbol #-}
+threadTokenCurSymbol :: Value.CurrencySymbol
+threadTokenCurSymbol = Contexts.scriptCurrencySymbol threadTokenPolicy
+
+
+{-# INLINABLE threadTokenValue #-}
+threadTokenValue :: Value.CurrencySymbol -> Value.TokenName -> Value.Value
+threadTokenValue cs' tn' = Value.singleton cs' tn' 1

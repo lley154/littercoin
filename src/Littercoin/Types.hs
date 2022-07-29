@@ -87,3 +87,12 @@ PlutusTx.makeIsDataIndexed
     ('AddAda, 2)
   ]
 PlutusTx.makeLift ''LCRedeemer
+
+-- | The thread token redeemer passes a utxo from the lotto admin's wallet 
+--   to the thread token miting policy which is used to create the lotto 
+--   and buy thread tokens
+data ThreadTokenRedeemer = ThreadTokenRedeemer
+    {   ttTxOutRef :: !Tx.TxOutRef  
+    } deriving Haskell.Show
+
+PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)] 
