@@ -11,13 +11,15 @@ module Littercoin.Types
    , LCMintPolicyParams(..)
    , LCRedeemer(..)
    , LCValidatorParams(..)
-   , NFTMintPolicyParams(..)     
+   , NFTMintPolicyParams(..)
+   , ThreadTokenRedeemer(..)     
 )where
 
 import              Data.Aeson                          (FromJSON, ToJSON)  
 import              GHC.Generics                        (Generic)
 import qualified    Ledger.Address as Address           (PaymentPubKeyHash(..))
 import qualified    Ledger.Value as Value               (TokenName(..), Value)
+import qualified    Ledger.Tx as Tx                     (TxOutRef(..))
 import              Playground.Contract as Playground   (ToSchema)
 import qualified    PlutusTx                            (makeIsDataIndexed, makeLift)
 import              PlutusTx.Prelude                    (Bool(..), Integer)

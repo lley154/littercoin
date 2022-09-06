@@ -11,31 +11,39 @@
 
 module Littercoin.OnChain 
     (
-      lcCurSymbol
+      intToBBS
+    , lcCurSymbol
+    , lcHash
     , lcPolicy
+    , lcValidator
+    , LCDatum(..)
     , minAda
     , nftCurSymbol
     , nftPolicy
     , nftTokenValue
+    , threadTokenCurSymbol
+    , threadTokenPolicy 
+    , threadTokenValue
+    , typedLCValidator
     ) where
 
 import           Data.Aeson                         (FromJSON, ToJSON)
 import           GHC.Generics                       (Generic)
-import           Littercoin.Types                   (LCMintPolicyParams(..), LCRedeemer(..), LCValidatorParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..))
+import           Littercoin.Types                   (LCMintPolicyParams(..), LCRedeemer(..), LCValidatorParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..), ThreadTokenRedeemer(..))
 import           Ledger                             (mkMintingPolicyScript, ScriptContext(..), scriptCurrencySymbol, 
-                                                     TxInfo(..),  txSignedBy)
+                                                     TxInfo(..),  txSignedBy, TxId(getTxId ))
 import qualified Ledger.Ada as Ada                  (lovelaceValueOf)
 import qualified Ledger.Address as Address          (PaymentPubKeyHash(..))
-import qualified Ledger.Contexts as Contexts        (getContinuingOutputs, TxOut)
-import qualified Ledger.Scripts as Scripts          (Datum(..), DatumHash, mkValidatorScript, Script, Validator, ValidatorHash, validatorHash)                                                  
-import qualified Ledger.Tx as Tx                    (TxOut(txOutValue, txOutDatumHash))
+import qualified Ledger.Contexts as Contexts        (getContinuingOutputs, ownCurrencySymbol, scriptCurrencySymbol, spendsOutput, TxOut)
+import qualified Ledger.Scripts as Scripts          (Datum(..), DatumHash, mkMintingPolicyScript, mkValidatorScript, Script, Validator, ValidatorHash, validatorHash)                                                  
+import qualified Ledger.Tx as Tx                    (TxOut(..), TxOutRef(..))
 import qualified Ledger.Typed.Scripts.Validators as Validators (unsafeMkTypedValidator)
 import qualified Ledger.Typed.TypeUtils as TypeUtils (Any)
 import qualified Ledger.Typed.Scripts as TScripts   (MintingPolicy, TypedValidator, validatorScript, validatorHash, wrapMintingPolicy)
 import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, singleton, TokenName(..), Value)
 import           Plutus.V1.Ledger.Api as Ledger     (unsafeFromBuiltinData, unValidatorScript)
 import qualified PlutusTx                           (applyCode, compile, fromBuiltinData, liftCode, makeIsDataIndexed, makeLift)
-import           PlutusTx.Prelude                   (Bool(..), BuiltinData, check, divide, find, Integer, Maybe(..), otherwise, snd, traceIfFalse, traceError, (&&), (==), ($), (<=), (>=), (<>), (<$>), (-), (*))
+import           PlutusTx.Prelude                   (Bool(..), BuiltinByteString, BuiltinData, check, consByteString, divide, emptyByteString, find, Integer, Maybe(..), otherwise, snd, sha2_256, traceIfFalse, traceError, (&&), (==), ($), (<=), (>=), (<>), (<$>), (-), (*), (+))
 import qualified Prelude as Haskell                 (Show)
 
 ------------------------------------------------------------------------
@@ -45,6 +53,11 @@ import qualified Prelude as Haskell                 (Show)
 {-# INLINABLE minAda #-}
 minAda :: Value.Value
 minAda = Ada.lovelaceValueOf 2000000
+
+-- | Create a BuitinByteString from an Integer
+{-# INLINEABLE intToBBS #-}
+intToBBS :: Integer -> BuiltinByteString
+intToBBS y = consByteString (y + 48) emptyByteString -- 48 is ASCII code for '0'
 
 
 -- | LCDatum is used to record the value of littercoin minted and the amount
@@ -331,8 +344,8 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx =
 
     -- True if the pending transaction spends the output
     -- identified by @(refHash, refIdx)@
-    txOutputSpent = Context.spendsOutput info refHash refIdx
-    ownSymbol = Context.ownCurrencySymbol ctx
+    txOutputSpent = Contexts.spendsOutput info refHash refIdx
+    ownSymbol = Contexts.ownCurrencySymbol ctx
     minted = txInfoMint info
     threadToken = sha2_256 $ getTxId refHash <> intToBBS refIdx
 
@@ -346,7 +359,7 @@ wrapThreadTokenPolicy redeemer ctx =
    check $ mkThreadTokenPolicy (unsafeFromBuiltinData redeemer) (unsafeFromBuiltinData ctx)
 
 
-threadTokenPolicy :: Scripts.MintingPolicy
+threadTokenPolicy :: TScripts.MintingPolicy
 threadTokenPolicy = Scripts.mkMintingPolicyScript $
      $$(PlutusTx.compile [|| wrapThreadTokenPolicy ||])
 
