@@ -38,6 +38,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
         nftTokenName = "Littercoin Approved Merchant"
         qty1 = 100
         qty2 = 25
+        adaAmount = 10000000
 
     --setLocaleEncoding utf8
     Simulator.logString @(Builtin Contracts) "Starting PAB webserver on port 8080"
@@ -75,6 +76,23 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     Simulator.logString @(Builtin Contracts) "Initializing contract handle for wallet 2"
     h2 <- Simulator.activateContract w2 UseContract
+
+    -- Add some add to the Ada to the Littercoin smart contract by a donnor
+    Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 1"
+    void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
+        , tpQty = adaAmount
+        , tpAdminPkh = adminPkh1
+        })
+
+    Simulator.waitNSlots 2
+
+    balances_add <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_add
+
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    void $ liftIO getLine
 
 
     -- Mint some littercoins for wallet 1

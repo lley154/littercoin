@@ -122,6 +122,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx =
         _               -> False
 
     -- Check for NFT Merchant token if burning littercoin
+    -- TODO, need to determine Ada at address or split out NFT validation
     checkNFTValue :: Bool
     checkNFTValue = validOutputs (minAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
 
@@ -218,10 +219,10 @@ mkLCValidator params dat red ctx =
                   &&  (traceIfFalse "LCV7" $ checkValueAmountBurn qty)                 
                     
         AddAda qty -> (traceIfFalse "LCV9" $ checkLCDatumAdd qty)  
-                  &&   traceIfFalse "LCV8" checkValueAmountAdd 
+                 &&   traceIfFalse "LCV8" checkValueAmountAdd 
 
 
-      where
+      where        
         tn :: Value.TokenName
         tn = lcvLCTokenName params
         
@@ -273,7 +274,7 @@ mkLCValidator params dat red ctx =
 
             where
                 ratio :: Integer
-                ratio = divide (adaAmount dat) (lcAmount dat)
+                ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
                 
                 spendAda :: Value.Value
                 spendAda = Ada.lovelaceValueOf ((adaAmount dat) - q * ratio)
@@ -286,11 +287,14 @@ mkLCValidator params dat red ctx =
 
         -- | Check that the Ada added matches increase in the datum
         checkValueAmountAdd :: Bool
-        checkValueAmountAdd = validOutputs (addAda <> (lcvNFTTokenValue params)) (txInfoOutputs info)
+        checkValueAmountAdd = validOutputs (addAda <> tt) (txInfoOutputs info)
 
             where
                 addAda :: Value.Value
                 addAda = Ada.lovelaceValueOf (adaAmount outputDat)
+
+                tt :: Value.Value 
+                tt = lcvThreadTokenValue params
 
 
 
@@ -343,6 +347,8 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx =
 
     -- True if the pending transaction spends the output
     -- identified by @(refHash, refIdx)@
+    -- TODO -- check that refIdx < 256 and fail if not to mitigate 
+    -- wrapping back to 0 due to word8 conversion
     txOutputSpent = Contexts.spendsOutput info refHash refIdx
     ownSymbol = Contexts.ownCurrencySymbol ctx
     minted = txInfoMint info

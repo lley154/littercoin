@@ -73,7 +73,7 @@ mintLCToken tp = do
                 tn' = Value.TokenName $ tpNFTTokenName tp
                 nftMintParams = NFTMintPolicyParams
                     {
-                        nftTokenName = tn' -- the name of the NFT token
+                        nftTokenName = tn' -- the name of the NFT merchant token
                     ,   nftAdminPkh = tpAdminPkh tp
                     }
                 (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
@@ -231,6 +231,7 @@ initLCValidator tp = do
             {   lcvAdminPkh         = tpAdminPkh tp
             ,   lcvNFTTokenValue    = nftTokVal
             ,   lcvLCTokenName      = tn
+            ,   lcvThreadTokenValue = ttVal
             }
         lcDatum = LCDatum 
             {   adaAmount = 0                                         
@@ -249,11 +250,7 @@ initLCValidator tp = do
     utx <- Contract.mapError (review Contract._ConstraintResolutionContractError) (Request.mkTxContract lookups tx)
     let adjustedUtx = Constraints.adjustUnbalancedTx utx
     Request.submitTxConfirmed adjustedUtx
-
-    --ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
-    --void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
     Contract.logInfo $ "initLotto: tx submitted successfully= " ++ Haskell.show adjustedUtx
-    --Contract.logInfo $ "initLotto: tx submitted successfully" 
 
     Contract.tell $ Last $ Just threadTokenName
 
@@ -289,10 +286,12 @@ addAdaToContract tt tp = do
             ,   nftAdminPkh = tpAdminPkh tp
             }
         (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
+        (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol tt)
         lcParams = LCValidatorParams
             {   lcvAdminPkh         = tpAdminPkh tp
             ,   lcvNFTTokenValue    = nftTokVal
             ,   lcvLCTokenName      = tn
+            ,   lcvThreadTokenValue = ttVal
             }
         
     (oref, o, lcd@LCDatum{}) <- findLCValidator lcParams threadTokenCurSymbol tt
@@ -304,7 +303,6 @@ addAdaToContract tt tp = do
             {   adaAmount = (adaAmount lcd) + (tpQty tp)                                                  
             ,   lcAmount = lcAmount lcd
             }
-        (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol tt)
         red = Scripts.Redeemer $ PlutusTx.toBuiltinData $ AddAda (tpQty tp)
         dat = PlutusTx.toBuiltinData lcDatum
 
@@ -317,12 +315,8 @@ addAdaToContract tt tp = do
     utx <- Contract.mapError (review Contract._ConstraintResolutionContractError) (Request.mkTxContract lookups tx)
     let adjustedUtx = Constraints.adjustUnbalancedTx utx
     Request.submitTxConfirmed adjustedUtx
-
-    --ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
-    --void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
-
-    --Contract.logInfo $ "addAdaContract: tx submitted"
     Contract.logInfo $ "addAdaContract: tx submitted successfully= " ++ Haskell.show adjustedUtx
+
 
 -- | InitSchema type is defined and used by the PAB Contracts
 type InitSchema =

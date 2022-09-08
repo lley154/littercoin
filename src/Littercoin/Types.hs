@@ -64,7 +64,8 @@ PlutusTx.makeLift ''NFTMintPolicyParams
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: !Address.PaymentPubKeyHash
     ,   lcvNFTTokenValue            :: !Value.Value
-    ,   lcvLCTokenName              :: !Value.TokenName    
+    ,   lcvLCTokenName              :: !Value.TokenName
+    ,   lcvThreadTokenValue         :: !Value.Value  
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 
