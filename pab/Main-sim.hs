@@ -9,9 +9,12 @@ import           Littercoin.OffChain
 import           Control.Monad                          (void)
 import           Control.Monad.Freer                    (interpret)
 import           Control.Monad.IO.Class                 (MonadIO (..))
+import           Data.Aeson                             (Result (..), fromJSON)
 import           Data.Default                           (def)
+import qualified Data.Monoid as Monoid
 import           Ledger.Address                         (PaymentPubKeyHash)
 import qualified Ledger.CardanoWallet as CW
+import           Ledger.Value as Value                  (TokenName(..))
 import           PabContract                            (Contracts(..))
 import           Plutus.PAB.Effects.Contract.Builtin    (Builtin, BuiltinHandler(contractHandler), handleBuiltin)
 import qualified Plutus.PAB.Simulator as Simulator
@@ -22,8 +25,8 @@ import           Wallet.Emulator.Wallet                 (knownWallet)
 adminPkh1 :: PaymentPubKeyHash
 adminPkh1 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 1)
 
---adminPkh2 :: PaymentPubKeyHash
---adminPkh2 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 2)
+donorPkh2 :: PaymentPubKeyHash
+donorPkh2 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 2)
 
 
 main :: IO ()
@@ -43,6 +46,29 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "********* PAB server is running *********"
     Simulator.logString @(Builtin Contracts) "To start PAB simulation press return"
     void $ liftIO getLine
+
+    Simulator.logString @(Builtin Contracts) "Initializing Littercoin validator contract handle for wallet 1"
+    initHandle <- Simulator.activateContract w1 InitContract
+
+    void $ Simulator.callEndpointOnInstance initHandle "init" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
+        , tpQty = qty1  -- ignored for init
+        , tpAdminPkh = adminPkh1
+        }
+    Simulator.waitNSlots 2
+
+    ttTokenName <- flip Simulator.waitForState initHandle $ \json -> case (fromJSON json :: Result (Monoid.Last Value.TokenName)) of
+                    Success (Monoid.Last (Just ttTokenName)) -> Just ttTokenName
+                    _                                        -> Nothing
+    Simulator.logString @(Builtin Contracts) $ "ThreadToken Token Name found: " ++ show ttTokenName
+    
+    balances_init <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_init
+
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    void $ liftIO getLine
+
         
     Simulator.logString @(Builtin Contracts) "Initializing contract handle for wallet 1"
     h1 <- Simulator.activateContract w1 UseContract
@@ -85,7 +111,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to continue"
     void $ liftIO getLine
     
-    -- Burn official Littercoin but merchant does not have approved NFT
+    -- Burn Littercoin but merchant does not have approved NFT
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
     void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
         { tpLCTokenName = tokenName

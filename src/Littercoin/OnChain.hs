@@ -60,9 +60,9 @@ intToBBS :: Integer -> BuiltinByteString
 intToBBS y = consByteString (y + 48) emptyByteString -- 48 is ASCII code for '0'
 
 
--- | LCDatum is used to record the value of littercoin minted and the amount
---   of Ada locked at the smart contract.  This is then used during littercoin
---   burning to payout the corresponding amount of Ada to the merchant.
+-- | LCDatum is used to record the amount of Littercoin minted and the amount
+--   of Ada locked at the smart contract.  This is then used during Littercoin
+--   burning to payout the corresponding amount of Ada per Littercoin to the merchant.
 data LCDatum = LCDatum
     {   adaAmount           :: !Integer                                         
     ,   lcAmount            :: !Integer                                                                          -- 8
@@ -140,7 +140,8 @@ lcCurSymbol :: LCMintPolicyParams -> Value.CurrencySymbol
 lcCurSymbol mpParams = scriptCurrencySymbol $ lcPolicy mpParams 
 
 
-
+-- | mkPFTPolicy is the minting policy for creating the approved merchant NFT.
+--   When a merchant has one of a merchant approved NFT, they are authorized to spend/burn littercoin.
 {-# INLINABLE mkNFTPolicy #-}
 mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
 mkNFTPolicy params (MintPolicyRedeemer polarity) ctx = 
@@ -203,21 +204,21 @@ findDatum dHash TxInfo{txInfoData} = snd <$> find f txInfoData
 
 
 -- | The LC validator is used only for minting, burning, adding and removing of Ada 
---   from the littercoin smart contract.  
+--   from the Littercoin smart contract.  
 {-# INLINABLE mkLCValidator #-}
 mkLCValidator :: LCValidatorParams -> LCDatum -> LCRedeemer -> ScriptContext -> Bool
 mkLCValidator params dat red ctx = 
     case red of
         MintLC qty -> (traceIfFalse "LCV1" $ checkAmountMint qty)        
-                &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
-                &&  traceIfFalse "LCV3" signedByAdmin  
+                  &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
+                  &&  traceIfFalse "LCV3" signedByAdmin  
 
         BurnLC qty -> (traceIfFalse "LCV4" $ checkAmountBurn qty)           
-                &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
-                &&  (traceIfFalse "LCV7" $ checkValueAmountBurn qty)                 
+                  &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
+                  &&  (traceIfFalse "LCV7" $ checkValueAmountBurn qty)                 
                     
-        AddAda qty ->  (traceIfFalse "LCV9" $ checkLCDatumAdd qty)  
-                &&  traceIfFalse "LCV8" checkValueAmountAdd 
+        AddAda qty -> (traceIfFalse "LCV9" $ checkLCDatumAdd qty)  
+                  &&   traceIfFalse "LCV8" checkValueAmountAdd 
 
 
       where
@@ -231,15 +232,15 @@ mkLCValidator params dat red ctx =
         outputDat :: LCDatum
         (_, outputDat) = case Contexts.getContinuingOutputs ctx of
             [o] -> case Tx.txOutDatumHash o of
-                Nothing -> traceError "LCV9"               -- wrong output type
+                Nothing -> traceError "LCV9"                -- wrong output type
                 Just h -> case findDatum h info of
-                    Nothing -> traceError "LCV10"      -- datum not found
+                    Nothing -> traceError "LCV10"           -- datum not found
                     Just (Scripts.Datum d) ->  case PlutusTx.fromBuiltinData d of
                         Just ld' -> (o, ld')
-                        Nothing  -> traceError "LCV11"       -- error decoding data
+                        Nothing  -> traceError "LCV11"       -- error decoding datum data
             _   -> traceError "LCV12"                        -- expected exactly one continuing output
 
-        -- | Check that the littercoin token name minted is equal to the amount in the redeemer
+        -- | Check that the Littercoin token name minted is equal to the amount in the redeemer
         checkAmountMint :: Integer -> Bool
         checkAmountMint q = case Value.flattenValue (txInfoMint info) of
             [(_, tn', amt)] -> tn' == tn && amt == q
@@ -252,9 +253,7 @@ mkLCValidator params dat red ctx =
 
         -- | Check that the tx is signed by the admin 
         signedByAdmin :: Bool
-        signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (lcvAdminPkh params)
-   
-
+        signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (lcvAdminPkh params)  
 
         -- | Check that the littercoin token name burned is equal to the amount in the redeemer
         checkAmountBurn :: Integer -> Bool
@@ -267,7 +266,7 @@ mkLCValidator params dat red ctx =
         checkLCDatumBurn :: Integer -> Bool
         checkLCDatumBurn q = ((lcAmount outputDat) - (lcAmount dat)) == q
 
-        -- | Check that the Ada spent matches littercoin burned and that the
+        -- | Check that the Ada spent matches Littercoin burned and that the
         -- | merch NFT token is also present
         checkValueAmountBurn :: Integer -> Bool
         checkValueAmountBurn q = validOutputs (spendAda <> (lcvNFTTokenValue params)) (txInfoOutputs info)
@@ -280,7 +279,7 @@ mkLCValidator params dat red ctx =
                 spendAda = Ada.lovelaceValueOf ((adaAmount dat) - q * ratio)
 
 
-        -- | Check that the difference between LCAmount in the output and the input datum
+        -- | Check that the difference between Ada amount in the output and the input datum
         --   matches the quantity indicated in the redeemer
         checkLCDatumAdd :: Integer -> Bool
         checkLCDatumAdd q = ((adaAmount outputDat) - (adaAmount dat)) == q
@@ -336,8 +335,8 @@ untypedLCHash params = Scripts.validatorHash $ untypedLCValidator params
 -- | Mint a unique NFT representing a littercoin validator thread token
 mkThreadTokenPolicy :: ThreadTokenRedeemer -> ScriptContext -> Bool
 mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx = 
-    traceIfFalse "TP1" txOutputSpent        --  UTxO not consumed
-    && traceIfFalse "TP2" checkMintedAmount    -- wrong amount minted    
+    traceIfFalse "TP1" txOutputSpent            -- UTxO not consumed
+    && traceIfFalse "TP2" checkMintedAmount     -- wrong amount minted    
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx

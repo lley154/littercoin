@@ -8,7 +8,14 @@
 
 
 
-module Littercoin.OffChain where
+module Littercoin.OffChain    
+    (   
+        initEndpoint
+    ,   InitSchema
+    ,   TokenSchema
+    ,   useEndpoint
+    ,   TokenParams (..)
+    ) where
 
 import           Littercoin.OnChain                 (intToBBS, lcCurSymbol, lcHash, lcPolicy, LCDatum(..), lcValidator, minAda, nftCurSymbol, nftPolicy, nftTokenValue, threadTokenCurSymbol, threadTokenPolicy, threadTokenValue, typedLCValidator)
 import           Littercoin.Types                   (LCMintPolicyParams(..), LCRedeemer(..), LCValidatorParams(..), NFTMintPolicyParams(..), MintPolicyRedeemer(..), ThreadTokenRedeemer(..))
@@ -339,8 +346,8 @@ initEndpoint = forever
 
 
 -- | The endpoints are called via the PAB simulator in the Main-sim.hs file in the app directory
-useEndpoints :: Contract.Contract () TokenSchema Text ()
-useEndpoints = forever $ Contract.handleError Contract.logError $ Contract.awaitPromise $ 
+useEndpoint :: Contract.Contract () TokenSchema Text ()
+useEndpoint = forever $ Contract.handleError Contract.logError $ Contract.awaitPromise $ 
                 addAdaContract `Contract.select`
                 mintLC `Contract.select` 
                 burnLC `Contract.select` 

@@ -35,8 +35,8 @@ PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)]
 PlutusTx.makeLift ''MintPolicyRedeemer
 
 
--- | The mint policy params passes the token name and AdminPkh as a parameter
---   into the minting poicy which will make the NFT policy unique
+-- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh and NFT Token value 
+--   as a parameter into the minting poicy which will make the Littercoin minting policy unique
 data LCMintPolicyParams = LCMintPolicyParams
     { 
       lcTokenName                 :: !Value.TokenName
@@ -48,8 +48,8 @@ PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)]
 PlutusTx.makeLift ''LCMintPolicyParams
 
 
--- | The mint policy params passes the token name and adminPkh as a parameter 
---   into the minting poicy which will make the NFT policy unique
+-- | The merchant NFT minting policy params passes the NFT token name and adminPkh as a parameter 
+--   into the minting poicy which will make the merchant NFT policy unique
 data NFTMintPolicyParams = NFTMintPolicyParams
     { 
       nftTokenName                 :: !Value.TokenName
@@ -59,7 +59,7 @@ data NFTMintPolicyParams = NFTMintPolicyParams
 PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
 PlutusTx.makeLift ''NFTMintPolicyParams
 
--- | LCValidatorParams is used to pass the admin pkh as a parameter to the 
+-- | LCValidatorParams is used to pass the admin pkh, NFT & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: !Address.PaymentPubKeyHash
@@ -77,7 +77,7 @@ PlutusTx.makeLift ''LCValidatorParams
 data LCRedeemer = 
        MintLC Integer    -- mint littercoin
      | BurnLC Integer    -- burn littercoin and retreive Ada
-     | AddAda Integer     -- add Ada to the smart contract
+     | AddAda Integer    -- add Ada to the smart contract
      
     deriving Haskell.Show
 
@@ -90,9 +90,10 @@ PlutusTx.makeIsDataIndexed
   ]
 PlutusTx.makeLift ''LCRedeemer
 
--- | The thread token redeemer passes a utxo from the lotto admin's wallet 
---   to the thread token miting policy which is used to create the lotto 
---   and buy thread tokens
+-- | The thread token redeemer passes a utxo from the Littercoin admin's wallet 
+--   to the thread token miting policy which is used to create the a thread token.
+--   A Thread token is needed to make sure we always include the correct validator
+--   script as an input to a new transaction.
 data ThreadTokenRedeemer = ThreadTokenRedeemer
     {   ttTxOutRef :: !Tx.TxOutRef  
     } deriving Haskell.Show
