@@ -100,6 +100,7 @@ mintLCToken tt tp = do
             let red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = True  -- mint token
+                     ,  mpWithdrawAmount = 0 -- ignored during minting   
                      }
                 mintParams = LCMintPolicyParams 
                     {
@@ -169,6 +170,7 @@ burnLCToken tt tp = do
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = False -- burn token
+                     ,  mpWithdrawAmount = withdrawAda
                      }
                 mintParams = LCMintPolicyParams 
                     {
@@ -207,6 +209,7 @@ mintNFTToken tp = do
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = True  -- mint token
+                     ,  mpWithdrawAmount = 0 -- ignored for NFT minting
                      }
                 mintParams = NFTMintPolicyParams 
                     {
@@ -241,6 +244,7 @@ burnNFTToken tp = do
                 red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = False -- burn token
+                     ,  mpWithdrawAmount = 0 -- ignored for NFT burning
                      }
                 mintParams = NFTMintPolicyParams 
                     {

@@ -28,7 +28,10 @@ import qualified    Prelude as Haskell                  (Show)
 
 -- | The mint policy reeemder indicates if the token is to be minted or burned
 data MintPolicyRedeemer = MintPolicyRedeemer
-    { mpPolarity                  :: !Bool  -- True = Mint, False = Burn
+    { 
+      mpPolarity                  :: !Bool  -- True = Mint, False = Burn
+    , mpWithdrawAmount            :: !Integer -- The amount of Ada to withdraw from the Littercoin contract
+                                              -- only used during burning for Littercoin minting policy
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)] 

@@ -88,7 +88,7 @@ validOutputs txVal (x:xs)
 
 {-# INLINABLE mkLittercoinPolicy #-}
 mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
-mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx = 
+mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx = 
 
     case polarity of
         True ->    traceIfFalse "mkPolicy mint: invalid admin signature" signedByAdmin
@@ -124,8 +124,12 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx =
     -- Check for NFT Merchant token if burning littercoin
     -- TODO, need to determine Ada at address or split out NFT validation
     checkNFTValue :: Bool
-    checkNFTValue = validOutputs (minAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
+    --checkNFTValue = validOutputs (minAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
+    checkNFTValue = validOutputs (withdrawAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
 
+        where
+            withdrawAda :: Value.Value
+            withdrawAda = Ada.lovelaceValueOf (withdrawAmount)
 
 -- | Wrap the minting policy using the boilerplate template haskell code
 lcPolicy :: LCMintPolicyParams -> TScripts.MintingPolicy
@@ -145,7 +149,7 @@ lcCurSymbol mpParams = scriptCurrencySymbol $ lcPolicy mpParams
 --   When a merchant has one of a merchant approved NFT, they are authorized to spend/burn littercoin.
 {-# INLINABLE mkNFTPolicy #-}
 mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
-mkNFTPolicy params (MintPolicyRedeemer polarity) ctx = 
+mkNFTPolicy params (MintPolicyRedeemer polarity _) ctx = 
 
     case polarity of
         True ->    traceIfFalse "mkPolicy: wrong amount minted" checkMintedAmount
