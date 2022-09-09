@@ -94,7 +94,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
     void $ liftIO getLine
 
 
-    -- Add some add to the Ada to the Littercoin smart contract by a donnor
+    -- Add some Ada to the Littercoin smart contract by a donnor
     Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 2"
     void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
@@ -108,8 +108,8 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to show balances"
     void $ liftIO getLine
 
-    balances_add <- Simulator.currentBalances
-    Simulator.logBalances @(Builtin Contracts) balances_add
+    balances_add2 <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_add2
 
     Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
@@ -213,6 +213,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
+
 
 
     {-
