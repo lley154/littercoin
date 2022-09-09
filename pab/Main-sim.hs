@@ -25,10 +25,6 @@ import           Wallet.Emulator.Wallet                 (knownWallet)
 adminPkh1 :: PaymentPubKeyHash
 adminPkh1 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 1)
 
-donorPkh2 :: PaymentPubKeyHash
-donorPkh2 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 2)
-
-
 main :: IO ()
 main = void $ Simulator.runSimulationWith handlers $ do
 
@@ -78,15 +74,39 @@ main = void $ Simulator.runSimulationWith handlers $ do
     h2 <- Simulator.activateContract w2 UseContract
 
     -- Add some add to the Ada to the Littercoin smart contract by a donnor
-    Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 1"
+    Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 2"
     void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
         , tpNFTTokenName = nftTokenName
         , tpQty = adaAmount
-        , tpAdminPkh = adminPkh1
+        , tpAdminPkh = adminPkh1 
         })
 
     Simulator.waitNSlots 2
+
+    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to show balances"
+    void $ liftIO getLine
+
+    balances_add <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_add
+
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    void $ liftIO getLine
+
+
+    -- Add some add to the Ada to the Littercoin smart contract by a donnor
+    Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 2"
+    void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
+        { tpLCTokenName = tokenName
+        , tpNFTTokenName = nftTokenName
+        , tpQty = adaAmount
+        , tpAdminPkh = adminPkh1 
+        })
+
+    Simulator.waitNSlots 2
+
+    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to show balances"
+    void $ liftIO getLine
 
     balances_add <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_add
@@ -112,7 +132,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
     balances <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances
     
-    Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
 
 
@@ -130,13 +150,13 @@ main = void $ Simulator.runSimulationWith handlers $ do
     void $ liftIO getLine
     
     -- Burn Littercoin but merchant does not have approved NFT
-    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
+    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1, but does not have merchant NFT"
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
         , tpNFTTokenName = nftTokenName
         , tpQty = qty2
-        , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
-        }
+        , tpAdminPkh = adminPkh1 
+        })
 
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? press return to continue"
@@ -144,7 +164,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
 
     -- Mint the merchant NFT to allow for burning of littercoin
-    Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2"
+    Simulator.logString @(Builtin Contracts) "Calling mintNFT endpoint for wallet 1"
     void $ Simulator.callEndpointOnInstance h1 "mintNFT" $ TokenParams
         { tpLCTokenName = tokenName -- ignored for NFT minting
         , tpNFTTokenName = nftTokenName
@@ -153,27 +173,33 @@ main = void $ Simulator.runSimulationWith handlers $ do
         }
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 2, press return to show balances"
+    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 1, press return to show balances"
     void $ liftIO getLine
 
-    balances2 <- Simulator.currentBalances
-    Simulator.logBalances @(Builtin Contracts) balances2
+    balances_nft <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_nft
 
-    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 2, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
 
 
     -- Burn Littercoin with merchant approved NFT
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
         , tpNFTTokenName = nftTokenName
         , tpQty = qty2
         , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
-        }
+        })
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to show balances"
+    void $ liftIO getLine
+
+    balances_burn <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_burn
+
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
 
 
@@ -190,14 +216,14 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "NFT burned for wallet 2, press return to continue"
     void $ liftIO getLine
-    -}
-
-
+    
     -- Pressing enter results in the balances being printed
     Simulator.logString @(Builtin Contracts) "Balances at the end of the simulation"
 
     balances3 <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances3
+    
+    -}
 
     shutdown
 

@@ -43,7 +43,7 @@ import qualified Ledger.Typed.Scripts as TScripts   (MintingPolicy, TypedValidat
 import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, singleton, TokenName(..), Value)
 import           Plutus.V1.Ledger.Api as Ledger     (unsafeFromBuiltinData, unValidatorScript)
 import qualified PlutusTx                           (applyCode, compile, fromBuiltinData, liftCode, makeIsDataIndexed, makeLift)
-import           PlutusTx.Prelude                   (Bool(..), BuiltinByteString, BuiltinData, check, consByteString, divide, emptyByteString, find, Integer, Maybe(..), otherwise, snd, sha2_256, traceIfFalse, traceError, (&&), (==), ($), (<=), (>=), (<>), (<$>), (-), (*), (+))
+import           PlutusTx.Prelude                   (Bool(..), BuiltinByteString, BuiltinData, check, consByteString, divide, emptyByteString, find, Integer, Maybe(..), negate, otherwise, snd, sha2_256, traceIfFalse, traceError, (&&), (==), ($), (<=), (>=), (<>), (<$>), (-), (*), (+))
 import qualified Prelude as Haskell                 (Show)
 
 ------------------------------------------------------------------------
@@ -212,14 +212,14 @@ mkLCValidator params dat red ctx =
     case red of
         MintLC qty -> (traceIfFalse "LCV1" $ checkAmountMint qty)        
                   &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
-                  &&  traceIfFalse "LCV3" signedByAdmin  
+                  &&   traceIfFalse "LCV3" signedByAdmin  
 
         BurnLC qty -> (traceIfFalse "LCV4" $ checkAmountBurn qty)           
                   &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
                   &&  (traceIfFalse "LCV7" $ checkValueAmountBurn qty)                 
                     
-        AddAda qty -> (traceIfFalse "LCV9" $ checkLCDatumAdd qty)  
-                 &&   traceIfFalse "LCV8" checkValueAmountAdd 
+        AddAda qty -> (traceIfFalse "LCV8" $ checkLCDatumAdd qty)  
+                 &&    traceIfFalse "LCV9" checkValueAmountAdd 
 
 
       where        
@@ -233,13 +233,13 @@ mkLCValidator params dat red ctx =
         outputDat :: LCDatum
         (_, outputDat) = case Contexts.getContinuingOutputs ctx of
             [o] -> case Tx.txOutDatumHash o of
-                Nothing -> traceError "LCV9"                -- wrong output type
+                Nothing -> traceError "LCV10"                -- wrong output type
                 Just h -> case findDatum h info of
-                    Nothing -> traceError "LCV10"           -- datum not found
+                    Nothing -> traceError "LCV11"           -- datum not found
                     Just (Scripts.Datum d) ->  case PlutusTx.fromBuiltinData d of
                         Just ld' -> (o, ld')
-                        Nothing  -> traceError "LCV11"       -- error decoding datum data
-            _   -> traceError "LCV12"                        -- expected exactly one continuing output
+                        Nothing  -> traceError "LCV12"       -- error decoding datum data
+            _   -> traceError "LCV13"                        -- expected exactly one continuing output
 
         -- | Check that the Littercoin token name minted is equal to the amount in the redeemer
         checkAmountMint :: Integer -> Bool
@@ -259,31 +259,38 @@ mkLCValidator params dat red ctx =
         -- | Check that the littercoin token name burned is equal to the amount in the redeemer
         checkAmountBurn :: Integer -> Bool
         checkAmountBurn q = case Value.flattenValue (txInfoMint info) of
-            [(_, tn', amt)] -> tn' == tn && amt == q
+            [(_, tn', amt)] -> tn' == tn && amt == (negate q)
             _               -> False
 
         -- | Check that the difference between LCAmount in the output and the input datum
         --   matches the quantity indicated in the redeemer
         checkLCDatumBurn :: Integer -> Bool
-        checkLCDatumBurn q = ((lcAmount outputDat) - (lcAmount dat)) == q
+        checkLCDatumBurn q = ((lcAmount dat) - (lcAmount outputDat)) == q &&
+                             ((adaAmount dat) - (adaAmount outputDat) == q * ratio)
+            where
+                ratio :: Integer
+                ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
 
         -- | Check that the Ada spent matches Littercoin burned and that the
         -- | merch NFT token is also present
         checkValueAmountBurn :: Integer -> Bool
-        checkValueAmountBurn q = validOutputs (spendAda <> (lcvNFTTokenValue params)) (txInfoOutputs info)
+        --checkValueAmountBurn q = validOutputs (newAdaBalance <> (lcvNFTTokenValue params)) (txInfoOutputs info)
+        checkValueAmountBurn q = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (txInfoOutputs info)
 
             where
-                ratio :: Integer
-                ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
+                --ratio :: Integer
+                --ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
                 
-                spendAda :: Value.Value
-                spendAda = Ada.lovelaceValueOf ((adaAmount dat) - q * ratio)
-
+                --spendAda :: Value.Value
+                --spendAda = Ada.lovelaceValueOf ((adaAmount dat) - q * ratio)  -- TODO check for negative condition
+        
+                newAdaBalance = Ada.lovelaceValueOf (adaAmount outputDat)
 
         -- | Check that the difference between Ada amount in the output and the input datum
         --   matches the quantity indicated in the redeemer
         checkLCDatumAdd :: Integer -> Bool
-        checkLCDatumAdd q = ((adaAmount outputDat) - (adaAmount dat)) == q
+        --checkLCDatumAdd q = (adaAmount dat) - (adaAmount outputDat) == q
+        checkLCDatumAdd q = (adaAmount outputDat) - (adaAmount dat) == q
 
         -- | Check that the Ada added matches increase in the datum
         checkValueAmountAdd :: Bool
