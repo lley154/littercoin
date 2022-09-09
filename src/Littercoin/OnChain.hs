@@ -91,11 +91,11 @@ mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ScriptContext 
 mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx = 
 
     case polarity of
-        True ->    traceIfFalse "mkPolicy mint: invalid admin signature" signedByAdmin
-                && traceIfFalse "mkPolicy mint: invalid token amount" checkMintedAmount
+        True ->    traceIfFalse "LP1" signedByAdmin 
+                && traceIfFalse "LP2" checkMintedAmount 
                 
-        False ->  traceIfFalse "mkPolicy burn: invalid token amount" checkBurnedAmount
-                && traceIfFalse "mkPolicy burn: NFT merchant token value not found" checkNFTValue
+        False ->  traceIfFalse "LP3" checkBurnedAmount 
+                && traceIfFalse "LP4" checkNFTValue -- check for merchant NFT
 
   where
 
@@ -124,7 +124,6 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx =
     -- Check for NFT Merchant token if burning littercoin
     -- TODO, need to determine Ada at address or split out NFT validation
     checkNFTValue :: Bool
-    --checkNFTValue = validOutputs (minAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
     checkNFTValue = validOutputs (withdrawAda <> (lcNFTTokenValue params)) (txInfoOutputs info)
 
         where
@@ -152,10 +151,10 @@ mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Boo
 mkNFTPolicy params (MintPolicyRedeemer polarity _) ctx = 
 
     case polarity of
-        True ->    traceIfFalse "mkPolicy: wrong amount minted" checkMintedAmount
-                && traceIfFalse "mkPolicy: invalid admin signature" signedByAdmin
+        True ->    traceIfFalse "NFTP1" checkMintedAmount 
+                && traceIfFalse "NFTP2" signedByAdmin 
                 
-        False ->   traceIfFalse "mkPolicy: wrong amount burned" checkBurnedAmount
+        False ->   traceIfFalse "NFTP3" checkBurnedAmount 
 
   where
     tn :: Value.TokenName
@@ -220,7 +219,7 @@ mkLCValidator params dat red ctx =
 
         BurnLC qty -> (traceIfFalse "LCV4" $ checkAmountBurn qty)           
                   &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
-                  &&  (traceIfFalse "LCV7" $ checkValueAmountBurn qty)                 
+                  &&   traceIfFalse "LCV7" checkValueAmountBurn                 
                     
         AddAda qty -> (traceIfFalse "LCV8" $ checkLCDatumAdd qty)  
                  &&    traceIfFalse "LCV9" checkValueAmountAdd 
@@ -275,26 +274,21 @@ mkLCValidator params dat red ctx =
                 ratio :: Integer
                 ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
 
+
         -- | Check that the Ada spent matches Littercoin burned and that the
         -- | merch NFT token is also present
-        checkValueAmountBurn :: Integer -> Bool
-        --checkValueAmountBurn q = validOutputs (newAdaBalance <> (lcvNFTTokenValue params)) (txInfoOutputs info)
-        checkValueAmountBurn q = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (txInfoOutputs info)
+        checkValueAmountBurn :: Bool
+        checkValueAmountBurn = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (txInfoOutputs info)
 
-            where
-                --ratio :: Integer
-                --ratio = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
-                
-                --spendAda :: Value.Value
-                --spendAda = Ada.lovelaceValueOf ((adaAmount dat) - q * ratio)  -- TODO check for negative condition
-        
+            where     
                 newAdaBalance = Ada.lovelaceValueOf (adaAmount outputDat)
+
 
         -- | Check that the difference between Ada amount in the output and the input datum
         --   matches the quantity indicated in the redeemer
         checkLCDatumAdd :: Integer -> Bool
-        --checkLCDatumAdd q = (adaAmount dat) - (adaAmount outputDat) == q
         checkLCDatumAdd q = (adaAmount outputDat) - (adaAmount dat) == q
+
 
         -- | Check that the Ada added matches increase in the datum
         checkValueAmountAdd :: Bool

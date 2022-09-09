@@ -146,7 +146,13 @@ main = void $ Simulator.runSimulationWith handlers $ do
         })
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to show balances"
+    void $ liftIO getLine
+
+    balances_no_pkh <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_no_pkh
+    
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
     
     -- Burn Littercoin but merchant does not have approved NFT
@@ -159,7 +165,13 @@ main = void $ Simulator.runSimulationWith handlers $ do
         })
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? press return to show balances"
+    void $ liftIO getLine
+
+    balances_no_burn <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_no_burn
+    
+    Simulator.logString @(Builtin Contracts) "Press return to continue"
     void $ liftIO getLine
 
 
