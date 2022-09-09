@@ -97,12 +97,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Mint some littercoins for wallet 1
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "mintLC" $ TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "mintLC" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
         , tpNFTTokenName = nftTokenName
         , tpQty = qty1
         , tpAdminPkh = adminPkh1
-        }
+        })
 
     Simulator.waitNSlots 2
 
@@ -118,12 +118,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Try minting some littercoins with incorrect pkh
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2, but does not have adminPkh"
-    void $ Simulator.callEndpointOnInstance h2 "mintLC" $ TokenParams
+    void $ Simulator.callEndpointOnInstance h2 "mintLC" (ttTokenName, TokenParams
         { tpLCTokenName = tokenName
         , tpNFTTokenName = nftTokenName
         , tpQty = qty1
         , tpAdminPkh = adminPkh1
-        }
+        })
 
     Simulator.waitNSlots 2
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to continue"

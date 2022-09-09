@@ -48,8 +48,7 @@ import qualified Prelude as Haskell                 (Either(..), return, Semigro
 import           Text.Printf                        (printf)
 
 
--- | TokenParams are parameters that are used as part of the parameterized
---   minting policy script
+-- | TokenParams are parameters that are passed to the endpoints
 data TokenParams = TokenParams
     { 
       tpLCTokenName         :: !BuiltinByteString
@@ -59,25 +58,46 @@ data TokenParams = TokenParams
     } deriving (Generic, FromJSON, ToJSON, Haskell.Show, Playground.ToSchema)
 
 
--- | mintLC mints littercoin tokens.   This offchain function is only used by the PAB
+-- | mintLC mints Littercoin tokens and increments the Littercoin counter
+--   in the LC validator datum.   This offchain function is only used by the PAB
 --   simulator to test the validation rules of the minting policy validator. 
-mintLCToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
-mintLCToken tp = do
+mintLCToken :: Value.TokenName -> TokenParams -> Contract.Contract () TokenSchema Text ()
+mintLCToken tt tp = do
+
+    let tn = Value.TokenName $ tpLCTokenName tp
+        tn' = Value.TokenName $ tpNFTTokenName tp
+        nftMintParams = NFTMintPolicyParams
+            {
+                nftTokenName = tn' -- the name of the NFT Merchant token
+            ,   nftAdminPkh = tpAdminPkh tp
+            }
+        (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
+        (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol tt)
+        lcParams = LCValidatorParams
+            {   lcvAdminPkh         = tpAdminPkh tp
+            ,   lcvNFTTokenValue    = nftTokVal
+            ,   lcvLCTokenName      = tn
+            ,   lcvThreadTokenValue = ttVal
+            }
+        
+    (orefLC, oLC, lcd@LCDatum{}) <- findLCValidator lcParams threadTokenCurSymbol tt
+    Contract.logInfo $ "mintLCToken: found littercoin utxo with datum= " ++ Haskell.show lcd
+    Contract.logInfo $ "mintLCToken: found littercoin utxo oref= " ++ Haskell.show orefLC
+    Contract.logInfo $ "mintLCToken: littercoin hash= " ++ Haskell.show (lcHash $ PlutusTx.toBuiltinData lcParams)
+
+    let lcDatum = LCDatum
+            {   adaAmount = adaAmount lcd                                                  
+            ,   lcAmount = (lcAmount lcd) + (tpQty tp)
+            }
+        redLC = Scripts.Redeemer $ PlutusTx.toBuiltinData $ MintLC (tpQty tp)
+        datLC = PlutusTx.toBuiltinData lcDatum
 
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
     case Map.keys utxos of
         []       -> Contract.logError @Haskell.String "mintToken: No utxo found"
         oref : _ -> do
-            let tn = Value.TokenName $ tpLCTokenName tp
-                tn' = Value.TokenName $ tpNFTTokenName tp
-                nftMintParams = NFTMintPolicyParams
-                    {
-                        nftTokenName = tn' -- the name of the NFT merchant token
-                    ,   nftAdminPkh = tpAdminPkh tp
-                    }
-                (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
-                red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
+            let red = Scripts.Redeemer $ toBuiltinData $ MintPolicyRedeemer 
                      {
                         mpPolarity = True  -- mint token
                      }
@@ -89,16 +109,25 @@ mintLCToken tp = do
                     }
 
             let val     = Value.singleton (lcCurSymbol mintParams) tn (tpQty tp)
-                lookups = Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
+                lookups = Constraints.typedValidatorLookups (typedLCValidator $ PlutusTx.toBuiltinData lcParams) Haskell.<> 
+                          Constraints.otherScript (lcValidator $ PlutusTx.toBuiltinData lcParams) Haskell.<> 
+                          Constraints.unspentOutputs (Map.singleton orefLC oLC) Haskell.<> 
+                          Constraints.mintingPolicy (lcPolicy mintParams) Haskell.<> 
                           Constraints.unspentOutputs utxos
-                tx      = Constraints.mustMintValueWithRedeemer red val Haskell.<> 
+                tx      = Constraints.mustPayToTheScript datLC (Ada.lovelaceValueOf (adaAmount lcd) Haskell.<> ttVal) Haskell.<> 
+                          Constraints.mustSpendScriptOutput orefLC redLC Haskell.<>
+                          Constraints.mustMintValueWithRedeemer red val Haskell.<> 
                           Constraints.mustSpendPubKeyOutput oref Haskell.<>
                           Constraints.mustBeSignedBy ownPkh
-            ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
-            void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
-            Contract.logInfo @Haskell.String $ printf "mintToken: Forged %s" (Haskell.show val)
-            Contract.logInfo @Haskell.String $ printf "mintToken: Token params %s" (Haskell.show mintParams)
+            --ledgerTx <- Contract.submitTxConstraintsWith @Void lookups tx
+            --void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
+            --Contract.logInfo @Haskell.String $ printf "mintToken: Forged %s" (Haskell.show val)
+            --Contract.logInfo @Haskell.String $ printf "mintToken: Token params %s" (Haskell.show mintParams)
 
+            utx <- Contract.mapError (review Contract._ConstraintResolutionContractError) (Request.mkTxContract lookups tx)
+            let adjustedUtx = Constraints.adjustUnbalancedTx utx
+            Request.submitTxConfirmed adjustedUtx
+            Contract.logInfo $ "mintLCToken: tx submitted successfully= " ++ Haskell.show adjustedUtx
 
 
 -- | burnLC burns littercoin tokens.   This offchain function is only used by the PAB
@@ -145,7 +174,7 @@ burnLCToken tp = do
 --   simulator to test the validation rules of the minting policy validator. 
 mintNFTToken :: TokenParams -> Contract.Contract () TokenSchema Text ()
 mintNFTToken tp = do
-
+     
     ownPkh <- Request.ownPaymentPubKeyHash
     utxos <- Contract.utxosAt (Address.pubKeyHashAddress ownPkh Nothing)
     case Map.keys utxos of
@@ -250,7 +279,7 @@ initLCValidator tp = do
     utx <- Contract.mapError (review Contract._ConstraintResolutionContractError) (Request.mkTxContract lookups tx)
     let adjustedUtx = Constraints.adjustUnbalancedTx utx
     Request.submitTxConfirmed adjustedUtx
-    Contract.logInfo $ "initLotto: tx submitted successfully= " ++ Haskell.show adjustedUtx
+    Contract.logInfo $ "initLCValidator: tx submitted successfully= " ++ Haskell.show adjustedUtx
 
     Contract.tell $ Last $ Just threadTokenName
 
@@ -282,7 +311,7 @@ addAdaToContract tt tp = do
         tn' = Value.TokenName $ tpNFTTokenName tp
         nftMintParams = NFTMintPolicyParams
             {
-                nftTokenName = tn' -- the name of the NFT token
+                nftTokenName = tn' -- the name of the NFT Merchant token
             ,   nftAdminPkh = tpAdminPkh tp
             }
         (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) tn')
@@ -297,7 +326,7 @@ addAdaToContract tt tp = do
     (oref, o, lcd@LCDatum{}) <- findLCValidator lcParams threadTokenCurSymbol tt
     Contract.logInfo $ "addAdaContract: found littercoin utxo with datum= " ++ Haskell.show lcd
     Contract.logInfo $ "addAdaContract: found littercoin utxo oref= " ++ Haskell.show oref
-    Contract.logInfo $ "addAdaContract: lotto littercoin hash= " ++ Haskell.show (lcHash $ PlutusTx.toBuiltinData lcParams)
+    Contract.logInfo $ "addAdaContract: littercoin hash= " ++ Haskell.show (lcHash $ PlutusTx.toBuiltinData lcParams)
 
     let lcDatum = LCDatum
             {   adaAmount = (adaAmount lcd) + (tpQty tp)                                                  
@@ -306,11 +335,11 @@ addAdaToContract tt tp = do
         red = Scripts.Redeemer $ PlutusTx.toBuiltinData $ AddAda (tpQty tp)
         dat = PlutusTx.toBuiltinData lcDatum
 
-        lookups = Constraints.typedValidatorLookups (typedLCValidator $ PlutusTx.toBuiltinData lcParams)
-            Haskell.<> Constraints.otherScript (lcValidator $ PlutusTx.toBuiltinData lcParams)
-            Haskell.<> Constraints.unspentOutputs (Map.singleton oref o)
-        tx = Constraints.mustPayToTheScript dat (Ada.lovelaceValueOf (tpQty tp) Haskell.<> ttVal)
-            Haskell.<> Constraints.mustSpendScriptOutput oref red
+        lookups = Constraints.typedValidatorLookups (typedLCValidator $ PlutusTx.toBuiltinData lcParams) Haskell.<> 
+                  Constraints.otherScript (lcValidator $ PlutusTx.toBuiltinData lcParams) Haskell.<> 
+                  Constraints.unspentOutputs (Map.singleton oref o)
+        tx = Constraints.mustPayToTheScript dat (Ada.lovelaceValueOf (tpQty tp) Haskell.<> ttVal) Haskell.<> 
+             Constraints.mustSpendScriptOutput oref red
 
     utx <- Contract.mapError (review Contract._ConstraintResolutionContractError) (Request.mkTxContract lookups tx)
     let adjustedUtx = Constraints.adjustUnbalancedTx utx
@@ -324,7 +353,7 @@ type InitSchema =
 
 
 -- | TokenSchema type is defined and used by the PAB Contracts
-type TokenSchema = Contract.Endpoint "mintLC" TokenParams
+type TokenSchema = Contract.Endpoint "mintLC" (Value.TokenName, TokenParams)
                    Contract..\/ Contract.Endpoint "addAdaContract" (Value.TokenName, TokenParams)
                    Contract..\/ Contract.Endpoint "burnLC" TokenParams
                    Contract..\/ Contract.Endpoint "mintNFT" TokenParams
@@ -350,7 +379,7 @@ useEndpoint = forever $ Contract.handleError Contract.logError $ Contract.awaitP
                
     where
         addAdaContract = Contract.endpoint @"addAdaContract" $ \(tt, tp) -> addAdaToContract tt tp 
-        mintLC = Contract.endpoint @"mintLC" $ \(tp) -> mintLCToken tp
+        mintLC = Contract.endpoint @"mintLC" $ \(tt, tp) -> mintLCToken tt tp
         burnLC = Contract.endpoint @"burnLC" $ \(tp) -> burnLCToken tp 
         mintNFT = Contract.endpoint @"mintNFT" $ \(tp) -> mintNFTToken tp
         burnNFT = Contract.endpoint @"burnNFT" $ \(tp) -> burnNFTToken tp
