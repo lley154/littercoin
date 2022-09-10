@@ -5,7 +5,7 @@
 
 ### Cabal+Nix build
 
-Alternatively, use the Cabal+Nix build if you want to develop with incremental builds, but also have it automatically download all dependencies.
+Use the Cabal+Nix build if you want to develop with incremental builds, but also have it automatically download all dependencies.
 
 Set up your machine to build things with `Nix`, following the [Plutus README](https://github.com/input-output-hk/plutus/blob/master/README.adoc) (make sure to set up the binary cache!).
 
@@ -13,13 +13,6 @@ To enter a development environment, simply open a terminal on the project's root
 
 ```
 $ nix-shell
-```
-
-Otherwise, you can use [direnv](https://github.com/direnv/direnv) which allows you to use your preferred shell. Once installed, just run:
-
-```
-$ echo "use nix" > .envrc # Or manually add "use nix" in .envrc if you already have one
-$ direnv allow
 ```
 
 and you'll have a working development environment for now and the future whenever you enter this directory.
