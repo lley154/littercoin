@@ -34,7 +34,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
         nftTokenName = "Littercoin Approved Merchant"
         qty1 = 100
         qty2 = 25
-        adaAmount = 10000000
+        adaAmount = 10000000 -- 10 Ada
 
     --setLocaleEncoding utf8
     Simulator.logString @(Builtin Contracts) "Starting PAB webserver on port 8080"
@@ -84,13 +84,10 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     Simulator.waitNSlots 2
 
-    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to show balances"
-    void $ liftIO getLine
-
     balances_add <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_add
 
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to continue"
     void $ liftIO getLine
 
 
@@ -105,13 +102,10 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     Simulator.waitNSlots 2
 
-    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to show balances"
-    void $ liftIO getLine
-
     balances_add2 <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_add2
 
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Ada added to Littercoin contract, press return to continue"
     void $ liftIO getLine
 
 
@@ -124,15 +118,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpAdminPkh = adminPkh1
         })
 
-    Simulator.waitNSlots 2
+    Simulator.waitNSlots 5
 
-    Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to show balances"
-    void $ liftIO getLine
-
-    balances <- Simulator.currentBalances
-    Simulator.logBalances @(Builtin Contracts) balances
+    balances_mint <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_mint
     
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token minted for wallet 1, press return to continue"
     void $ liftIO getLine
 
 
@@ -146,13 +137,11 @@ main = void $ Simulator.runSimulationWith handlers $ do
         })
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2? press return to show balances"
-    void $ liftIO getLine
 
     balances_no_pkh <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_no_pkh
     
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token minted for wallet 2?, press return to continue"
     void $ liftIO getLine
     
     -- Burn Littercoin but merchant does not have approved NFT
@@ -165,13 +154,11 @@ main = void $ Simulator.runSimulationWith handlers $ do
         })
 
     Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? press return to show balances"
-    void $ liftIO getLine
 
     balances_no_burn <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_no_burn
     
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1? Press return to continue"
     void $ liftIO getLine
 
 
@@ -184,14 +171,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpAdminPkh = adminPkh1
         }
 
-    Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 1, press return to show balances"
-    void $ liftIO getLine
+    Simulator.waitNSlots 5    
 
     balances_nft <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_nft
 
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 1, press return to continue"
     void $ liftIO getLine
 
 
@@ -204,14 +189,12 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
         })
 
-    Simulator.waitNSlots 2
-    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to show balances"
-    void $ liftIO getLine
+    Simulator.waitNSlots 5
 
     balances_burn <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_burn
 
-    Simulator.logString @(Builtin Contracts) "Press return to continue"
+    Simulator.logString @(Builtin Contracts) "Token burned for wallet 1, press return to continue"
     void $ liftIO getLine
 
 
@@ -226,7 +209,7 @@ main = void $ Simulator.runSimulationWith handlers $ do
         , tpAdminPkh = adminPkh1 -- ignored for NFT burning
         }
 
-    Simulator.waitNSlots 2
+    Simulator.waitNSlots 5
     Simulator.logString @(Builtin Contracts) "NFT burned for wallet 2, press return to continue"
     void $ liftIO getLine
     
