@@ -46,9 +46,8 @@ cabal exec littercoin-pab
 
 ## Support/Issues/Community
 
-Issues can be filed in the [GitHub Issue tracker](https://github.com/input-output-hk/littercoin/issues).
+Issues can be filed in the [GitHub Issue tracker](tbd).
 
-For more interactive discussion, you can join the [IOG Technical Community
-Discord](https://discord.gg/sSF5gmDBYg).
+For more interactive discussion, you can join the [Discord](tbd).
 
 Thanks!
