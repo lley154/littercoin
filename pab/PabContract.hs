@@ -18,7 +18,8 @@ import           Prelude                             hiding (init)
 
 
 -- | Setup contracts that are used by the PAB
-data Contracts = UseContract
+data Contracts =  InitContract
+                | UseContract
                       deriving (Eq, Ord, Show, Generic)
                       deriving anyclass OpenApi.ToSchema
                       deriving anyclass (FromJSON, ToJSON)
@@ -28,10 +29,11 @@ instance Pretty Contracts where
  
 -- | Map PAB Contracts to endpoints
 instance Builtin.HasDefinitions Contracts where
-    getDefinitions = [ UseContract ]
+    getDefinitions = [ InitContract, UseContract ]
     getSchema =  \case
+        InitContract    -> Builtin.endpointsToSchemas @InitSchema 
         UseContract     -> Builtin.endpointsToSchemas @TokenSchema   
    
     getContract = \case
-        UseContract     -> Builtin.SomeBuiltin endpoints
-     
+        InitContract    -> Builtin.SomeBuiltin initEndpoint
+        UseContract     -> Builtin.SomeBuiltin useEndpoint
