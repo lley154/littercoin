@@ -1,5 +1,10 @@
 # Littercoin Open Source Repository
 
+![Littercoin User Journey](/images/littercoin_user_journey.png)
+
+![Littercoin High Level Design](/images/littercoin_design.png)
+
+
 
 ## Setting up
 
