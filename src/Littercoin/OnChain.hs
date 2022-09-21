@@ -12,7 +12,7 @@
 module Littercoin.OnChain 
     (
       intToBBS
-    --, lcCurSymbol
+    , lcCurSymbol
     --, lcHash
     --, lcPolicy
     --, lcValidator
@@ -38,13 +38,14 @@ import qualified Plutus.V2.Ledger.Contexts as Contexts        (getContinuingOutp
 import qualified Plutus.Script.Utils.V2.Scripts as UScripts     (scriptCurrencySymbol, validatorHash, ValidatorHash)
 import qualified Plutus.Script.Utils.V2.Typed.Scripts as UTScripts (mkUntypedMintingPolicy, validatorHash)
 import qualified Ledger.Scripts as Scripts          (Datum(..), DatumHash, mkMintingPolicyScript, mkValidatorScript, Script, Validator, ValidatorHash, validatorHash)                                                  
-import qualified Ledger.Tx as Tx                    (TxOut(..), TxOutRef(..))
+--import qualified Ledger.Tx as Tx                    (TxOut(..), TxOutRef(..))
+import qualified Plutus.V2.Ledger.Tx as Tx                    (TxOut(..), TxOutRef(..))
 import qualified Ledger.Typed.Scripts.Validators as Validators (unsafeMkTypedValidator)
 import qualified Ledger.Typed.TypeUtils as TypeUtils (Any)
 import qualified Ledger.Typed.Scripts as TScripts   (MintingPolicy, TypedValidator, validatorScript, validatorHash)
-import qualified Ledger.Value as Value              (CurrencySymbol, flattenValue, singleton, TokenName(..), Value)
+import qualified Plutus.V1.Ledger.Value as Value    (flattenValue)
 --import           Plutus.V1.Ledger.Api as Ledger     (unsafeFromBuiltinData, unValidatorScript)
-import qualified Plutus.V2.Ledger.Api as Ledger     (mkMintingPolicyScript)
+import qualified Plutus.V2.Ledger.Api as Ledger     (CurrencySymbol, mkMintingPolicyScript, singleton, TokenName(..), TxId(getTxId), TokenName(..), unsafeFromBuiltinData, Value)
 import qualified PlutusTx                           (applyCode, compile, fromBuiltinData, liftCode, makeIsDataIndexed, makeLift)
 import           PlutusTx.Prelude                   (Bool(..), BuiltinByteString, BuiltinData, check, consByteString, divide, emptyByteString, find, Integer, Maybe(..), negate, otherwise, snd, sha2_256, traceIfFalse, traceError, (&&), (==), ($), (<=), (>=), (<>), (<$>), (-), (*), (+))
 import qualified Prelude as Haskell                 (Show)
@@ -54,7 +55,7 @@ import qualified Prelude as Haskell                 (Show)
 ------------------------------------------------------------------------
 
 {-# INLINABLE minAda #-}
-minAda :: Value.Value
+minAda :: Ledger.Value
 minAda = Ada.lovelaceValueOf 2000000
 
 -- | Create a BuitinByteString from an Integer
@@ -78,7 +79,7 @@ PlutusTx.makeLift ''LCDatum
 
 -- | Check that the NFT value is in the provided outputs
 {-# INLINABLE validOutputs #-}
-validOutputs :: Value.Value -> [Contexts.TxOut] -> Bool
+validOutputs :: Ledger.Value -> [Contexts.TxOut] -> Bool
 validOutputs _ [] = False
 validOutputs txVal (x:xs)
     | Contexts.txOutValue x == txVal = True
@@ -102,7 +103,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx =
 
   where
 
-    tn :: Value.TokenName
+    tn :: Ledger.TokenName
     tn = lcTokenName params
 
     info :: Contexts.TxInfo
@@ -130,7 +131,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx =
     checkNFTValue = validOutputs (withdrawAda <> (lcNFTTokenValue params)) (Contexts.txInfoOutputs info)
 
         where
-            withdrawAda :: Value.Value
+            withdrawAda :: Ledger.Value
             withdrawAda = Ada.lovelaceValueOf (withdrawAmount)
 
 -- | Wrap the minting policy using the boilerplate template haskell code
@@ -143,16 +144,15 @@ lcPolicy mpParams = Ledger.mkMintingPolicyScript $
 
 -- | Provide the currency symbol of the minting policy which requires MintPolicyParams
 --   as a parameter to the minting policy
-lcCurSymbol :: LCMintPolicyParams -> Value.CurrencySymbol
+lcCurSymbol :: LCMintPolicyParams -> Ledger.CurrencySymbol
 lcCurSymbol mpParams = UScripts.scriptCurrencySymbol $ lcPolicy mpParams 
-
 
 {-
 
 -- | mkPFTPolicy is the minting policy for creating the approved merchant NFT.
 --   When a merchant has one of a merchant approved NFT, they are authorized to spend/burn littercoin.
 {-# INLINABLE mkNFTPolicy #-}
-mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ScriptContext -> Bool
+mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> Contexts.ScriptContext -> Bool
 mkNFTPolicy params (MintPolicyRedeemer polarity _) ctx = 
 
     case polarity of
@@ -165,30 +165,30 @@ mkNFTPolicy params (MintPolicyRedeemer polarity _) ctx =
     tn :: Value.TokenName
     tn = nftTokenName params
 
-    info :: TxInfo
-    info = scriptContextTxInfo ctx  
+    info :: Contexts.TxInfo
+    info = Contexts.scriptContextTxInfo ctx  
 
     -- For now this is a single signature witnes, with future plans to make this multi-sig
     signedByAdmin :: Bool
-    signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (nftAdminPkh params)
+    signedByAdmin =  Contexts.txSignedBy info $ Address.unPaymentPubKeyHash (nftAdminPkh params)
 
     -- Check that there is only 1 token minted
     checkMintedAmount :: Bool
-    checkMintedAmount = case Value.flattenValue (txInfoMint info) of
+    checkMintedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
         [(_, tn', amt)] -> tn' == tn && amt == 1
         _               -> False
 
     -- Check that there is only 1 token burned
     checkBurnedAmount :: Bool
-    checkBurnedAmount = case Value.flattenValue (txInfoMint info) of
+    checkBurnedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
         [(_, tn', amt)] -> tn' == tn && amt == (-1)
         _               -> False
            
 
 -- | Wrap the minting policy using the boilerplate template haskell code
 nftPolicy :: NFTMintPolicyParams -> TScripts.MintingPolicy
-nftPolicy mpParams = mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| \mpParams' -> TScripts.wrapMintingPolicy $ mkNFTPolicy mpParams' ||])
+nftPolicy mpParams = Ledger.mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| \mpParams' -> UTScripts.mkUntypedMintingPolicy $ mkNFTPolicy mpParams' ||])
     `PlutusTx.applyCode`
     PlutusTx.liftCode mpParams
 
@@ -197,13 +197,15 @@ nftPolicy mpParams = mkMintingPolicyScript $
 --   as a parameter to the minting policy
 {-# INLINABLE nftCurSymbol #-}
 nftCurSymbol :: NFTMintPolicyParams -> Value.CurrencySymbol
-nftCurSymbol mpParams = scriptCurrencySymbol $ nftPolicy mpParams 
+nftCurSymbol mpParams = UScripts.scriptCurrencySymbol $ nftPolicy mpParams 
 
 
 {-# INLINABLE nftTokenValue #-}
 nftTokenValue :: Value.CurrencySymbol -> Value.TokenName -> Value.Value
 nftTokenValue cs' tn' = Value.singleton cs' tn' 1
 
+
+{-
 {-# INLINABLE findDatum #-}
 -- | Find the data corresponding to a data hash, if there is one
 findDatum :: Scripts.DatumHash -> TxInfo -> Maybe Scripts.Datum
@@ -345,15 +347,16 @@ lcHash params = TScripts.validatorHash $ typedLCValidator params
 untypedLCHash :: BuiltinData -> Scripts.ValidatorHash
 untypedLCHash params = Scripts.validatorHash $ untypedLCValidator params
 
+-}
 
 -- | Mint a unique NFT representing a littercoin validator thread token
-mkThreadTokenPolicy :: ThreadTokenRedeemer -> ScriptContext -> Bool
+mkThreadTokenPolicy :: ThreadTokenRedeemer -> Contexts.ScriptContext -> Bool
 mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx = 
     traceIfFalse "TP1" txOutputSpent            -- UTxO not consumed
     && traceIfFalse "TP2" checkMintedAmount     -- wrong amount minted    
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
+    info :: Contexts.TxInfo
+    info = Contexts.scriptContextTxInfo ctx
 
     -- True if the pending transaction spends the output
     -- identified by @(refHash, refIdx)@
@@ -361,8 +364,8 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx =
     -- wrapping back to 0 due to word8 conversion
     txOutputSpent = Contexts.spendsOutput info refHash refIdx
     ownSymbol = Contexts.ownCurrencySymbol ctx
-    minted = txInfoMint info
-    threadToken = sha2_256 $ getTxId refHash <> intToBBS refIdx
+    minted = Contexts.txInfoMint info
+    threadToken = sha2_256 $ Ledger.getTxId refHash <> intToBBS refIdx
 
     checkMintedAmount :: Bool
     checkMintedAmount = minted == threadTokenValue ownSymbol (Value.TokenName threadToken) 
@@ -371,17 +374,17 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (Tx.TxOutRef refHash refIdx)) ctx =
 {-# INLINABLE wrapThreadTokenPolicy #-}
 wrapThreadTokenPolicy :: BuiltinData -> BuiltinData -> ()
 wrapThreadTokenPolicy redeemer ctx =
-   check $ mkThreadTokenPolicy (unsafeFromBuiltinData redeemer) (unsafeFromBuiltinData ctx)
+   check $ mkThreadTokenPolicy (Ledger.unsafeFromBuiltinData redeemer) (Ledger.unsafeFromBuiltinData ctx)
 
 
 threadTokenPolicy :: TScripts.MintingPolicy
-threadTokenPolicy = Scripts.mkMintingPolicyScript $
+threadTokenPolicy = Ledger.mkMintingPolicyScript $
      $$(PlutusTx.compile [|| wrapThreadTokenPolicy ||])
 
 
 {-# INLINABLE threadTokenCurSymbol #-}
 threadTokenCurSymbol :: Value.CurrencySymbol
-threadTokenCurSymbol = Contexts.scriptCurrencySymbol threadTokenPolicy
+threadTokenCurSymbol = UScripts.scriptCurrencySymbol threadTokenPolicy
 
 
 {-# INLINABLE threadTokenValue #-}
