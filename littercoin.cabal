@@ -43,7 +43,7 @@ library
     exposed-modules:
       Littercoin.Types
       Littercoin.OnChain
-      Littercoin.OffChain
+      --Littercoin.OffChain
       --Littercoin.Deploy
     build-depends:
       base >= 4.9 && < 5,
@@ -60,6 +60,7 @@ library
       plutus-ledger -any,
       plutus-ledger-api -any,
       plutus-ledger-constraints -any,
+      plutus-script-utils -any,
       plutus-tx -any,
       plutus-tx-plugin -any,
       serialise -any,
@@ -67,22 +68,3 @@ library
       lens -any,
     hs-source-dirs: src
 
-executable littercoin-pab
-  import: lang
-  main-is: Main-sim.hs
-  hs-source-dirs: pab
-  other-modules: PabContract
-  ghc-options:
-    -threaded
-  build-depends:
-    base >= 4.9 && < 5,
-    data-default -any,
-    plutus-contract -any,
-    plutus-pab -any,
-    littercoin -any,
-    aeson -any,
-    freer-simple -any,
-    prettyprinter -any,
-    freer-extras -any,
-    plutus-ledger -any,
-    openapi3 -any,
