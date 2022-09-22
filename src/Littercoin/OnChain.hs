@@ -14,11 +14,7 @@
 {-# LANGUAGE TypeOperators         #-}
 
 module Littercoin.OnChain
-  ( printRedeemer,
-    serialisedScript,
-    scriptSBS,
-    script,
-    writeSerialisedScript,
+  ( 
   )
 where
 
@@ -34,86 +30,93 @@ import           Data.Aeson                           as A
 import qualified Data.ByteString.Lazy                 as LBS
 import qualified Data.ByteString.Short                as SBS
 import           Data.Functor                         (void)
+--import           GHC.Generics                         (Generic)
+import qualified Ledger.Address as Address            (PaymentPubKeyHash(..))
 import qualified Ledger.Typed.Scripts                 as Scripts
 import           Ledger.Value                         as Value
+--import           Playground.Contract as Playground    (ToSchema)
+import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2
 import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2
 import qualified Plutus.V1.Ledger.Api                 as PlutusV1
 import qualified Plutus.V2.Ledger.Api                 as PlutusV2
-import           Plutus.V2.Ledger.Contexts            (ownCurrencySymbol)
+import           Plutus.V2.Ledger.Contexts            (ownCurrencySymbol, txSignedBy)
 import qualified PlutusTx
 import           PlutusTx.Prelude                     as P hiding
                                                            (Semigroup (..),
                                                             unless, (.))
 import           Prelude                              (IO, Semigroup (..),
                                                        Show (..), print, (.))
+import           Littercoin.Types
 
-data NFTParams = NFTParams --  doesn't need more than the TxOutRef
-    { --mpTokenName :: !Plutus.TokenName
-      mpAmount   :: !Integer
-    , mpTxOutRef :: !PlutusV2.TxOutRef
-    --, mpPubKeyHs  :: !Plutus.PubKeyHash
-    } deriving Show
 
-PlutusTx.makeLift ''NFTParams
-PlutusTx.unstableMakeIsData ''NFTParams
 
-redeemer :: NFTParams
-redeemer = NFTParams { mpAmount = 1,
-                       mpTxOutRef = PlutusV2.TxOutRef {txOutRefId = "82669eddc629c8ce5cc3cb908cec6de339281bb0a0ec111880ff0936132ac8b0", txOutRefIdx = 0}
-                     }
 
-printRedeemer = print $ "Redeemer: " <> A.encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData redeemer)
+{-# INLINABLE mkLittercoinPolicy #-}
+mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> PlutusV2.ScriptContext -> Bool
+mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx = 
 
-{-# INLINABLE mkPolicy #-}
-mkPolicy :: NFTParams -> BuiltinData -> PlutusV2.ScriptContext -> Bool
-mkPolicy p _ ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
-                   traceIfFalse "wrong amount minted" checkNFTAmount
+    case polarity of
+        True ->   traceIfFalse "LP1" signedByAdmin 
+               && traceIfFalse "LP2" checkMintedAmount 
+                
+        False ->  traceIfFalse "LP3" checkBurnedAmount 
+               -- && traceIfFalse "LP4" checkNFTValue -- check for merchant NFT
 
   where
+
+    tn :: PlutusV2.TokenName
+    tn = lcTokenName params
+
     info :: PlutusV2.TxInfo
-    info = PlutusV2.scriptContextTxInfo ctx
+    info = PlutusV2.scriptContextTxInfo ctx  
 
-    hasUTxO :: Bool
-    hasUTxO = any (\i -> PlutusV2.txInInfoOutRef i == mpTxOutRef p) $ PlutusV2.txInfoInputs info
-
-    checkNFTAmount :: Bool
-    checkNFTAmount = case Value.flattenValue (PlutusV2.txInfoMint info) of
-       [(cs, tn', amt)] -> cs  == ownCurrencySymbol ctx && tn' == PlutusV2.TokenName "" && amt == 1
-       _                -> False
+    -- For now this is a single signature witnes, with future plans to make this multi-sig
+    signedByAdmin :: Bool
+    signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (lcAdminPkh params)
 
 
+    -- Check that the token name minted is greater than 1
+    checkMintedAmount :: Bool
+    checkMintedAmount = case Value.flattenValue (PlutusV2.txInfoMint info) of
+        [(_, tn', amt)] -> tn' == tn && amt >= 1
+        _               -> False
+
+    -- Check that the token name burned is less than -1
+    checkBurnedAmount :: Bool
+    checkBurnedAmount = case Value.flattenValue (PlutusV2.txInfoMint info) of
+        [(_, tn', amt)] -> tn' == tn && amt <= (-1)
+        _               -> False
+        
 {-
-    As a Minting Policy
--}
+    -- Check for NFT Merchant token if burning littercoin
+    -- TODO, need to determine Ada at address or split out NFT validation
+    checkNFTValue :: Bool
+    checkNFTValue = validOutputs (withdrawAda <> (lcNFTTokenValue params)) (Contexts.txInfoOutputs info)
 
-policy :: NFTParams -> Scripts.MintingPolicy
-policy mp = PlutusV2.mkMintingPolicyScript $
+        where
+            withdrawAda :: Ledger.Value
+            withdrawAda = Ada.lovelaceValueOf (withdrawAmount)
+-}          
+
+
+-- | Wrap the minting policy using the boilerplate template haskell code
+lcPolicy :: LCMintPolicyParams -> Scripts.MintingPolicy
+lcPolicy mp  = PlutusV2.mkMintingPolicyScript $
     $$(PlutusTx.compile [|| wrap ||])
     `PlutusTx.applyCode`
      PlutusTx.liftCode mp
+
   where
-    wrap mp' = PSU.V2.mkUntypedMintingPolicy $ mkPolicy mp'
+    wrap mp' = PSU.V2.mkUntypedMintingPolicy $ mkLittercoinPolicy mp'     
 
-{-
-    As a Script
--}
 
-script :: PlutusV2.Script
-script = PlutusV2.unMintingPolicyScript $ policy redeemer
+-- | Provide the currency symbol of the minting policy which requires MintPolicyParams
+--   as a parameter to the minting policy
+lcCurSymbol :: LCMintPolicyParams -> PlutusV2.CurrencySymbol
+lcCurSymbol mpParams = PSU.V2.scriptCurrencySymbol $ lcPolicy mpParams 
 
-{-
-    As a Short Byte String
--}
 
-scriptSBS :: SBS.ShortByteString
-scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
 
-{-
-    As a Serialised Script
--}
 
-serialisedScript :: PlutusScript PlutusScriptV2
-serialisedScript = PlutusScriptSerialised scriptSBS
 
-writeSerialisedScript :: IO ()
-writeSerialisedScript = void $ writeFileTextEnvelope "nft-mint-V2.plutus" Nothing serialisedScript
+

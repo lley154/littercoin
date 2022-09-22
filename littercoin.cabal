@@ -41,8 +41,9 @@ common lang
 library
     import: lang
     exposed-modules:
-      --Littercoin.Types
-      Littercoin.OnChain
+      Littercoin.Types
+      Littercoin.Littercoin
+      --Littercoin.OnChain
       --Littercoin.OffChain
       --Littercoin.Deploy
     build-depends:
@@ -53,6 +54,8 @@ library
          , cardano-api
          , data-default
          , freer-extras
+         , lens
+         , playground-common
          , plutus-contract
          , plutus-ledger
          , plutus-ledger-api
