@@ -8,7 +8,7 @@ module PabContract(
     Contracts(..)
     ) where
 
-import           Littercoin.OffChain
+import           Littercoin.Littercoin
 import           Data.Aeson                          (FromJSON (..), ToJSON (..))                                                      
 import qualified Data.OpenApi                        as OpenApi
 import           GHC.Generics                        (Generic)

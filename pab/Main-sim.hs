@@ -5,7 +5,7 @@ module Main
     ( main
     ) where
         
-import           Littercoin.OffChain       
+import           Littercoin.Littercoin       
 import           Control.Monad                          (void)
 import           Control.Monad.Freer                    (interpret)
 import           Control.Monad.IO.Class                 (MonadIO (..))
