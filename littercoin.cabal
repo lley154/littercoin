@@ -48,7 +48,7 @@ library
       --Littercoin.Deploy
     build-depends:
            aeson
-         , base >= 4.9 && < 5,
+         , base >= 4.9 && < 5
          , bytestring -any
          , containers -any
          , cardano-api -any
