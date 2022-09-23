@@ -9,8 +9,8 @@ module Littercoin.Types
 (
      MintPolicyRedeemer(..)
    , LCMintPolicyParams(..)
-   --, LCRedeemer(..)
-   --, LCValidatorParams(..)
+   , LCRedeemer(..)
+   , LCValidatorParams(..)
    , NFTMintPolicyParams(..)
    , ThreadTokenRedeemer(..)   
    , TokenParams(..)  
@@ -86,9 +86,6 @@ data ThreadTokenRedeemer = ThreadTokenRedeemer
 PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)] 
 
 
-
-
-{-
 -- | LCValidatorParams is used to pass the admin pkh, NFT & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
@@ -121,6 +118,6 @@ PlutusTx.makeIsDataIndexed
   ]
 PlutusTx.makeLift ''LCRedeemer
 
--}
+
 
 
