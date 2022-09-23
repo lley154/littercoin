@@ -48,24 +48,24 @@ library
       --Littercoin.Deploy
     build-depends:
            aeson
-         , base ^>=4.14.1.0
-         , bytestring
-         , containers
-         , cardano-api
-         , data-default
-         , freer-extras
-         , lens
-         , openapi3
-         , playground-common
-         , plutus-contract
-         , plutus-core
-         , plutus-ledger
-         , plutus-ledger-api
-         , plutus-ledger-constraints
-         , plutus-pab
-         , plutus-script-utils
-         , plutus-tx-plugin
-         , plutus-tx
-         , text
-         , serialise
+         , base >= 4.9 && < 5,
+         , bytestring -any
+         , containers -any
+         , cardano-api -any
+         , data-default -any
+         , freer-extras -any
+         , lens -any
+         , openapi3 -any
+         , playground-common -any
+         , plutus-contract -any
+         , plutus-core -any
+         , plutus-ledger -any
+         , plutus-ledger-api -any
+         , plutus-ledger-constraints -any
+         , plutus-pab -any
+         , plutus-script-utils -any
+         , plutus-tx-plugin -any
+         , plutus-tx -any
+         , text -any
+         , serialise -any
     hs-source-dirs: src
