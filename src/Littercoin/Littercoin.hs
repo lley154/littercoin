@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DerivingStrategies    #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -14,13 +16,8 @@
 {-# LANGUAGE TypeOperators         #-}
 
 module Littercoin.Littercoin
-  ( 
-    initEndpoint
-  , InitSchema
-  , TokenSchema
-  , useEndpoint
-  , TokenParams (..)
-  )
+( 
+)
 where
 
 
@@ -30,6 +27,7 @@ import           Data.Aeson                           (FromJSON, ToJSON)
 import           Data.Text                            (Text)
 import qualified Data.Map                             as Map
 import           Data.Monoid                          (Last (..))
+import qualified Data.OpenApi                         as OpenApi
 import           Data.Void                            (Void)
 import           GHC.Generics                         (Generic)
 import           Ledger                               (getCardanoTxId)
@@ -39,9 +37,11 @@ import qualified Ledger.Constraints                   as Constraints
 import           Ledger.Params                        (Params)
 import qualified Ledger.Tx                            as Tx
 import qualified Ledger.Value                         as Value
+import           Playground.Schema                    (endpointsToSchemas)
 import qualified Plutus.Contract                      as Contract
 import qualified Plutus.Contract.Request              as Request
 import qualified Plutus.Contract.Wallet               as Wallet
+--import qualified Plutus.PAB.Effects.Contract.Builtin  as Builtin
 import qualified Plutus.Script.Utils.Typed            as Typed
 import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2
 import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2
@@ -50,7 +50,7 @@ import qualified Plutus.V2.Ledger.Api                 as PlutusV2
 import qualified Plutus.V2.Ledger.Contexts            as ContextsV2
 import qualified Plutus.V2.Ledger.Tx                  as TxV2
 import qualified PlutusTx
-import           PlutusPrelude                        (void)                             
+import           PlutusPrelude                        (Pretty, void)                             
 import           PlutusTx.Prelude                     as P hiding
                                                            (Semigroup (..),
                                                             unless, (.))
@@ -795,3 +795,23 @@ useEndpoint = forever $ Contract.handleError Contract.logError $ Contract.awaitP
         burnNFT = Contract.endpoint @"burnNFT" $ \(tp) -> burnNFTToken tp
 
 
+-- | Setup contracts that are used by the PAB
+data Contracts =  InitContract
+                | UseContract
+                      deriving (Eq, Ord, Show, Generic)
+                      deriving anyclass OpenApi.ToSchema
+                      deriving anyclass (FromJSON, ToJSON)
+
+instance Pretty Contracts where
+    pretty = viaShow
+ 
+-- | Map PAB Contracts to endpoints
+instance Builtin.HasDefinitions Contracts where
+    getDefinitions = [ InitContract, UseContract ]
+    getSchema =  \case
+        InitContract    -> Builtin.endpointsToSchemas @InitSchema 
+        UseContract     -> Builtin.endpointsToSchemas @TokenSchema   
+   
+    getContract = \case
+        InitContract    -> Builtin.SomeBuiltin initEndpoint
+        UseContract     -> Builtin.SomeBuiltin useEndpoint
