@@ -30,8 +30,8 @@ import qualified    Prelude as Haskell                  (Show)
 -- | The mint policy reeemder indicates if the token is to be minted or burned
 data MintPolicyRedeemer = MintPolicyRedeemer
     { 
-      mpPolarity                  :: !Bool  -- True = Mint, False = Burn
-    , mpWithdrawAmount            :: !Integer -- The amount of Ada to withdraw from the Littercoin contract
+      mpPolarity                  :: Bool  -- True = Mint, False = Burn
+    , mpWithdrawAmount            :: Integer -- The amount of Ada to withdraw from the Littercoin contract
                                               -- only used during burning for Littercoin minting policy
     } deriving Haskell.Show
 
@@ -43,9 +43,9 @@ PlutusTx.makeLift ''MintPolicyRedeemer
 --   as a parameter into the minting poicy which will make the Littercoin minting policy unique
 data LCMintPolicyParams = LCMintPolicyParams
     { 
-      lcTokenName                 :: !Value.TokenName
-    , lcAdminPkh                  :: !Address.PaymentPubKeyHash
-    , lcNFTTokenValue             :: !Value.Value  
+      lcTokenName                 :: Value.TokenName
+    , lcAdminPkh                  :: Address.PaymentPubKeyHash
+    , lcNFTTokenValue             :: Value.Value  
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
 PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
@@ -55,10 +55,10 @@ PlutusTx.makeLift ''LCMintPolicyParams
 -- | TokenParams are parameters that are passed to the endpoints
 data TokenParams = TokenParams
     { 
-      tpLCTokenName         :: !BuiltinByteString
-    , tpNFTTokenName        :: !BuiltinByteString  
-    , tpQty                 :: !Integer
-    , tpAdminPkh            :: !Address.PaymentPubKeyHash     
+      tpLCTokenName         :: BuiltinByteString
+    , tpNFTTokenName        :: BuiltinByteString  
+    , tpQty                 :: Integer
+    , tpAdminPkh            :: Address.PaymentPubKeyHash     
     } deriving (Generic, FromJSON, ToJSON, Haskell.Show, Playground.ToSchema)
 
 
@@ -67,8 +67,8 @@ data TokenParams = TokenParams
 --   into the minting poicy which will make the merchant NFT policy unique
 data NFTMintPolicyParams = NFTMintPolicyParams
     { 
-      nftTokenName                 :: !Value.TokenName
-    , nftAdminPkh                  :: !Address.PaymentPubKeyHash 
+      nftTokenName                 :: Value.TokenName
+    , nftAdminPkh                  :: Address.PaymentPubKeyHash 
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
 PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
@@ -80,7 +80,7 @@ PlutusTx.makeLift ''NFTMintPolicyParams
 --   A Thread token is needed to make sure we always include the correct validator
 --   script as an input to a new transaction.
 data ThreadTokenRedeemer = ThreadTokenRedeemer
-    {   ttTxOutRef :: !Tx.TxOutRef  
+    {   ttTxOutRef :: Tx.TxOutRef  
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)] 
@@ -89,10 +89,10 @@ PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)]
 -- | LCValidatorParams is used to pass the admin pkh, NFT & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
-    {   lcvAdminPkh                 :: !Address.PaymentPubKeyHash
-    ,   lcvNFTTokenValue            :: !Value.Value
-    ,   lcvLCTokenName              :: !Value.TokenName
-    ,   lcvThreadTokenValue         :: !Value.Value  
+    {   lcvAdminPkh                 :: Address.PaymentPubKeyHash
+    ,   lcvNFTTokenValue            :: Value.Value
+    ,   lcvLCTokenName              :: Value.TokenName
+    ,   lcvThreadTokenValue         :: Value.Value  
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 

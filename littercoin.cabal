@@ -41,10 +41,11 @@ common lang
 library
     import: lang
     exposed-modules:
+      Littercoin.Test
       Littercoin.Types
-      Littercoin.Littercoin
-      --Littercoin.OnChain
-      --Littercoin.OffChain
+      --Littercoin.Littercoin
+      Littercoin.OnChain
+      Littercoin.OffChain
       --Littercoin.Deploy
     build-depends:
            aeson
@@ -62,7 +63,6 @@ library
          , plutus-ledger -any
          , plutus-ledger-api -any
          , plutus-ledger-constraints -any
-         , plutus-pab -any
          , plutus-script-utils -any
          , plutus-tx-plugin -any
          , plutus-tx -any
