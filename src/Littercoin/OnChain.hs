@@ -1,19 +1,13 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DeriveAnyClass         #-} 
+{-# LANGUAGE DeriveGeneric          #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE NoImplicitPrelude      #-}
+{-# LANGUAGE NamedFieldPuns         #-}
+{-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeApplications       #-}
 
 module Littercoin.OnChain 
     ( intToBBS
@@ -33,38 +27,19 @@ module Littercoin.OnChain
     )
 where
     
---import           Control.Lens                         (review)
---import           Control.Monad                        (forever)
 import           Data.Aeson                           (FromJSON, ToJSON)
-import           Data.Text                            (Text)
-import qualified Data.Map                             as Map
---import           Data.Monoid                          (Last (..))
-import qualified Data.OpenApi                         as OpenApi
-import           Data.Void                            (Void)
 import           GHC.Generics                         (Generic)
---import qualified Plutus.Trace.Emulator                as Emulator
-import           Ledger                               (getCardanoTxId)
-import qualified Ledger.Ada                           as Ada
-import qualified Ledger.Address                       as Address
---import qualified Ledger.CardanoWallet                 as CardanoWallet
---import qualified Ledger.Constraints                   as Constraints
-import           Ledger.Params                        (Params)
-import qualified Ledger.Tx                            as Tx
-import qualified Ledger.Value                         as Value
---import           Playground.Schema                    (endpointsToSchemas)
---import qualified Plutus.Contract                      as Contract
---import qualified Plutus.Contract.Request              as Request
---import qualified Plutus.Contract.Wallet               as Wallet
---import qualified Plutus.PAB.Effects.Contract.Builtin  as Builtin
-import qualified Plutus.Script.Utils.Typed            as Typed
-import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2
-import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2
-import qualified Plutus.Script.Utils.V2.Typed.Scripts.Validators as ValidatorsV2
-import qualified Plutus.V2.Ledger.Api                 as PlutusV2
-import qualified Plutus.V2.Ledger.Contexts            as ContextsV2
-import qualified Plutus.V2.Ledger.Tx                  as TxV2
-import qualified PlutusTx
-import           PlutusPrelude                        (Pretty, void)                             
+import qualified Ledger.Ada                           as Ada (lovelaceValueOf)
+import qualified Ledger.Address                       as Address (PaymentPubKeyHash(..))
+import qualified Ledger.Value                         as Value (CurrencySymbol, flattenValue, singleton, Value)
+import qualified Plutus.Script.Utils.Typed            as Typed (Any, validatorScript)
+import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2  (scriptCurrencySymbol, Validator, ValidatorHash) 
+import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2 (mkUntypedMintingPolicy, TypedValidator)
+import qualified Plutus.Script.Utils.V2.Typed.Scripts.Validators as ValidatorsV2 (unsafeMkTypedValidator, validatorHash)
+import qualified Plutus.V2.Ledger.Api                 as PlutusV2 (CurrencySymbol, getDatum,  MintingPolicy, mkMintingPolicyScript, mkValidatorScript, Script, scriptContextTxInfo, TokenName(..), TxInfo, txInfoMint, txInfoOutputs, unsafeFromBuiltinData, unValidatorScript )
+import qualified Plutus.V2.Ledger.Contexts            as ContextsV2 (getContinuingOutputs, ownCurrencySymbol, ScriptContext, spendsOutput, TxInfo, txInfoMint, txInfoOutputs, TxOut, txOutValue, txSignedBy )
+import qualified Plutus.V2.Ledger.Tx                  as TxV2 (getTxId, OutputDatum(..), TxOut(..), TxOutRef(..))
+import qualified PlutusTx                             (applyCode, compile, fromBuiltinData, liftCode, makeIsDataIndexed, makeLift)                       
 import           PlutusTx.Prelude                     as P hiding
                                                       (unless, (.))
 import           Prelude                              (Show (..))
@@ -73,9 +48,7 @@ import           Littercoin.Types                     (MintPolicyRedeemer(..),
                                                        LCRedeemer(..),
                                                        LCValidatorParams(..),
                                                        NFTMintPolicyParams(..),
-                                                       TokenParams(..),
                                                        ThreadTokenRedeemer(..))
---import qualified Wallet.Emulator.Wallet                as Wallet
 
 
 -------------------------------------------------
@@ -114,7 +87,7 @@ validOutputs txVal (x:xs)
     
 
 {-# INLINABLE mkLittercoinPolicy #-}
-mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> PlutusV2.ScriptContext -> Bool
+mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ContextsV2.ScriptContext -> Bool
 mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx = 
 
     case polarity of
@@ -254,7 +227,7 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx =
     txOutputSpent = ContextsV2.spendsOutput info refHash refIdx
     ownSymbol = ContextsV2.ownCurrencySymbol ctx
     minted = ContextsV2.txInfoMint info
-    threadToken = sha2_256 $ Tx.getTxId refHash P.<> intToBBS refIdx
+    threadToken = sha2_256 $ TxV2.getTxId refHash P.<> intToBBS refIdx
 
 
     checkMintedAmount :: Bool
@@ -323,7 +296,7 @@ mkLCValidator params dat red ctx =
         tn = lcvLCTokenName params
         
         info :: ContextsV2.TxInfo
-        info = ContextsV2.scriptContextTxInfo ctx  
+        info = PlutusV2.scriptContextTxInfo ctx  
         -- find the output datum
         outputDat :: LCDatum
         (_, outputDat) = case ContextsV2.getContinuingOutputs ctx of
