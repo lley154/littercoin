@@ -26,7 +26,8 @@ import qualified Ledger.Address                       as Address
 import           Ledger.Value                         as Value
 import           Littercoin.Types
 import           Littercoin.OnChain
-import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2
+import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2
+import qualified Plutus.Script.Utils.V2.Typed.Scripts as PTSU.V2
 import qualified Plutus.V2.Ledger.Api                 as PlutusV2
 import qualified Plutus.V2.Ledger.Contexts            as Contexts
 import qualified Plutus.V2.Ledger.Tx                  as TxV2
@@ -175,10 +176,22 @@ nftTokValue = nftTokVal
   where
     (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) nftTokName)
 
+mintRed = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
+    {
+       mpPolarity = True  -- mint token
+    ,  mpWithdrawAmount = 0 -- ignored during minting   
+    }
+
+mintParams = LCMintPolicyParams 
+    {
+        lcTokenName = lcTokName -- the name of the littercoin
+    ,   lcAdminPkh = adminPaymentPkh  -- the admin pkh who can only mint littercoins
+    ,   lcNFTTokenValue = nftTokValue  -- this contains the NFT that merchants used for burning
+    }
 
 
-lcParams :: LCValidatorParams
-lcParams = LCValidatorParams
+lcvParams :: LCValidatorParams
+lcvParams = LCValidatorParams
     {   lcvAdminPkh         = adminPaymentPkh
     ,   lcvNFTTokenValue    = nftTokValue
     ,   lcvLCTokenName      = lcTokName
@@ -236,10 +249,14 @@ main::IO ()
 main = do
 
     -- Generate plutus scripts and hashes
-    --_ <- writeTTMintingPolicy
     writeTTMintingPolicy
-    --writeMintingPolicyHash
-
+    writeTTMintingPolicyHash
+    writeLCMintingPolicy
+    writeLCMintingPolicyHash
+    writeNFTMintingPolicy
+    writeNFTMintingPolicyHash
+    writeLCValidator
+    writeLCValidatorHash
     -- Generate token name and metadata
     --writeTokenName
     --writeTokenMetadata
@@ -282,6 +299,67 @@ writeTTMintingPolicy = void $ writeFileTextEnvelope "deploy/thread-token-minting
 
     serialisedScript :: PlutusScript PlutusScriptV2
     serialisedScript = PlutusScriptSerialised scriptSBS
+
+
+writeTTMintingPolicyHash :: IO ()
+writeTTMintingPolicyHash = 
+    LBS.writeFile "deploy/thread-token-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
+
+
+writeLCMintingPolicy :: IO ()
+writeLCMintingPolicy = void $ writeFileTextEnvelope "deploy/lc-minting-policy.plutus" Nothing serialisedScript
+  where
+    script :: PlutusV2.Script
+    script = PlutusV2.unMintingPolicyScript $ lcPolicy mintParams 
+
+    scriptSBS :: SBS.ShortByteString
+    scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
+
+    serialisedScript :: PlutusScript PlutusScriptV2
+    serialisedScript = PlutusScriptSerialised scriptSBS
+
+writeLCMintingPolicyHash :: IO ()
+writeLCMintingPolicyHash = 
+    LBS.writeFile "deploy/lc-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ lcPolicy mintParams
+
+
+writeNFTMintingPolicy :: IO ()
+writeNFTMintingPolicy = void $ writeFileTextEnvelope "deploy/nft-minting-policy.plutus" Nothing serialisedScript
+  where
+    script :: PlutusV2.Script
+    script = PlutusV2.unMintingPolicyScript $ nftPolicy nftMintParams 
+
+    scriptSBS :: SBS.ShortByteString
+    scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
+
+    serialisedScript :: PlutusScript PlutusScriptV2
+    serialisedScript = PlutusScriptSerialised scriptSBS
+
+writeNFTMintingPolicyHash :: IO ()
+writeNFTMintingPolicyHash = 
+    LBS.writeFile "deploy/nft-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ nftPolicy nftMintParams
+
+
+writeLCValidator :: IO ()
+writeLCValidator = void $ writeFileTextEnvelope "deploy/lc-validator.plutus" Nothing serialisedScript
+  where
+    --script :: PlutusV2.Script
+    --script = PlutusV2.unMintingPolicyScript $ nftPolicy nftMintParams 
+
+    script :: BuiltinData -> PSU.V2.Validator
+    script = lcValidator
+
+    scriptSBS :: SBS.ShortByteString
+    --scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
+    scriptSBS = SBS.toShort . LBS.toStrict $ serialise $ script $ PlutusTx.toBuiltinData lcvParams
+
+    serialisedScript :: PlutusScript PlutusScriptV2
+    serialisedScript = PlutusScriptSerialised scriptSBS
+
+writeLCValidatorHash :: IO ()
+writeLCValidatorHash = 
+    LBS.writeFile "deploy/lc-validator.hash" $ encode $ PlutusTx.toBuiltinData $ PTSU.V2.validatorHash $ typedLCValidator $ PlutusTx.toBuiltinData lcvParams
+
 
 {-
  

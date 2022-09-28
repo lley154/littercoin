@@ -41,12 +41,13 @@ common lang
 library
     import: lang
     exposed-modules:
+      Littercoin.Deploy
       Littercoin.Test
       Littercoin.Types
       --Littercoin.Littercoin
       Littercoin.OnChain
       Littercoin.OffChain
-      Littercoin.Deploy
+    
     build-depends:
            aeson
          , base >= 4.9 && < 5
