@@ -199,8 +199,6 @@ lcvParams = LCValidatorParams
     }
 
 
-
-
 {-
 
 mph :: MintingPolicyHash
@@ -257,36 +255,57 @@ main = do
     writeNFTMintingPolicyHash
     writeLCValidator
     writeLCValidatorHash
+
     -- Generate token name and metadata
     --writeTokenName
     --writeTokenMetadata
     
+    -- Generate datum
+    writeDatumInit
+
     -- Generate redeemers
     writeRedeemerInit
-    --writeRedeemerMint
-    --writeRedeemerBurn
+    writeRedeemerAdd
+    writeRedeemerMint
+    writeRedeemerBurn
     
     return ()
-{-
-dataToScriptData :: PlutusTx.Data -> ScriptData
-dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs
-dataToScriptData (Map xs)      = ScriptDataMap [(dataToScriptData x', dataToScriptData y) | (x', y) <- xs]
-dataToScriptData (List xs)     = ScriptDataList $ dataToScriptData <$> xs
-dataToScriptData (I n)         = ScriptDataNumber n
-dataToScriptData (B bs)        = ScriptDataBytes bs
--}
-
---writeJSON :: PlutusTx.ToData a => FilePath -> a -> IO ()
---writeJSON file = LBS.writeFile file . encode . scriptDataToJson ScriptDataJsonDetailedSchema . dataToScriptData . PlutusTx.toData
---writeJSON file red = LBS.writeFile file encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 writeRedeemerInit :: IO ()
 writeRedeemerInit = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ ThreadTokenRedeemer txOutRef'
     in
-        --writeJSON "deploy/redeemer-thread-token-mint.json" red
         LBS.writeFile "deploy/redeemer-thread-token-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
+
+writeRedeemerAdd :: IO ()
+writeRedeemerAdd = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ AddAda 42
+    in
+        LBS.writeFile "deploy/redeemer-add-ada.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+
+writeRedeemerMint :: IO ()
+writeRedeemerMint = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintLC 42
+    in
+        LBS.writeFile "deploy/redeemer-mint-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+writeRedeemerBurn :: IO ()
+writeRedeemerBurn = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 42
+    in
+        LBS.writeFile "deploy/redeemer-burn-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+writeDatumInit :: IO ()
+writeDatumInit = 
+    let lcDatum = LCDatum 
+            {   adaAmount = 0                                         
+            ,   lcAmount = 0
+            }
+        dat = PlutusTx.toBuiltinData lcDatum
+    in
+        LBS.writeFile "deploy/datum-init.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData dat)
 
 writeTTMintingPolicy :: IO ()
 writeTTMintingPolicy = void $ writeFileTextEnvelope "deploy/thread-token-minting-policy.plutus" Nothing serialisedScript
@@ -343,14 +362,10 @@ writeNFTMintingPolicyHash =
 writeLCValidator :: IO ()
 writeLCValidator = void $ writeFileTextEnvelope "deploy/lc-validator.plutus" Nothing serialisedScript
   where
-    --script :: PlutusV2.Script
-    --script = PlutusV2.unMintingPolicyScript $ nftPolicy nftMintParams 
-
     script :: BuiltinData -> PSU.V2.Validator
     script = lcValidator
 
     scriptSBS :: SBS.ShortByteString
-    --scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
     scriptSBS = SBS.toShort . LBS.toStrict $ serialise $ script $ PlutusTx.toBuiltinData lcvParams
 
     serialisedScript :: PlutusScript PlutusScriptV2
@@ -361,71 +376,6 @@ writeLCValidatorHash =
     LBS.writeFile "deploy/lc-validator.hash" $ encode $ PlutusTx.toBuiltinData $ PTSU.V2.validatorHash $ typedLCValidator $ PlutusTx.toBuiltinData lcvParams
 
 
-{-
- 
--- | Conversion functions from Plutus Builtin datatypes to plutus script data types that are 
---   run on the cardano blockchain 
-dataToScriptData :: Data -> ScriptData
-dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs
-dataToScriptData (Map xs)      = ScriptDataMap [(dataToScriptData x', dataToScriptData y) | (x', y) <- xs]
-dataToScriptData (List xs)     = ScriptDataList $ dataToScriptData <$> xs
-dataToScriptData (I n)         = ScriptDataNumber n
-dataToScriptData (B bs)        = ScriptDataBytes bs
-
-
-writeJSON :: ToData a => FilePath -> a -> IO ()
-writeJSON file = LBS.writeFile file . encode . scriptDataToJson ScriptDataJsonDetailedSchema . dataToScriptData . PlutusTx.toData
-
-
-writeValidator :: FilePath -> Ledger.Validator -> IO (Either (FileError ()) ())
-writeValidator file = writeFileTextEnvelope @(PlutusScript PlutusScriptV1) file Nothing . PlutusScriptSerialised . SBS.toShort . LBS.toStrict . serialise . Ledger.unValidatorScript 
-
-
-writeRedeemerMint :: IO ()
-writeRedeemerMint = 
-
-    let red = Scripts.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
-                     {
-                        mpPolarity = True  -- mint token
-                     }
-    in
-        writeJSON "deploy/redeemer-token-mint.json" red
-
-
-writeRedeemerBurn :: IO ()
-writeRedeemerBurn = 
-
-    let red = Scripts.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
-                     {
-                        mpPolarity = False  -- burn token
-                     }
-    in
-        writeJSON "deploy/redeemer-token-burn.json" red
-
-
-writeTokenName :: IO ()
-writeTokenName = writeJSON "deploy/token-name.json" tokenName
-
-
-writeTokenMetadata :: IO ()
-writeTokenMetadata = 
-    
-    let file = "deploy/token-metadata.json"
-    in LBS.writeFile file $ encode tokenMetadata
-    
-writeMintingPolicyHash :: IO ()
-writeMintingPolicyHash = writeJSON "deploy/minting-policy.hash" $ PlutusTx.toBuiltinData $ Scripts.mintingPolicyHash $ policy mintParams
-
--- Pull out a validator from a minting policy
-mintValidator :: Ledger.MintingPolicy -> Ledger.Validator
-mintValidator pol = Ledger.Validator $ unMintingPolicyScript pol
-
-writeMintingPolicy :: IO (Either (FileError ()) ())
-writeMintingPolicy = writeValidator "deploy/minting-policy.plutus" $ mintValidator $ policy mintParams
-
-  
-
--}
 
 -- | Decode from hex base 16 to a base 10 bytestring is needed because
 --   that is how it is stored in the ledger onchain
