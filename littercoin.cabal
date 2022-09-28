@@ -46,11 +46,12 @@ library
       --Littercoin.Littercoin
       Littercoin.OnChain
       Littercoin.OffChain
-      --Littercoin.Deploy
+      Littercoin.Deploy
     build-depends:
            aeson
          , base >= 4.9 && < 5
          , bytestring -any
+         , base16-bytestring -any
          , containers -any
          , cardano-api -any
          , data-default -any

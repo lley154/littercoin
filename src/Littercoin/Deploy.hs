@@ -7,26 +7,36 @@ module Littercoin.Deploy
     ( main
     ) where
 
-import           Littercoin.OnChain                (policy)
-import           Littercoin.Types                  (MintPolicyRedeemer(..), MintPolicyParams(..))
-import           Littercoin.Utils                  (decodeHex, integerToBS)
-import           Cardano.Api.Shelley                (FileError, PlutusScript (..), PlutusScriptV1, ScriptData(..), scriptDataToJson, 
-                                                     ScriptDataJsonSchema(..), writeFileTextEnvelope)
-import           Codec.Serialise                    (serialise)
-import           Data.Aeson                         (encode, object, Value, (.=))          
-import qualified Data.ByteString.Char8 as B         (pack, ByteString)
-import qualified Data.ByteString.Lazy as LBS        (toStrict, writeFile)
-import qualified Data.ByteString.Short as SBS       (toShort)
-import           Data.List.Utils                    (replace)
-import           Data.Text.Encoding                 (decodeUtf8)
-import qualified Ledger                             (getTxId, MintingPolicy, PaymentPubKeyHash(..), PubKeyHash(..), Validator(..), TxId(..), 
-                                                     TxOutRef(..), TxOutRef(txOutRefIdx), unValidatorScript )                          
-import           Ledger.Scripts as Scripts          (mintingPolicyHash, MintingPolicyHash, Redeemer(..), unMintingPolicyScript)
-import qualified Ledger.Value as Value              (TokenName(..))
-import           PlutusTx                           (Data (..), toBuiltinData, ToData, toData)
-import           PlutusTx.Prelude                   (Bool(..), Either(..), Integer, Maybe(..), return, sha2_256, ($), (<$>), (<>), (.), (!!))
-import           Prelude as Haskell                 (FilePath, IO, show, String)
-
+import           Cardano.Api                          (PlutusScript,
+                                                       PlutusScriptV2,
+                                                       writeFileTextEnvelope)
+import           Cardano.Api.Shelley                  (PlutusScript (..),
+                                                       ScriptDataJsonSchema (ScriptDataJsonDetailedSchema),
+                                                       fromPlutusData,
+                                                       scriptDataToJson)
+import           Codec.Serialise                      (serialise)
+import           Data.Aeson                           (encode)
+import qualified Data.ByteString.Char8                as B
+import qualified Data.ByteString.Base16               as B16
+import qualified Data.ByteString.Lazy                 as LBS
+import qualified Data.ByteString.Short                as SBS
+import           Data.Functor                         (void)
+import qualified Ledger.Typed.Scripts                 as Scripts
+import qualified Ledger.Address                       as Address
+import           Ledger.Value                         as Value
+import           Littercoin.Types
+import           Littercoin.OnChain
+import qualified Plutus.Script.Utils.V2.Typed.Scripts as PSU.V2
+import qualified Plutus.V2.Ledger.Api                 as PlutusV2
+import qualified Plutus.V2.Ledger.Contexts            as Contexts
+import qualified Plutus.V2.Ledger.Tx                  as TxV2
+import qualified PlutusTx
+import           PlutusTx.Prelude                     as P hiding
+                                                           (Semigroup (..),
+                                                            unless, (.))
+import           Prelude                              (IO, FilePath, Semigroup (..),
+                                                       Show (..), print, (.),
+                                                       String)
 
 
 
@@ -38,6 +48,7 @@ import           Prelude as Haskell                 (FilePath, IO, show, String)
 -- Please note that changes the following token metadata requires this 
 -- file to be compiled again and deployed with the updated values.
 -------------------------------------------------------------------------------------
+{-
 
 -- **** REQUIRED METADATA FIELDS ***
 
@@ -75,7 +86,7 @@ fileData = FileData
     ,    src = "ipfs://QmT3rYtkkw4wFBP5SfxENAfDY9NuYoZAz2HVng4cQqnVZe" 
     }
 
-
+-}
 
 -------------------------------------------------------------------------------------
 -- END - Littercoin Metadata
@@ -100,54 +111,84 @@ txIdIdxInt = 0
 adminPubKeyHashBS :: B.ByteString
 adminPubKeyHashBS = "a766096168c31739f1b52ee287d5b27ad0f68ba76462301565406419"
 
+lcTokName :: PlutusV2.TokenName
+lcTokName = "Littercoin"
+
+nftTokName :: PlutusV2.TokenName
+nftTokName = "Littercoin Approved Merchant"
+
+lcDatum :: LCDatum
+lcDatum = LCDatum 
+    {   adaAmount = 0                                         
+    ,   lcAmount = 0
+    }
+
 -------------------------------------------------------------------------------------
 -- END - Littercoin Minting Policy Parameters 
 -------------------------------------------------------------------------------------
+    
+   
 
 
 -------------------------------------------------------------------------------------
 -- START - Derived values
 -------------------------------------------------------------------------------------
 
-tokenName :: Value.TokenName
-tokenName = Value.TokenName $ sha2_256 tn
-    where
-        tn = (decodeHex $ address requiredMetadata) <> 
-             (integerToBS $ lat requiredMetadata) <> 
-             (integerToBS $ long requiredMetadata) <> 
-             (decodeHex $ category requiredMetadata) <> 
-             (decodeHex $ method requiredMetadata) <> 
-             (integerToBS $ cO2Qty requiredMetadata)
+adminPaymentPkh :: Address.PaymentPubKeyHash
+adminPaymentPkh = Address.PaymentPubKeyHash (PlutusV2.PubKeyHash $ decodeHex adminPubKeyHashBS)
 
 
-adminPaymentPkh :: Ledger.PaymentPubKeyHash
-adminPaymentPkh = Ledger.PaymentPubKeyHash (Ledger.PubKeyHash $ decodeHex adminPubKeyHashBS)
-
-
-txOutRef' :: Ledger.TxOutRef
-txOutRef' = Ledger.TxOutRef
+txOutRef' :: TxV2.TxOutRef
+txOutRef' = TxV2.TxOutRef
         {
-            Ledger.txOutRefId = Ledger.TxId
+            TxV2.txOutRefId = TxV2.TxId
             {
-                Ledger.getTxId = decodeHex txIdBS
+                TxV2.getTxId = decodeHex txIdBS
             } 
-        ,   Ledger.txOutRefIdx = txIdIdxInt
+        ,   TxV2.txOutRefIdx = txIdIdxInt
         }
 
-mintParams :: MintPolicyParams
-mintParams = MintPolicyParams 
-                    {
-                      mpOref = txOutRef'
-                    , mpTokenName = tokenName
-                    , mpAddress = decodeHex $ address requiredMetadata
-                    , mpLat = lat requiredMetadata
-                    , mpLong = long requiredMetadata
-                    , mpCategory = decodeHex $ category requiredMetadata
-                    , mpMethod = decodeHex $ method requiredMetadata
-                    , mpCO2Qty = cO2Qty requiredMetadata
-                    , mpAdminPkh = adminPaymentPkh
-                    }
 
+ttTokName :: Value.TokenName
+ttTokName = Value.TokenName $ sha2_256 txBS
+    where
+        txBS = (TxV2.getTxId(TxV2.txOutRefId txOutRef')) <> 
+                intToBBS(TxV2.txOutRefIdx txOutRef')  
+
+
+ttTokValue :: Value.Value
+ttTokValue = ttVal
+  where
+    (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol ttTokName)
+
+
+
+nftMintParams :: NFTMintPolicyParams
+nftMintParams = NFTMintPolicyParams 
+    {
+        nftTokenName = nftTokName
+    ,   nftAdminPkh = adminPaymentPkh
+    }
+
+nftTokValue :: Value.Value
+nftTokValue = nftTokVal
+  where
+    (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) nftTokName)
+
+
+
+lcParams :: LCValidatorParams
+lcParams = LCValidatorParams
+    {   lcvAdminPkh         = adminPaymentPkh
+    ,   lcvNFTTokenValue    = nftTokValue
+    ,   lcvLCTokenName      = lcTokName
+    ,   lcvThreadTokenValue = ttTokValue
+    }
+
+
+
+
+{-
 
 mph :: MintingPolicyHash
 mph = Scripts.mintingPolicyHash $ policy mintParams
@@ -185,26 +226,64 @@ tokenMetadata = object
         ]
     ]
 
+-}
 -------------------------------------------------------------------------------------
 -- END - Derived values 
 -------------------------------------------------------------------------------------
+ 
 
 main::IO ()
 main = do
 
     -- Generate plutus scripts and hashes
-    _ <- writeMintingPolicy
-    writeMintingPolicyHash
+    --_ <- writeTTMintingPolicy
+    writeTTMintingPolicy
+    --writeMintingPolicyHash
 
     -- Generate token name and metadata
-    writeTokenName
-    writeTokenMetadata
+    --writeTokenName
+    --writeTokenMetadata
     
     -- Generate redeemers
-    writeRedeemerMint
-    writeRedeemerBurn
+    writeRedeemerInit
+    --writeRedeemerMint
+    --writeRedeemerBurn
     
     return ()
+{-
+dataToScriptData :: PlutusTx.Data -> ScriptData
+dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs
+dataToScriptData (Map xs)      = ScriptDataMap [(dataToScriptData x', dataToScriptData y) | (x', y) <- xs]
+dataToScriptData (List xs)     = ScriptDataList $ dataToScriptData <$> xs
+dataToScriptData (I n)         = ScriptDataNumber n
+dataToScriptData (B bs)        = ScriptDataBytes bs
+-}
+
+--writeJSON :: PlutusTx.ToData a => FilePath -> a -> IO ()
+--writeJSON file = LBS.writeFile file . encode . scriptDataToJson ScriptDataJsonDetailedSchema . dataToScriptData . PlutusTx.toData
+--writeJSON file red = LBS.writeFile file encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+writeRedeemerInit :: IO ()
+writeRedeemerInit = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ ThreadTokenRedeemer txOutRef'
+    in
+        --writeJSON "deploy/redeemer-thread-token-mint.json" red
+        LBS.writeFile "deploy/redeemer-thread-token-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+
+writeTTMintingPolicy :: IO ()
+writeTTMintingPolicy = void $ writeFileTextEnvelope "deploy/thread-token-minting-policy.plutus" Nothing serialisedScript
+  where
+    script :: PlutusV2.Script
+    script = PlutusV2.unMintingPolicyScript threadTokenPolicy 
+
+    scriptSBS :: SBS.ShortByteString
+    scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
+
+    serialisedScript :: PlutusScript PlutusScriptV2
+    serialisedScript = PlutusScriptSerialised scriptSBS
+
+{-
  
 -- | Conversion functions from Plutus Builtin datatypes to plutus script data types that are 
 --   run on the cardano blockchain 
@@ -268,5 +347,20 @@ writeMintingPolicy = writeValidator "deploy/minting-policy.plutus" $ mintValidat
 
   
 
+-}
 
-  
+-- | Decode from hex base 16 to a base 10 bytestring is needed because
+--   that is how it is stored in the ledger onchain
+decodeHex :: B.ByteString -> P.BuiltinByteString
+decodeHex hexBS =    
+         case getTx of
+            Right decHex -> do
+                --putStrLn $ "Tx name: " ++ show t
+                P.toBuiltin(decHex)  
+            Left _ -> do
+                --putStrLn $ "No Token name: " ++ show e
+                P.emptyByteString 
+                
+        where        
+            getTx :: Either String B.ByteString = B16.decode hexBS
+
