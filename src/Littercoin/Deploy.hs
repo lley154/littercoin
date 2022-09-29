@@ -102,15 +102,15 @@ fileData = FileData
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "eb60c323585934b66e5dbbf7a1fac4652c17902e4bc0e8768f70cd7ca8c4fd63"
+txIdBS = "52ff8bc4279a68dced5b1b6b86953f080bf162dd479d52b5cc5952e56d8e4fc4"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
-txIdIdxInt = 0
+txIdIdxInt = 1
 
 -- Admin public key payment hash
 adminPubKeyHashBS :: B.ByteString
-adminPubKeyHashBS = "a766096168c31739f1b52ee287d5b27ad0f68ba76462301565406419"
+adminPubKeyHashBS = "4e302f72179dd533c596239fdd26c55d1fc4cf8b71d5f654cdd33f4a"
 
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
@@ -246,19 +246,14 @@ tokenMetadata = object
 main::IO ()
 main = do
 
-    -- Generate plutus scripts and hashes
-    writeTTMintingPolicy
-    writeTTMintingPolicyHash
-    writeLCMintingPolicy
-    writeLCMintingPolicyHash
-    writeNFTMintingPolicy
-    writeNFTMintingPolicyHash
-    writeLCValidator
-    writeLCValidatorHash
+
 
     -- Generate token name and metadata
-    --writeTokenName
-    --writeTokenMetadata
+    writeTTTokenName
+    writeLCTokenName
+    --writeLCTokenMetadata
+    writeNFTTokenName
+    --writeNFTTokenMetadata
     
     -- Generate datum
     writeDatumInit
@@ -268,8 +263,43 @@ main = do
     writeRedeemerAdd
     writeRedeemerMint
     writeRedeemerBurn
+
+    -- Generate plutus scripts and hashes
+    writeTTMintingPolicy
+    writeTTMintingPolicyHash
+    writeLCMintingPolicy
+    writeLCMintingPolicyHash
+    writeNFTMintingPolicy
+    writeNFTMintingPolicyHash
+    writeLCValidator
+    writeLCValidatorHash
     
     return ()
+
+writeTTTokenName :: IO ()
+writeTTTokenName = 
+    LBS.writeFile "deploy/thread-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ttTokName)    
+
+writeLCTokenName :: IO ()
+writeLCTokenName = 
+    LBS.writeFile "deploy/lc-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData lcTokName)    
+
+writeNFTTokenName :: IO ()
+writeNFTTokenName = 
+    LBS.writeFile "deploy/nft-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData nftTokName)    
+
+
+writeDatumInit :: IO ()
+writeDatumInit = 
+    let lcDatum = LCDatum 
+            {   adaAmount = 0                                         
+            ,   lcAmount = 0
+            }
+        dat = PlutusTx.toBuiltinData lcDatum
+    in
+        LBS.writeFile "deploy/datum-init.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData dat)
+
+
 
 writeRedeemerInit :: IO ()
 writeRedeemerInit = 
@@ -297,15 +327,8 @@ writeRedeemerBurn =
     in
         LBS.writeFile "deploy/redeemer-burn-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
-writeDatumInit :: IO ()
-writeDatumInit = 
-    let lcDatum = LCDatum 
-            {   adaAmount = 0                                         
-            ,   lcAmount = 0
-            }
-        dat = PlutusTx.toBuiltinData lcDatum
-    in
-        LBS.writeFile "deploy/datum-init.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData dat)
+
+
 
 writeTTMintingPolicy :: IO ()
 writeTTMintingPolicy = void $ writeFileTextEnvelope "deploy/thread-token-minting-policy.plutus" Nothing serialisedScript
@@ -322,7 +345,9 @@ writeTTMintingPolicy = void $ writeFileTextEnvelope "deploy/thread-token-minting
 
 writeTTMintingPolicyHash :: IO ()
 writeTTMintingPolicyHash = 
-    LBS.writeFile "deploy/thread-token-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
+    LBS.writeFile "deploy/thread-token-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
+  where
+    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
 
 
 writeLCMintingPolicy :: IO ()
@@ -339,7 +364,10 @@ writeLCMintingPolicy = void $ writeFileTextEnvelope "deploy/lc-minting-policy.pl
 
 writeLCMintingPolicyHash :: IO ()
 writeLCMintingPolicyHash = 
-    LBS.writeFile "deploy/lc-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ lcPolicy mintParams
+    LBS.writeFile "deploy/lc-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
+  where
+    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
+
 
 
 writeNFTMintingPolicy :: IO ()
@@ -356,7 +384,9 @@ writeNFTMintingPolicy = void $ writeFileTextEnvelope "deploy/nft-minting-policy.
 
 writeNFTMintingPolicyHash :: IO ()
 writeNFTMintingPolicyHash = 
-    LBS.writeFile "deploy/nft-minting-policy.hash" $ encode $ PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ nftPolicy nftMintParams
+    LBS.writeFile "deploy/nft-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
+  where
+    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
 
 
 writeLCValidator :: IO ()
