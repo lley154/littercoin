@@ -57,11 +57,11 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 # load in local variable values
 thread_token_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
-redeemer_thread_token_mint_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
 #token_metadata_file_path="$BASE/scripts/cardano-cli/$ENV/data/token-metadata.json"
 lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
+redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
 
 admin_pkh=$(cat $ADMIN_PKH)
 
@@ -93,13 +93,13 @@ $CARDANO_CLI transaction build \
   --tx-in "$admin_utxo_in" \
   --mint "1 $thread_token_mph.$thread_token_name" \
   --mint-script-file "$thread_token_script" \
-  --mint-redeemer-file "$redeemer_thread_token_mint_file_path" \
+  --mint-redeemer-file "$redeemer_file_path" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json"  \
+  --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/tt-token-mint-tx-alonzo.body
-  
-# --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
+ 
 # --required-signer-hash "$admin_pkh" \
 # --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/token-mint-alonzo.costs"
 
