@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+##############################################################
+# You must do these steps first before running this script
+##############################################################
+#
+# Step 1.   Find the admin UTXO (and admin pkh) you will use
+# Step 2.   Update src/Littercoin/Deploy.hs with that UTXO (and admin pkh) 
+# Step 3.   nix-shell, cabal repl, main
+# Step 4.   Copy deploy/* scripts/cardano-cli/[devnet|testnet|mainnet]/data
+# Step 5.   Update scripts/cardano-cli/[devnet|testnet|mainnet]/global-export-variables.sh
+#           with the UTXO to be used for admin collateral
+##############################################################
+
+
 # Unofficial bash strict mode.
 # See: http://redsymbol.net/articles/unofficial-bash-strict-mode/
 set -e
@@ -42,16 +55,19 @@ rm -f $WORK-backup/*
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
 # load in local variable values
-minting_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
-minting_policy_id=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
-redeemer_token_mint_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
-token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
+thread_token_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
+thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
+redeemer_thread_token_mint_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
+thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
 #token_metadata_file_path="$BASE/scripts/cardano-cli/$ENV/data/token-metadata.json"
+lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
+lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
+
 admin_pkh=$(cat $ADMIN_PKH)
 
 
 echo "starting littercoin thread token mint"
-echo "Script: $minting_script"
+echo "Script: $thread_token_script"
 
 ################################################################
 # Mint the threadtoken and attach it to the littercoin contract
@@ -75,13 +91,15 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $minting_policy_id.$token_name" \
-  --mint-script-file "$minting_script" \
-  --mint-redeemer-file "$redeemer_token_mint_file_path" \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $minting_policy_id.$token_name" \
+  --mint "1 $thread_token_mph.$thread_token_name" \
+  --mint-script-file "$thread_token_script" \
+  --mint-redeemer-file "$redeemer_thread_token_mint_file_path" \
+  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json"  \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/tt-token-mint-tx-alonzo.body
   
+# --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
 # --required-signer-hash "$admin_pkh" \
 # --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/token-mint-alonzo.costs"
 

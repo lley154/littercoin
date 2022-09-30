@@ -297,7 +297,7 @@ writeDatumInit =
             }
         dat = PlutusTx.toBuiltinData lcDatum
     in
-        LBS.writeFile "deploy/datum-init.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData dat)
+        LBS.writeFile "deploy/lc-datum-init.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData dat)
 
 
 
