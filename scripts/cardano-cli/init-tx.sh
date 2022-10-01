@@ -62,6 +62,11 @@ thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.js
 lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
+lc_mint_script="$BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.plutus"
+lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
+nft_mint_script="$BASE/scripts/cardano-cli/$ENV/data/nft-minting-policy.plutus"
+nft_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$nft_mint_script" $network)
+
 
 admin_pkh=$(cat $ADMIN_PKH)
 
@@ -96,12 +101,18 @@ $CARDANO_CLI transaction build \
   --mint-redeemer-file "$redeemer_file_path" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json"  \
-  --required-signer-hash "$admin_pkh" \
+  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$lc_validator_script" \
+  --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$lc_mint_script" \
+  --tx-out "$nft_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$nft_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/tt-token-mint-tx-alonzo.body
- 
-# --required-signer-hash "$admin_pkh" \
+
 # --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/token-mint-alonzo.costs"
+
+
 
 echo "tx has been built"
 

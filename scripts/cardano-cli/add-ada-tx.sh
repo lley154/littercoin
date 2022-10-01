@@ -53,7 +53,7 @@ lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada.json"
 
 admin_pkh=$(cat $ADMIN_PKH)
-ada_amount=10000000
+ada_amount=5000000
 
 ################################################################
 # Send Ada to the littercoin contract
@@ -114,9 +114,10 @@ $CARDANO_CLI transaction build \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-in "$admin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
-  --tx-in-script-file "$lc_validator_script" \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
+  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \

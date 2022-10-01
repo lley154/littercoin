@@ -57,7 +57,7 @@ redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn-lc.json
 
 admin_pkh=$(cat $ADMIN_PKH)
 lc_amount=25
-lc_remaining=75
+lc_remaining=50
 
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
@@ -139,12 +139,15 @@ $CARDANO_CLI transaction build \
   --tx-in "$admin_nft_utxo_tx_in" \
   --tx-in "$admin_lc_utxo_tx_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
-  --tx-in-script-file "$lc_validator_script" \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file "$WORK/redeemer-burn.json" \
+  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-burn.json" \
   --mint "-$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-script-file "$lc_mint_script" \
-  --mint-redeemer-file "$WORK/redeemer-burn-lc.json" \
+  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-burn-lc.json" \
+  --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-out "$admin_utxo_addr+$withdraw_ada + 1 $nft_mint_mph.$nft_token_name" \

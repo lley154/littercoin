@@ -217,7 +217,7 @@ mkThreadTokenPolicy :: ThreadTokenRedeemer -> ContextsV2.ScriptContext -> Bool
 mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx = 
     traceIfFalse "TP1" txOutputSpent            -- UTxO not consumed
     && traceIfFalse "TP2" checkMintedAmount     -- wrong amount minted  
-    -- TODO check for admin pkh  
+  
   where
     info :: PlutusV2.TxInfo
     info = PlutusV2.scriptContextTxInfo ctx

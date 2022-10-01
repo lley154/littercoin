@@ -68,8 +68,10 @@ $CARDANO_CLI transaction build \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-in "$admin_utxo_in" \
   --mint "1 $nft_mint_mph.$nft_token_name" \
-  --mint-script-file "$nft_mint_script" \
-  --mint-redeemer-file "$redeemer_nft_file_path" \
+  --mint-tx-in-reference "$NFT_MINT_REF_SCRIPT" \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file "$redeemer_nft_file_path" \
+  --policy-id "$nft_mint_mph" \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $nft_mint_mph.$nft_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \

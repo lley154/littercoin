@@ -113,12 +113,15 @@ $CARDANO_CLI transaction build \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-in "$admin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
-  --tx-in-script-file "$lc_validator_script" \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file "$WORK/redeemer-mint.json" \
+  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
   --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-script-file "$lc_mint_script" \
-  --mint-redeemer-file "$redeemer_lc_file_path" \
+  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file "$redeemer_lc_file_path" \
+  --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
