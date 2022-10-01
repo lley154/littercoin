@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+##################################################################
+# You must choose a utxo that contains only Ada and not any NFTs
+##################################################################
+
 # Unofficial bash strict mode.
 # See: http://redsymbol.net/articles/unofficial-bash-strict-mode/
 set -e
@@ -114,7 +118,7 @@ $CARDANO_CLI transaction build \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
   --tx-in-collateral "$ADMIN_COLLATERAL" \
-  --tx-out "$lc_validator_script_addr+$ada_amount + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/add-ada-tx-alonzo.body

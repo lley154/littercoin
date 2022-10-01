@@ -56,10 +56,6 @@ redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-lc.json
 admin_pkh=$(cat $ADMIN_PKH)
 lc_amount=100
 
-################################################################
-# Send Ada to the littercoin contract
-################################################################
-
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
@@ -101,7 +97,7 @@ jq -c '
   .fields[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
 
 
-# Upate the redeemer with the amount of littercoin being added
+# Upate the redeemer for the validator with the amount of littercoin being minted
 cat $redeemer_file_path | \
 jq -c '
   .fields[0].int          |= '$lc_amount'' > $WORK/redeemer-mint.json
@@ -123,15 +119,14 @@ $CARDANO_CLI transaction build \
   --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-script-file "$lc_mint_script" \
   --mint-redeemer-file "$redeemer_lc_file_path" \
-  --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 100 $lc_mint_mph.$lc_token_name" \
+  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-lc-tx-alonzo.body
 
-#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/add-ada.costs"
+#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-littercoin.costs"
   
 
 echo "tx has been built"

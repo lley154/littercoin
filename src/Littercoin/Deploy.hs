@@ -102,11 +102,11 @@ fileData = FileData
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "132d2aaf2846082d561982871c1b8c00de710a978606f98c9601a644f1ac9ad9"
+txIdBS = "52ff8bc4279a68dced5b1b6b86953f080bf162dd479d52b5cc5952e56d8e4fc4"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
-txIdIdxInt = 0
+txIdIdxInt = 1
 
 -- Admin public key payment hash
 adminPubKeyHashBS :: B.ByteString

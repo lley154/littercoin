@@ -93,6 +93,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity withdrawAmount) ctx =
     case polarity of
         True ->   traceIfFalse "LP1" signedByAdmin 
                && traceIfFalse "LP2" checkMintedAmount 
+               -- TODO check for threadtoken
                 
         False ->  traceIfFalse "LP3" checkBurnedAmount 
                && traceIfFalse "LP4" checkNFTValue -- check for merchant NFT
