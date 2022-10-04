@@ -106,7 +106,7 @@ jq -c '
 # Update the redeemer for minting policy to indicate the amount of ada being spent
 cat $redeemer_lc_file_path | \
 jq -c '
-  .fields[2].int          |= '$total_ada'' > $WORK/redeemer-mint-lc.json
+  .fields[1].int          |= '$total_ada'' > $WORK/redeemer-mint-lc.json
 
 
 

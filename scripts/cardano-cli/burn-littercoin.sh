@@ -57,7 +57,7 @@ redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn-lc.json
 
 admin_pkh=$(cat $ADMIN_PKH)
 lc_amount=25
-lc_remaining=50
+lc_remaining=75
 
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
@@ -124,8 +124,8 @@ jq -c '
 # Update the redeemer for minting policy to indicate the amount of ada being spent
 cat $redeemer_lc_file_path | \
 jq -c '
-  .fields[1].int          |= '$withdraw_ada'
-| .fields[2].int          |= '$total_ada'' > $WORK/redeemer-burn-lc.json
+  .fields[1].int          |= '$new_total_ada'
+| .fields[2].int          |= '$withdraw_ada'' > $WORK/redeemer-burn-lc.json
 
 
 

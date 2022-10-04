@@ -53,7 +53,7 @@ lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada.json"
 
 admin_pkh=$(cat $ADMIN_PKH)
-ada_amount=5000000
+ada_amount=10000000
 
 ################################################################
 # Send Ada to the littercoin contract

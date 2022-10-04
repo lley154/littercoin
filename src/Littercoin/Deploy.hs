@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "31271ea0d11e161871d6e573ad22a3da7672a62018879333132d6d5b89d633aa"
+txIdBS = "52ff8bc4279a68dced5b1b6b86953f080bf162dd479d52b5cc5952e56d8e4fc4"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -56,7 +56,7 @@ txIdIdxInt = 1
 
 -- Admin public key payment hash
 adminPubKeyHashBS :: B.ByteString
-adminPubKeyHashBS = "21b445483755338e2b38b5c47bd2873f887e0cebd7e9507384f556bc"
+adminPubKeyHashBS = "25dbf2cdb12487dbe244d48d236ccbd7eefc1a0320c9df638e153df9"
 
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
@@ -143,6 +143,7 @@ main::IO ()
 main = do
 
     -- Generate token name and metadata
+    writeTTTokenValue    
     writeTTTokenName
     writeLCTokenName
     writeNFTTokenName
@@ -171,6 +172,12 @@ main = do
     writeLCValidatorHash
     
     return ()
+
+
+writeTTTokenValue :: IO ()
+writeTTTokenValue = 
+    LBS.writeFile "deploy/thread-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ttTokValue)    
+
 
 writeTTTokenName :: IO ()
 writeTTTokenName = 
