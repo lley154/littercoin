@@ -42,11 +42,8 @@ library
     import: lang
     exposed-modules:
       Littercoin.Deploy
-      Littercoin.Test
       Littercoin.Types
-      --Littercoin.Littercoin
       Littercoin.OnChain
-      Littercoin.OffChain
     
     build-depends:
            aeson
