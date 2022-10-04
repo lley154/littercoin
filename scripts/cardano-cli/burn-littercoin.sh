@@ -124,7 +124,8 @@ jq -c '
 # Update the redeemer for minting policy to indicate the amount of ada being spent
 cat $redeemer_lc_file_path | \
 jq -c '
-  .fields[1].int          |= '$withdraw_ada'' > $WORK/redeemer-burn-lc.json
+  .fields[1].int          |= '$withdraw_ada'
+| .fields[2].int          |= '$total_ada'' > $WORK/redeemer-burn-lc.json
 
 
 

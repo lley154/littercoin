@@ -12,8 +12,8 @@ module Littercoin.Types
    , LCRedeemer(..)
    , LCValidatorParams(..)
    , NFTMintPolicyParams(..)
-   , ThreadTokenRedeemer(..)   
-   , TokenParams(..)  
+   , ThreadTokenRedeemer(..)    
+
 )where
 
 import              Data.Aeson                          (FromJSON, ToJSON)  
@@ -111,7 +111,6 @@ data LCRedeemer =
      
     deriving Haskell.Show
 
-
 PlutusTx.makeIsDataIndexed
   ''LCRedeemer
   [ ('MintLC, 0),
@@ -119,7 +118,5 @@ PlutusTx.makeIsDataIndexed
     ('AddAda, 2)
   ]
 PlutusTx.makeLift ''LCRedeemer
-
-
 
 

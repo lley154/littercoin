@@ -51,6 +51,7 @@ lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint.json"
 redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-lc.json"
+token_metadata_file_path="$BASE/scripts/cardano-cli/$ENV/data/lc-token-metadata.json"
 
 
 admin_pkh=$(cat $ADMIN_PKH)
@@ -102,6 +103,11 @@ cat $redeemer_file_path | \
 jq -c '
   .fields[0].int          |= '$lc_amount'' > $WORK/redeemer-mint.json
 
+# Update the redeemer for minting policy to indicate the amount of ada being spent
+cat $redeemer_lc_file_path | \
+jq -c '
+  .fields[2].int          |= '$total_ada'' > $WORK/redeemer-mint-lc.json
+
 
 
 # Step 3: Build and submit the transaction
@@ -120,13 +126,14 @@ $CARDANO_CLI transaction build \
   --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
   --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$redeemer_lc_file_path" \
+  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint-lc.json" \
   --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
+  --metadata-json-file "$token_metadata_file_path" \
   --out-file $WORK/mint-lc-tx-alonzo.body
 
 #  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-littercoin.costs"

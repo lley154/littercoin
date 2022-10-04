@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric          #-}
 {-# LANGUAGE NoImplicitPrelude      #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
@@ -6,6 +7,7 @@
 module Littercoin.Deploy
     ( main
     ) where
+
 
 import           Cardano.Api                          (PlutusScript,
                                                        PlutusScriptV2,
@@ -16,12 +18,11 @@ import           Cardano.Api.Shelley                  (PlutusScript (..),
                                                        scriptDataToJson)
 import           Codec.Serialise                      (serialise)
 import           Data.Aeson                           (encode)
-import qualified Data.ByteString.Char8                as B
-import qualified Data.ByteString.Base16               as B16
-import qualified Data.ByteString.Lazy                 as LBS
-import qualified Data.ByteString.Short                as SBS
+import qualified Data.ByteString.Char8                as B (ByteString)
+import qualified Data.ByteString.Base16               as B16 (decode)
+import qualified Data.ByteString.Lazy                 as LBS (toStrict, writeFile)
+import qualified Data.ByteString.Short                as SBS(ShortByteString, toShort)
 import           Data.Functor                         (void)
---import qualified Ledger.Typed.Scripts                 as Scripts
 import qualified Ledger.Address                       as Address
 import           Ledger.Value                         as Value
 import           Littercoin.Types
@@ -29,14 +30,12 @@ import           Littercoin.OnChain
 import qualified Plutus.Script.Utils.V2.Scripts       as PSU.V2
 import qualified Plutus.Script.Utils.V2.Typed.Scripts as PTSU.V2
 import qualified Plutus.V2.Ledger.Api                 as PlutusV2
---import qualified Plutus.V2.Ledger.Contexts            as Contexts
 import qualified Plutus.V2.Ledger.Tx                  as TxV2
-import qualified PlutusTx
-import           PlutusTx.Prelude                     as P hiding
-                                                           (Semigroup (..),
-                                                            unless, (.))
-import           Prelude                              (IO, Semigroup (..),
-                                                       String, (.))
+import qualified PlutusTx                             (toBuiltinData)
+import           PlutusTx.Prelude                     (BuiltinByteString, BuiltinData, Bool(..), Either(..), 
+                                                       emptyByteString , Integer, Maybe(..), return, sha2_256, 
+                                                       toBuiltin, ($))
+import           Prelude                              (IO, Semigroup (..), String, (.))
 
 
 
@@ -49,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..),
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "52ff8bc4279a68dced5b1b6b86953f080bf162dd479d52b5cc5952e56d8e4fc4"
+txIdBS = "31271ea0d11e161871d6e573ad22a3da7672a62018879333132d6d5b89d633aa"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -57,7 +56,7 @@ txIdIdxInt = 1
 
 -- Admin public key payment hash
 adminPubKeyHashBS :: B.ByteString
-adminPubKeyHashBS = "25dbf2cdb12487dbe244d48d236ccbd7eefc1a0320c9df638e153df9"
+adminPubKeyHashBS = "21b445483755338e2b38b5c47bd2873f887e0cebd7e9507384f556bc"
 
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
@@ -69,7 +68,7 @@ nftTokName = "Littercoin Approved Merchant"
 -------------------------------------------------------------------------------------
 -- END - Littercoin Minting Policy Parameters 
 -------------------------------------------------------------------------------------
-    
+
    
 -------------------------------------------------------------------------------------
 -- START - Derived values
@@ -146,10 +145,8 @@ main = do
     -- Generate token name and metadata
     writeTTTokenName
     writeLCTokenName
-    --writeLCTokenMetadata
     writeNFTTokenName
-    --writeNFTTokenMetadata
-    
+
     -- Generate datum
     writeDatumInit
 
@@ -354,15 +351,15 @@ writeLCValidatorHash =
 
 -- | Decode from hex base 16 to a base 10 bytestring is needed because
 --   that is how it is stored in the ledger onchain
-decodeHex :: B.ByteString -> P.BuiltinByteString
+decodeHex :: B.ByteString -> BuiltinByteString
 decodeHex hexBS =    
          case getTx of
             Right decHex -> do
                 --putStrLn $ "Tx name: " ++ show t
-                P.toBuiltin(decHex)  
+                toBuiltin(decHex)  
             Left _ -> do
                 --putStrLn $ "No Token name: " ++ show e
-                P.emptyByteString 
+                emptyByteString 
                 
         where        
             getTx :: Either String B.ByteString = B16.decode hexBS

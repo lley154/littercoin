@@ -55,6 +55,7 @@ library
          , data-default -any
          , freer-extras -any
          , lens -any
+         , MissingH -any
          , openapi3 -any
          , playground-common -any
          , plutus-contract -any
