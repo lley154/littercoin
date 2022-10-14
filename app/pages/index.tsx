@@ -6,6 +6,7 @@ import styles from '../styles/Home.module.css'
 import LittercoinInfo from '../components/LittercoinInfo';
 import { Address, Assets, Blockfrost, Constr, Data, Lucid, PlutusData, SpendingValidator } from "lucid-cardano"; // NPM
 
+
 const Home: NextPage = () => {
 
   const [lcInfo, setLCInfo] = useState(
@@ -15,7 +16,10 @@ const Home: NextPage = () => {
         lcAmount: 0,
     }
   )
-  const [walletAmount, setWalletAmount] = useState<null | any>(null);
+  const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
+  const [walletFound, setWalletFound] = useState(false);
+  const [walletIsEnabled, setWalletIsEnabled] = useState(false);
+  const [API, setAPI] = useState<undefined | any>(undefined);
 
 
   const matchingNumberScript: SpendingValidator = {
@@ -44,6 +48,21 @@ const Home: NextPage = () => {
       getContractInfo()
 
   }, [])  
+
+  
+  useEffect(() => {
+    const checkWallet = async () => {
+      
+        if (checkIfWalletFound()) {
+            await checkIfWalletEnabled();
+            await enableWallet();
+        } else {
+            //resetWalletInfo();         
+        }
+
+    }
+    checkWallet()
+  }, [whichWalletSelected]) 
 
 
  
@@ -81,6 +100,72 @@ const Home: NextPage = () => {
     }
   }
 
+  const checkIfWalletFound = () => {
+      
+    let walletFound = false;
+
+    const walletChoice = whichWalletSelected;
+    if (walletChoice === "nami") {
+        walletFound = !!window?.cardano?.nami
+    } else if (walletChoice === "eternl") {
+        walletFound = !!window?.cardano?.eternl
+    } 
+    console.log('checkIfWalletFound', walletFound);
+
+    setWalletFound(walletFound);        
+    return walletFound;
+  }
+
+  const checkIfWalletEnabled = async () => {
+
+    let walletIsEnabled = false;
+
+    try {
+        const walletChoice = whichWalletSelected;
+        if (walletChoice === "nami") {
+            walletIsEnabled = await window.cardano.nami.isEnabled();
+        } else if (walletChoice === "eternl") {
+            walletIsEnabled = await window.cardano.eternl.isEnabled();
+        } 
+
+        setWalletIsEnabled(walletIsEnabled);
+
+    } catch (err) {
+        console.log('checkIfWalletEnabled', err);
+    }
+
+    return walletIsEnabled
+  }
+
+
+  const enableWallet = async () => {
+
+    let walletAPI = undefined;
+  
+    try {
+  
+        const walletChoice = whichWalletSelected;
+        if (walletChoice === "nami") {
+            walletAPI = await window.cardano.nami.enable();
+        } else if (walletChoice === "eternl") {
+            walletAPI = await window.cardano.eternl.enable();
+        } 
+  
+        console.log('enableWallet', walletAPI);
+        console.log('enableWallet Get Balance', walletAPI?.getBalance());
+        setAPI(walletAPI);
+  
+  
+    } catch (err) {
+        console.log('enableWallet', err)
+    }
+  }
+
+
+  const handleWalletSelect = (obj) => {
+    const whichWalletSelected = obj.target.value
+    setWhichWalletSelected(whichWalletSelected)
+  }
 
 
   return (
@@ -106,25 +191,35 @@ const Home: NextPage = () => {
 
         <div className={styles.border}>
 
-            <p className={styles.card}>
+            <p>
               Connect to your wallet
             </p>
 
-            <p className={styles.card}>
-              Wallet Balance
+            <p className={styles.border}>
+              <input type="radio" id="eternl" name="wallet" value="eternl" onChange={handleWalletSelect}/>
+                <label>Eternl</label>
+            </p>
+            <p className={styles.border}>
+              <input type="radio" id="nami" name="wallet" value="nami" onChange={handleWalletSelect}/>
+                <label>Nami</label>
             </p>
 
-            <p className={styles.card}>
-              Mint Littercoin
-            </p>
 
-            <p className={styles.card}>
-              Burn Littercoin
-            </p>
+              <p className={styles.card}>
+                Wallet Balance
+              </p>
 
-            <p className={styles.card}>
-              Mint Authorized Merchant NFT
-            </p>
+              <p className={styles.card}>
+                Mint Littercoin
+              </p>
+
+              <p className={styles.card}>
+                Burn Littercoin
+              </p>
+
+              <p className={styles.card}>
+                Mint Authorized Merchant NFT
+              </p>
         </div>
 
       </main>
