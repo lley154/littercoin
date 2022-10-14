@@ -4,7 +4,9 @@ import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 import LittercoinInfo from '../components/LittercoinInfo';
-import { Address, Assets, Blockfrost, Constr, Data, Lucid, PlutusData, SpendingValidator } from "lucid-cardano"; // NPM
+import WalletInfo from '../components/WalletInfo';
+import { Address, Assets, Blockfrost, C, Constr, Data, Lucid, PlutusData, SpendingValidator } from "lucid-cardano"; // NPM
+//import { BigNum } from 'lucid-cardano/types/src/core/wasm_modules/cardano_message_signing_web/cardano_message_signing';
 
 
 const Home: NextPage = () => {
@@ -20,6 +22,11 @@ const Home: NextPage = () => {
   const [walletFound, setWalletFound] = useState(false);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [API, setAPI] = useState<undefined | any>(undefined);
+  const [wInfo, setWalletInfo] = useState(
+    {
+        balance : '',
+    }
+  )
 
 
   const matchingNumberScript: SpendingValidator = {
@@ -53,18 +60,39 @@ const Home: NextPage = () => {
   useEffect(() => {
     const checkWallet = async () => {
       
+        setWalletFound(checkIfWalletFound());
+
         if (checkIfWalletFound()) {
-            await checkIfWalletEnabled();
-            await enableWallet();
+            const walletEnabled = await checkIfWalletEnabled();
+            if (walletEnabled) {
+              setWalletIsEnabled(walletEnabled);
+
+              const api = await enableWallet();
+              setAPI(api);
+            }
         } else {
             //resetWalletInfo();         
         }
-
     }
     checkWallet()
   }, [whichWalletSelected]) 
 
 
+  useEffect(() => {
+    const updateWalletInfo = async () => {
+
+        if (walletIsEnabled) {
+            const _balance = await getBalance() as string;
+            setWalletInfo({
+              ...wInfo,
+              balance : _balance
+
+            })
+
+        }           
+    }
+    updateWalletInfo()
+}, [API]) 
  
 
   const fetchLittercoinInfo = async () => {
@@ -110,9 +138,7 @@ const Home: NextPage = () => {
     } else if (walletChoice === "eternl") {
         walletFound = !!window?.cardano?.eternl
     } 
-    console.log('checkIfWalletFound', walletFound);
-
-    setWalletFound(walletFound);        
+    console.log('checkIfWalletFound', walletFound);       
     return walletFound;
   }
 
@@ -127,8 +153,6 @@ const Home: NextPage = () => {
         } else if (walletChoice === "eternl") {
             walletIsEnabled = await window.cardano.eternl.isEnabled();
         } 
-
-        setWalletIsEnabled(walletIsEnabled);
 
     } catch (err) {
         console.log('checkIfWalletEnabled', err);
@@ -151,13 +175,27 @@ const Home: NextPage = () => {
             walletAPI = await window.cardano.eternl.enable();
         } 
   
-        console.log('enableWallet', walletAPI);
-        console.log('enableWallet Get Balance', walletAPI?.getBalance());
-        setAPI(walletAPI);
+        //console.log('enableWallet', walletAPI);
+        //console.log('enableWallet Get Balance', walletAPI?.getBalance());
+        //setAPI(walletAPI);
+        return walletAPI
   
   
     } catch (err) {
         console.log('enableWallet', err)
+    }
+  }
+
+  const getBalance = async () => {
+    try {
+        const balanceCBORHex = await API.getBalance();
+
+        const balanceAmount = C.Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin();
+        console.log('getBalance', balanceAmount.to_str());
+        return balanceAmount.to_str()
+
+    } catch (err) {
+        console.log('getBalance', err);
     }
   }
 
@@ -185,12 +223,9 @@ const Home: NextPage = () => {
             Littercoin Smart Contract
           </h4>
            <LittercoinInfo littercoinInfo={lcInfo}/>
-
         </div>
    
-
         <div className={styles.border}>
-
             <p>
               Connect to your wallet
             </p>
@@ -203,24 +238,25 @@ const Home: NextPage = () => {
               <input type="radio" id="nami" name="wallet" value="nami" onChange={handleWalletSelect}/>
                 <label>Nami</label>
             </p>
+    
+            <p className={styles.border}>
+              Wallet Balance
+              {walletIsEnabled && <WalletInfo walletInfo={wInfo}/>}
+            </p>
+    
+            <p className={styles.card}>
+              Mint Littercoin
+            </p>
 
+            <p className={styles.card}>
+              Burn Littercoin
+            </p>
 
-              <p className={styles.card}>
-                Wallet Balance
-              </p>
-
-              <p className={styles.card}>
-                Mint Littercoin
-              </p>
-
-              <p className={styles.card}>
-                Burn Littercoin
-              </p>
-
-              <p className={styles.card}>
-                Mint Authorized Merchant NFT
-              </p>
+            <p className={styles.card}>
+              Mint Authorized Merchant NFT
+            </p>
         </div>
+
 
       </main>
 

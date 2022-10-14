@@ -1,6 +1,4 @@
-
-
-const LittercoinInfo = ({ littercoinInfo}) => {
+const LittercoinInfo = ({ littercoinInfo }) => {
     return (
         <div>
             <p><b>Total Lovelace:</b> &nbsp; {littercoinInfo.adaAmount.toLocaleString()}</p>
