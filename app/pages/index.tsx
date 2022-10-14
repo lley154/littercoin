@@ -8,8 +8,9 @@ import { Address, Assets, Blockfrost, Constr, Data, Lucid, PlutusData, SpendingV
 
 const Home: NextPage = () => {
 
-  const [datum, setDatum] = useState(
+  const [lcInfo, setLCInfo] = useState(
     {
+        address : '',
         adaAmount: 0,
         lcAmount: 0,
     }
@@ -26,14 +27,17 @@ const Home: NextPage = () => {
 
   useEffect(() => {
       const getContractInfo = async () => {
-          const _datum : PlutusData = await fetchLittercoinInfo() as PlutusData
+          const _info = await fetchLittercoinInfo()
+          const _datum : PlutusData = _info?.datum as PlutusData
           const _ada : number = Object.values(_datum)[1][0] 
           const _lc : number = Object.values(_datum)[1][1]
+          const _address : string = _info?.address as string
           
-          setDatum({
-            ...datum,
+          setLCInfo({
+            ...lcInfo,
+            address : _address,
             adaAmount : _ada,
-            lcAmount : _lc ,
+            lcAmount : _lc,
           })
 
       }
@@ -71,7 +75,7 @@ const Home: NextPage = () => {
           const _datum : PlutusData = Data.from(utxo[i].datum as string)
           console.log("datum", _datum)
 
-          return _datum
+          return {datum: _datum, address: matchingNumberAddress}
         }
       }
     }
@@ -82,20 +86,20 @@ const Home: NextPage = () => {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Littercoin</title>
+        <title>Littercoin Preview Testnet</title>
         <meta name="description" content="Littercoin web tools page" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className={styles.main}>
-        <h2 className={styles.title}>
-          Littercoin
-        </h2>
+        <h3 className={styles.title}>
+          Littercoin Preview Testnet
+        </h3>
         <div className={styles.border}>
           <h4>
             Littercoin Smart Contract
           </h4>
-           <LittercoinInfo littercoinInfo={datum}/>
+           <LittercoinInfo littercoinInfo={lcInfo}/>
 
         </div>
    
