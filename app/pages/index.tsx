@@ -104,11 +104,14 @@ const Home: NextPage = () => {
   useEffect(() => {
     const checkWallet = async () => {
       
-        setWalletFound(checkIfWalletFound());
-
-        if (checkIfWalletFound()) {
+        const checkWalletFound = await checkIfWalletFound();
+        setWalletFound(checkWalletFound);
+ 
+          if (checkWalletFound) {
+            console.log("checkWalletFound", checkIfWalletFound)
             const walletEnabled = await checkIfWalletEnabled();
             if (walletEnabled) {
+              console.log("walletEnabled", walletEnabled)
               setWalletIsEnabled(walletEnabled);
 
               const api = await enableWallet();
@@ -178,7 +181,7 @@ const Home: NextPage = () => {
     setWhichWalletSelected(whichWalletSelected)
   }
 
-  const checkIfWalletFound = () => {
+  const checkIfWalletFound = async () => {
       
     let walletFound = false;
 
@@ -195,22 +198,24 @@ const Home: NextPage = () => {
   const checkIfWalletEnabled = async () => {
 
     let walletIsEnabled = false;
-    console.log("checkIfWalletEnabled")
+    console.log("checkIfWalletEnabled", whichWalletSelected)
+ 
 
     try {
         const walletChoice = whichWalletSelected;
         if (walletChoice === "nami") {
             walletIsEnabled = await window.cardano.nami.isEnabled();
-            return walletIsEnabled
+
         } else if (walletChoice === "eternl") {
             walletIsEnabled = await window.cardano.eternl.isEnabled();
-            return walletIsEnabled
+    
         } 
 
     } catch (err) {
         console.log('checkIfWalletEnabled', err);
     }
 
+    console.log("walletIsEnabled", walletIsEnabled)
     return walletIsEnabled
   }
 
@@ -324,6 +329,7 @@ const Home: NextPage = () => {
     const signedTx = await tx.sign().complete();
     const txHash = await signedTx.submit();
   
+    console.log("txHash", txHash)
     return txHash;
 
 }   
