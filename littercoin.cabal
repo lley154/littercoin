@@ -41,48 +41,31 @@ common lang
 library
     import: lang
     exposed-modules:
+      Littercoin.Deploy
       Littercoin.Types
       Littercoin.OnChain
-      Littercoin.OffChain
-      --Littercoin.Deploy
+    
     build-depends:
-      base >= 4.9 && < 5,
-      aeson -any,
-      base16-bytestring -any,
-      bytestring -any,
-      cardano-api -any,
-      containers -any,
-      freer-extras -any,
-      MissingH -any,
-      playground-common -any,
-      plutus-contract -any,
-      plutus-core -any,
-      plutus-ledger -any,
-      plutus-ledger-api -any,
-      plutus-ledger-constraints -any,
-      plutus-tx -any,
-      plutus-tx-plugin -any,
-      serialise -any,
-      text -any,
-      lens -any,
+           aeson
+         , base >= 4.9 && < 5
+         , bytestring -any
+         , base16-bytestring -any
+         , containers -any
+         , cardano-api -any
+         , data-default -any
+         , freer-extras -any
+         , lens -any
+         , MissingH -any
+         , openapi3 -any
+         , playground-common -any
+         , plutus-contract -any
+         , plutus-core -any
+         , plutus-ledger -any
+         , plutus-ledger-api -any
+         , plutus-ledger-constraints -any
+         , plutus-script-utils -any
+         , plutus-tx-plugin -any
+         , plutus-tx -any
+         , text -any
+         , serialise -any
     hs-source-dirs: src
-
-executable littercoin-pab
-  import: lang
-  main-is: Main-sim.hs
-  hs-source-dirs: pab
-  other-modules: PabContract
-  ghc-options:
-    -threaded
-  build-depends:
-    base >= 4.9 && < 5,
-    data-default -any,
-    plutus-contract -any,
-    plutus-pab -any,
-    littercoin -any,
-    aeson -any,
-    freer-simple -any,
-    prettyprinter -any,
-    freer-extras -any,
-    plutus-ledger -any,
-    openapi3 -any,
