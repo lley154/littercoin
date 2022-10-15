@@ -5,37 +5,25 @@ const MintNFT = ({ onMintNFT, nftAddress }) => {
     const [address, setAddress] = useState('')
 
     const onSubmit = (e) => {
-        // prevent full page refresh
-        e.preventDefault()
         
+        e.preventDefault() // prevent full page refresh
         onMintNFT({ address })
-        //setAddress(nftAddress)
     }
-
-    /*
-    useEffect(() => {
-        const getWalletAddress = async () => {
-            setAddress(nftAddress)
-        }
-
-        getWalletAddress()
-    }, [nftAddress])   
-    */
 
     return (
 
         <form onSubmit={onSubmit}>
             <div>
-                <label>NFT Wallet Address &nbsp;&nbsp;</label>
+                <b>NFT Wallet Address</b> &nbsp;&nbsp;
+                <br></br>
                 <input name='address' type='text' id='address' placeholder='Enter NFT Wallet Address' 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 />
-            </div>                      
+            </div>
+            <br/>                      
             <input type='submit' value='Mint Merchant NFT'/>
         </form>
-
-
     )
 }
 

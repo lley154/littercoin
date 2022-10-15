@@ -11,6 +11,11 @@ a {
   font-size: x-small;
 }
 
+input[type="text"] {
+  font-size: x-small;
+  width: 550px;
+}
+
 * {
   box-sizing: border-box;
 }
