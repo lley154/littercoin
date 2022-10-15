@@ -267,6 +267,7 @@ const Home: NextPage = () => {
 
     lucid.selectWallet(API);
 
+    // not needed
     const { paymentCredential } = lucid.utils.getAddressDetails(
       await lucid.wallet.address(),
     );
@@ -282,7 +283,8 @@ const Home: NextPage = () => {
     const unit: Unit = policyId + utf8ToHex(name);
     const addr : string = lucid.utils.getAddressDetails(nftAddress.address).address.bech32
     const qty = BigInt(1);  // only 1 NFT token
-    const pkh : string = paymentCredential?.hash as string
+    const pkh : string = paymentCredential?.hash as string  // not needed
+    const adminAddr = await lucid.wallet.address()
 
     const mintingPolicyAddress: Address = lucid.utils.validatorToAddress(
       mintingPolicy,
@@ -304,7 +306,7 @@ const Home: NextPage = () => {
     console.log("policyID", policyId)
     console.log("name", name)
     console.log("unit", unit)
-    console.log("addr", addr)
+    console.log("addr", adminAddr)
     console.log("qty", qty)
     console.log("pkh", pkh)
 
@@ -316,7 +318,7 @@ const Home: NextPage = () => {
       //.attachMintingPolicy(mintingPolicy)
       .readFrom([referenceScriptUtxo]) // spending utxo by reading plutusV2 from reference utxo
       .payToAddress(addr, { [unit]: qty }) // send userToken to user wallet address
-      .addSigner(addr)
+      .addSigner(adminAddr)
       .complete();
   
     const signedTx = await tx.sign().complete();
