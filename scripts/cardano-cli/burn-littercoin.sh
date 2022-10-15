@@ -55,29 +55,37 @@ redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn.json"
 redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn-lc.json"
 
 
-admin_pkh=$(cat $ADMIN_PKH)
 lc_amount=25
 lc_remaining=75
 
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
-admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+if [ "$ENV" == "devnet" ];
+then
+    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+    merchant_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
-# Pull the utxo with the merchant nft token
-admin_nft_utxo_tx_in=$(jq -r 'to_entries[] 
-| select(.value.value."'$nft_mint_mph'"."'$nft_token_name'") 
-| .key' $WORK/admin-utxo.json)
+    # Pull the utxo with the merchant nft token
+    merchant_nft_utxo_tx_in=$(jq -r 'to_entries[] 
+    | select(.value.value."'$nft_mint_mph'"."'$nft_token_name'") 
+    | .key' $WORK/admin-utxo.json)
 
+    # Pull the utxo with the littercoin tokens
+    merchant_lc_utxo_tx_in=$(jq -r 'to_entries[] 
+    | select(.value.value."'$lc_mint_mph'"."'$lc_token_name'") 
+    | .key' $WORK/admin-utxo.json)
 
-# Pull the utxo with the littercoin tokens
-admin_lc_utxo_tx_in=$(jq -r 'to_entries[] 
-| select(.value.value."'$lc_mint_mph'"."'$lc_token_name'") 
-| .key' $WORK/admin-utxo.json)
+else
+    merchant_utxo_addr=$MERCHANT_ADDR
+    merchant_nft_utxo_tx_in=$MERCHANT_UTXO_NFT_TOKEN
+    merchant_lc_utxo_tx_in=$MERCHANT_UTXO_LC_TOKEN
+    merchant_utxo_in=$MERCHANT_UTXO
+fi
+
 
 
 # Step 2: Get the littercoin smart contract which has the thread token
@@ -134,11 +142,11 @@ $CARDANO_CLI transaction build \
   --babbage-era \
   --cardano-mode \
   $network \
-  --change-address "$admin_utxo_addr" \
-  --tx-in-collateral "$ADMIN_COLLATERAL" \
-  --tx-in "$admin_utxo_in" \
-  --tx-in "$admin_nft_utxo_tx_in" \
-  --tx-in "$admin_lc_utxo_tx_in" \
+  --change-address "$merchant_utxo_addr" \
+  --tx-in-collateral "$MERCHANT_COLLATERAL" \
+  --tx-in "$merchant_utxo_in" \
+  --tx-in "$merchant_nft_utxo_tx_in" \
+  --tx-in "$merchant_lc_utxo_tx_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
@@ -151,8 +159,8 @@ $CARDANO_CLI transaction build \
   --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$withdraw_ada + 1 $nft_mint_mph.$nft_token_name" \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_remaining $lc_mint_mph.$lc_token_name" \
+  --tx-out "$MERCHANT_ADDR+$withdraw_ada + 1 $nft_mint_mph.$nft_token_name" \
+  --tx-out "$MERCHANT_ADDR+$MIN_ADA_OUTPUT_TX + $lc_remaining $lc_mint_mph.$lc_token_name" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/burn-lc-tx-alonzo.body
 
@@ -163,7 +171,7 @@ echo "tx has been built"
 $CARDANO_CLI transaction sign \
   --tx-body-file $WORK/burn-lc-tx-alonzo.body \
   $network \
-  --signing-key-file "${ADMIN_SKEY}" \
+  --signing-key-file "${MERCHANT_SKEY}" \
   --out-file $WORK/burn-lc-tx-alonzo.tx
 
 echo "tx has been signed"

@@ -60,11 +60,18 @@ lc_amount=100
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
-admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+if [ "$ENV" == "devnet" ];
+then
+    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+    admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+else
+    admin_utxo_in=$ADMIN_UTXO
+    admin_utxo_addr=$ADMIN_CHANGE_ADDR
+fi
+
 
 
 # Step 2: Get the littercoin smart contract which has the thread token
@@ -130,7 +137,7 @@ $CARDANO_CLI transaction build \
   --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
+  --tx-out "$USER_ADDR+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --metadata-json-file "$token_metadata_file_path" \

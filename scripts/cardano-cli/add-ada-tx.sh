@@ -52,7 +52,6 @@ lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada.json"
 
-admin_pkh=$(cat $ADMIN_PKH)
 ada_amount=10000000
 
 ################################################################
@@ -62,11 +61,17 @@ ada_amount=10000000
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
-admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+if [ "$ENV" == "devnet" ];
+then
+    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+    admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+else
+    admin_utxo_in=$ADMIN_UTXO
+    admin_utxo_addr=$ADMIN_CHANGE_ADDR
+fi
 
 
 # Step 2: Get the littercoin smart contract which has the thread token
@@ -118,7 +123,6 @@ $CARDANO_CLI transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
-  --tx-in-collateral "$ADMIN_COLLATERAL" \
   --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --protocol-params-file "$WORK/pparms.json" \

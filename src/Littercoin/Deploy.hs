@@ -48,16 +48,16 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "52ff8bc4279a68dced5b1b6b86953f080bf162dd479d52b5cc5952e56d8e4fc4"
+txIdBS = "49e480ebc9c39c0f2c9f2fba4050f38cad828e029bf7d4165f104b0b3e7b8db7"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
-txIdIdxInt = 1
+txIdIdxInt = 0
 
 -- Admin public key payment hash
 adminPubKeyHashBS :: B.ByteString
-adminPubKeyHashBS = "25dbf2cdb12487dbe244d48d236ccbd7eefc1a0320c9df638e153df9"
-
+adminPubKeyHashBS = "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
+                     
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
 

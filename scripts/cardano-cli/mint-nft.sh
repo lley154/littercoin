@@ -52,11 +52,19 @@ admin_pkh=$(cat $ADMIN_PKH)
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
-admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+if [ "$ENV" == "devnet" ];
+then
+    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+    admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+else
+    admin_utxo_in=$ADMIN_UTXO
+    admin_utxo_addr=$ADMIN_CHANGE_ADDR
+fi
+
+
 
 
 # Step 2: Build and submit the transaction
@@ -72,7 +80,7 @@ $CARDANO_CLI transaction build \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file "$redeemer_nft_file_path" \
   --policy-id "$nft_mint_mph" \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $nft_mint_mph.$nft_token_name" \
+  --tx-out "$MERCHANT_ADDR+$MIN_ADA_OUTPUT_TX + 1 $nft_mint_mph.$nft_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-nft-tx-alonzo.body

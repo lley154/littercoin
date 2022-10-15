@@ -68,9 +68,6 @@ nft_mint_script="$BASE/scripts/cardano-cli/$ENV/data/nft-minting-policy.plutus"
 nft_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$nft_mint_script" $network)
 
 
-admin_pkh=$(cat $ADMIN_PKH)
-
-
 echo "starting littercoin thread token mint"
 echo "Script: $thread_token_script"
 
@@ -81,11 +78,18 @@ echo "Script: $thread_token_script"
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
 # and one uxto for collateral
-admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+if [ "$ENV" == "devnet" ];
+then
+    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+    admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+else
+    admin_utxo_in=$ADMIN_UTXO
+    admin_utxo_addr=$ADMIN_CHANGE_ADDR
+fi
+
 
 
 # Step 2: Build and submit the transaction
@@ -108,7 +112,7 @@ $CARDANO_CLI transaction build \
   --tx-out "$nft_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$nft_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/tt-token-mint-tx-alonzo.body
+  --out-file $WORK/init-tx-alonzo.body
 
 # --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/token-mint-alonzo.costs"
 
@@ -117,15 +121,15 @@ $CARDANO_CLI transaction build \
 echo "tx has been built"
 
 $CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/tt-token-mint-tx-alonzo.body \
+  --tx-body-file $WORK/init-tx-alonzo.body \
   $network \
   --signing-key-file "${ADMIN_SKEY}" \
-  --out-file $WORK/tt-token-mint-tx-alonzo.tx
+  --out-file $WORK/init-tx-alonzo.tx
 
 echo "tx has been signed"
 
 echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/tt-token-mint-tx-alonzo.tx $network
+$CARDANO_CLI transaction submit --tx-file $WORK/init-tx-alonzo.tx $network
 
 
 
