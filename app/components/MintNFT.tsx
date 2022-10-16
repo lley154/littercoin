@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 const MintNFT = ({ onMintNFT }) => {
 
@@ -7,7 +7,7 @@ const MintNFT = ({ onMintNFT }) => {
     const onSubmit = (e) => {
         
         e.preventDefault() // prevent full page refresh
-        onMintNFT({ address })
+        onMintNFT( address )
     }
 
     return (
