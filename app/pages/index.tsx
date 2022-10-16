@@ -69,19 +69,20 @@ const Home: NextPage = () => {
   useEffect(() => {
     const checkWallet = async () => {
       
-        const checkWalletFound = await checkIfWalletFound(); 
-        if (checkWalletFound) {
-          const walletEnabled = await checkIfWalletEnabled();
-          if (walletEnabled) {
-            setWalletIsEnabled(walletEnabled);
-            const api = await enableWallet();
-            setAPI(api);
-          }
-        }
+      setWalletIsEnabled(await checkIfWalletFound());
     }
-    checkWallet()
+    checkWallet();
   }, [whichWalletSelected]); 
 
+  useEffect(() => {
+    const enableSelectedWallet = async () => {
+      if (walletIsEnabled) {
+        const api = await enableWallet();
+        setAPI(api);
+      }
+    }
+    enableSelectedWallet();
+  }, [walletIsEnabled]); 
 
   useEffect(() => {
     const updateWalletInfo = async () => {
@@ -96,6 +97,7 @@ const Home: NextPage = () => {
     }
     updateWalletInfo();
   }, [API]);
+
 
   useEffect(() => {
     const updateLittercoinInfo = async () => {
