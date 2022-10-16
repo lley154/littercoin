@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const MintNFT = ({ onMintNFT, nftAddress }) => {
+const MintNFT = ({ onMintNFT }) => {
 
     const [address, setAddress] = useState('')
 
