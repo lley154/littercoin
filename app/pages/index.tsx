@@ -44,10 +44,12 @@ const Home: NextPage = () => {
         balance : '',
     }
   )
+  const [tx, setTx] = useState(
+    {
+        txId : '',
+    }
+  )
 
-  //const [nftAddress, setNFTAddress] = useState('');
-  //const [lcAddress, setLCAddress] = useState('');
- 
   /*
   const lcValidatorScript: SpendingValidator = {
     type: "PlutusV2",
@@ -119,7 +121,7 @@ const Home: NextPage = () => {
     }
     updateWalletInfo()
 }, [API]) 
- 
+
 
   const fetchLittercoinInfo = async () => {
 
@@ -240,17 +242,12 @@ const Home: NextPage = () => {
 
     const address = params[0];
     const lcQty = params[1];
-    console.log("mintLC", address);
-    console.log("lcQty", lcQty);
-
     const lucid = await Lucid.new(
       new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
       "Preview",
     );
-
     const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2"
     const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3"
-
     const _info = await fetchLittercoinInfo();
     const _datum = _info?.datum
     const oldDatum = Data.to(_datum);
@@ -267,18 +264,6 @@ const Home: NextPage = () => {
     const policyId = "6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4"
     const lcUnit: Unit = policyId + utf8ToHex(lcTokenName);
     const lcMintAddress : string = "addr_test1wp4y6ww4fkdy2fn642ghcutwcmphy4pkzy0nhumynecjm3qjr9eau" // lc minting policy address
-
-    console.log("oldDatum", oldDatum)
-    console.log("adminAddr", adminAddr)
-    console.log("oldAdaAmount", oldAdaAmount)
-    console.log("oldLCAmount", oldLCAmount)
-    console.log("newLCAmount", newLCAmount)
-    console.log("newDatum", newDatum)
-    console.log("mintRedeemer", mintRedeemer)
-    console.log("validatorRedeemer", validatorRedeemer)
-    console.log("lcTokenName", lcTokenName)
-    console.log("lcUnit", lcUnit)
-    console.log("lcMintAddress", lcMintAddress)
   
     const metaData : Json = {
         "version": "1.0",
@@ -299,8 +284,7 @@ const Home: NextPage = () => {
           }
         }
       }
-  
- 
+   
     // Validator UTXO reference script (for reference script and spending utxo)
     const referenceLCValidatorUtxo = (await lucid.utxosAt(lcValidatorScriptAddress)).find(
       (utxo) => Boolean(utxo.scriptRef),
@@ -312,24 +296,18 @@ const Home: NextPage = () => {
     );
     if (!lcValidatorUtxo) throw new Error("LC Validator Spending script utxo not found");
 
-
    // Littercoin UTXO (for reference script)
    const referenceLCMintUtxo = (await lucid.utxosAt(lcMintAddress)).find(
      (utxo) => Boolean(utxo.scriptRef),
    );
    if (!referenceLCMintUtxo) throw new Error("LC Minting Reference script not found");
 
-  console.log("referenceLCValidatorUtxo", referenceLCValidatorUtxo)
-  console.log("lcValidatorUtxo", lcValidatorUtxo)
-  console.log("referenceLCMintUtxo", referenceLCMintUtxo)
-
-
   const tx = await lucid
     .newTx()
-    .readFrom([referenceLCValidatorUtxo]) // spending utxo by reading plutusV2 from reference utxo
+    .readFrom([referenceLCValidatorUtxo]) // spending utxo by reading plutusV2 validator script from reference utxo
     .collectFrom([lcValidatorUtxo], validatorRedeemer)
     .mintAssets({ [lcUnit]: lcQty }, mintRedeemer) // mint littercoin token
-    .readFrom([referenceLCMintUtxo]) // spending utxo by reading plutusV2 from reference utxo
+    .readFrom([referenceLCMintUtxo]) // spending utxo by reading plutusV2 minting script from reference utxo
     .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(oldAdaAmount), [threadToken]: BigInt(1), })
     .payToAddress(address, { [lcUnit]: lcQty }) // send littercoin token to user wallet address
     .addSigner(adminAddr)
@@ -337,11 +315,9 @@ const Home: NextPage = () => {
     .complete();
 
   const signedTx = await tx.sign().complete();
-
   const txHash = await signedTx.submit();
-
   console.log("txHash", txHash);
-  return txHash;
+  setTx({ txId: txHash });
  
 } 
 
@@ -391,9 +367,8 @@ const Home: NextPage = () => {
   
     const signedTx = await tx.sign().complete();
     const txHash = await signedTx.submit();
-
     console.log("txHash", txHash)
-    return txHash;
+    setTx({ txId: txHash });
 }   
 
   return (
@@ -430,8 +405,8 @@ const Home: NextPage = () => {
                 <label>Nami</label>
             </p>
           </div>
-
           {walletIsEnabled && <div className={styles.border}><WalletInfo walletInfo={wInfo}/></div>}
+          {tx.txId && <div className={styles.border}><b>Transaction Success!!!</b><p><a href={"https://preview.cexplorer.io/tx/" + tx.txId} target="_blank" rel="noopener noreferrer" >{tx.txId}</a></p></div>}
           {walletIsEnabled && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
           {walletIsEnabled && <div className={styles.border}><b>Burn Littercoin</b></div>}
           {walletIsEnabled && <div className={styles.border}><MintNFT onMintNFT={mintNFT}/> </div>}
