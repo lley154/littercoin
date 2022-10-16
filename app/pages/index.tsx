@@ -10,7 +10,7 @@ import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
 
 import WalletInfo from '../components/WalletInfo';
-import {   
+import {  
   TxHash,
   Unit,
   utf8ToHex,
@@ -103,9 +103,7 @@ const Home: NextPage = () => {
     const updateLittercoinInfo = async () => {
 
       const sleep = (ms : number) => new Promise(r => setTimeout(r, ms));
-      console.log("start delay")
       await sleep(30000);  // wait for the blockchain tx to propogate
-      console.log("end delay")
       
       const _info = await fetchLittercoinInfo();
       const _datum : PlutusData = _info?.datum as PlutusData;
@@ -155,7 +153,7 @@ const Home: NextPage = () => {
         // If found, then convert the CBOR represntation to PlutusData type
         if (utxo[i].datum != undefined) {
           const _datum : PlutusData = Data.from(utxo[i].datum as string);
-          console.log("datum found", _datum);
+          //console.log("datum found", _datum);
           return {datum: _datum, address: lcValidatorScriptAddress};
         }
       }
@@ -194,7 +192,7 @@ const Home: NextPage = () => {
     
         } 
     } catch (err) {
-        console.log('checkIfWalletEnabled', err);
+        console.log('checkIfWalletEnabled error', err);
     }
     return walletIsEnabled;
   }
@@ -213,7 +211,7 @@ const Home: NextPage = () => {
         } 
         return walletAPI 
     } catch (err) {
-        console.log('enableWallet', err);
+        console.log('enableWallet error', err);
     }
   }
 
@@ -221,10 +219,17 @@ const Home: NextPage = () => {
     try {
         const balanceCBORHex = await API.getBalance();
         const balanceAmount = C.Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin();
-        console.log('getBalance', balanceAmount.to_str());
-        return balanceAmount.to_str();
+        const collateralCBORHex = await API.experimental.getCollateral();
+        const collaterAmount = C.Value.from_bytes(Buffer.from(collateralCBORHex, "hex")).coin();
+        const wBal : BigInt = BigInt(balanceAmount.to_str());
+        const cBal : BigInt = BigInt(collaterAmount.to_str());
+        const total : Number = Number(wBal) - Number(cBal);
+    
+        console.log('getBalance', wBal);
+        console.log('getCol', cBal);
+        return total.toLocaleString();
     } catch (err) {
-        console.log('getBalance', err);
+        console.log('getBalance error', err);
     }
   }
 
