@@ -16,6 +16,12 @@ input[type="text"] {
   width: 550px;
 }
 
+input[type="number"] {
+  font-size: small;
+  width: 100px;
+}
+
+
 * {
   box-sizing: border-box;
 }

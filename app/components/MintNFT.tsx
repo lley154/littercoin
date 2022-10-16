@@ -14,14 +14,14 @@ const MintNFT = ({ onMintNFT }) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>NFT Wallet Address</b> &nbsp;&nbsp;
+                <b>Merchant Wallet Address</b> 
                 <br></br>
-                <input name='address' type='text' id='address' placeholder='Enter NFT Wallet Address' 
+                <input name='address' type='text' id='address' placeholder='Enter Merchant Wallet Address' 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 />
             </div>
-            <br/>                      
+            <br></br>                     
             <input type='submit' value='Mint Merchant NFT'/>
         </form>
     )

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import styles from '../styles/Home.module.css'
 
 const AddAda = ({ onAddAda }) => {
 
@@ -15,9 +16,9 @@ const AddAda = ({ onAddAda }) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Add Lovelace (Ada) to the Littercoin Smart Contract</b> &nbsp;&nbsp;
+                <b>Add Lovelace (Ada) to the Littercoin Smart Contract</b>
                 <br></br>
-                <input name='qty' type='text' id='qty' placeholder='Enter Amount of Lovelace to add' 
+                <input name='qty' type='number' id='qty' placeholder='Enter Amount of Lovelace to add' 
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 />

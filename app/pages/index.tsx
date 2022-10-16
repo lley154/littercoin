@@ -2,16 +2,15 @@
 import AddAda from '../components/AddAda';
 import BurnLC from '../components/BurnLC';
 import Head from 'next/head'
-import styles from '../styles/Home.module.css'
 import LittercoinInfo from '../components/LittercoinInfo';
-import LittercoinRatio from '../components/LittercoinRatio';
 import MintLC from '../components/MintLC';
 import MintNFT from '../components/MintNFT';
 import type { NextPage } from 'next'
+import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
 
 import WalletInfo from '../components/WalletInfo';
-import { Address,   
+import {   
   TxHash,
   Unit,
   utf8ToHex,
@@ -20,11 +19,10 @@ import { Address,
   Constr, 
   Data,
   Json, 
-  Lovelace,
   Lucid, 
   PlutusData, 
-  SpendingValidator,
   } from "lucid-cardano"; // NPM
+import { syncBuiltinESMExports } from 'module';
 
 const Home: NextPage = () => {
 
@@ -35,22 +33,12 @@ const Home: NextPage = () => {
         lcAmount: 0,
         ratio: 0,
     }
-  )
-  const [adaLCRatio, setAdaLCRatio] = useState<number>(0);
+  );
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
-  const [walletFound, setWalletFound] = useState(false);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [API, setAPI] = useState<undefined | any>(undefined);
-  const [wInfo, setWalletInfo] = useState(
-    {
-        balance : '',
-    }
-  )
-  const [tx, setTx] = useState(
-    {
-        txId : '',
-    }
-  )
+  const [wInfo, setWalletInfo] = useState({ balance : ''});
+  const [tx, setTx] = useState({ txId : '' });
 
   /*
   const lcValidatorScript: SpendingValidator = {
@@ -73,41 +61,26 @@ const Home: NextPage = () => {
             address : _address,
             adaAmount : _ada,
             lcAmount : _lc,
-          })
+          });
       }
-      getContractInfo()
-  }, [])  
+      getContractInfo();
+  }, []);  
 
-  useEffect(() => {
-        
-      const _ratio = lcInfo.adaAmount / lcInfo.lcAmount
-      setAdaLCRatio(_ratio)
-      console.log("useEffect for ratio", _ratio)
-
-  }, [lcInfo.adaAmount, lcInfo.lcAmount])  
-
-
-  
   useEffect(() => {
     const checkWallet = async () => {
       
-        const checkWalletFound = await checkIfWalletFound();
-        setWalletFound(checkWalletFound);
- 
-          if (checkWalletFound) {
-            console.log("checkWalletFound", checkIfWalletFound)
-            const walletEnabled = await checkIfWalletEnabled();
-            if (walletEnabled) {
-              console.log("walletEnabled", walletEnabled)
-              setWalletIsEnabled(walletEnabled);
-
-              const api = await enableWallet();
-              setAPI(api);
-            }
+        const checkWalletFound = await checkIfWalletFound(); 
+        if (checkWalletFound) {
+          const walletEnabled = await checkIfWalletEnabled();
+          if (walletEnabled) {
+            setWalletIsEnabled(walletEnabled);
+            const api = await enableWallet();
+            setAPI(api);
           }
+        }
     }
     checkWallet()
-  }, [whichWalletSelected]) 
+  }, [whichWalletSelected]); 
 
 
   useEffect(() => {
@@ -118,17 +91,44 @@ const Home: NextPage = () => {
             setWalletInfo({
               ...wInfo,
               balance : _balance
-            })
+            });
         }           
     }
-    updateWalletInfo()
-}, [API]) 
+    updateWalletInfo();
+  }, [API]);
+
+  useEffect(() => {
+    const updateLittercoinInfo = async () => {
+
+      const sleep = (ms : number) => new Promise(r => setTimeout(r, ms));
+      console.log("start delay")
+      await sleep(30000);  // wait for the blockchain tx to propogate
+      console.log("end delay")
+      
+      const _info = await fetchLittercoinInfo();
+      const _datum : PlutusData = _info?.datum as PlutusData;
+      const _ada : number = Object.values(_datum)[1][0]; 
+      const _lc : number = Object.values(_datum)[1][1];
+      const _address : string = _info?.address as string;
+      
+      setLCInfo({
+        ...lcInfo,
+        address : _address,
+        adaAmount : _ada,
+        lcAmount : _lc,
+      });
+    }
+    updateLittercoinInfo();
+  }, [tx]);
+
 
 
   const fetchLittercoinInfo = async () => {
 
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
+      
+      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", api_key),
       "Preview",
     );
 
@@ -138,11 +138,11 @@ const Home: NextPage = () => {
     );
     */
 
-    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2"
+    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2";
     const utxo = await lucid.utxosAt(lcValidatorScriptAddress);
     
     // The threadtoken
-    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3"
+    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3";
     
     // Iterate through the list of utxos
     for(let i=0; i<utxo.length; i++){
@@ -152,10 +152,9 @@ const Home: NextPage = () => {
 
         // If found, then convert the CBOR represntation to PlutusData type
         if (utxo[i].datum != undefined) {
-          const _datum : PlutusData = Data.from(utxo[i].datum as string)
-          console.log("datum", _datum)
-
-          return {datum: _datum, address: lcValidatorScriptAddress}
+          const _datum : PlutusData = Data.from(utxo[i].datum as string);
+          console.log("datum found", _datum);
+          return {datum: _datum, address: lcValidatorScriptAddress};
         }
       }
     }
@@ -164,7 +163,7 @@ const Home: NextPage = () => {
   // user selects what wallet to connect to
   const handleWalletSelect = (obj) => {
     const whichWalletSelected = obj.target.value
-    setWhichWalletSelected(whichWalletSelected)
+    setWhichWalletSelected(whichWalletSelected);
   }
 
   const checkIfWalletFound = async () => {
@@ -173,20 +172,16 @@ const Home: NextPage = () => {
 
     const walletChoice = whichWalletSelected;
     if (walletChoice === "nami") {
-        walletFound = !!window?.cardano?.nami
+        walletFound = !!window?.cardano?.nami;
     } else if (walletChoice === "eternl") {
-        walletFound = !!window?.cardano?.eternl
+        walletFound = !!window?.cardano?.eternl;
     } 
-    console.log('checkIfWalletFound', walletFound);       
     return walletFound;
   }
 
   const checkIfWalletEnabled = async () => {
 
     let walletIsEnabled = false;
-    console.log("checkIfWalletEnabled", whichWalletSelected)
- 
-
     try {
         const walletChoice = whichWalletSelected;
         if (walletChoice === "nami") {
@@ -196,21 +191,17 @@ const Home: NextPage = () => {
             walletIsEnabled = await window.cardano.eternl.isEnabled();
     
         } 
-
     } catch (err) {
         console.log('checkIfWalletEnabled', err);
     }
-
-    console.log("walletIsEnabled", walletIsEnabled)
-    return walletIsEnabled
+    return walletIsEnabled;
   }
 
 
   const enableWallet = async () => {
 
     let walletAPI = undefined;
-  
-    try {
+      try {
   
         const walletChoice = whichWalletSelected;
         if (walletChoice === "nami") {
@@ -218,23 +209,18 @@ const Home: NextPage = () => {
         } else if (walletChoice === "eternl") {
             walletAPI = await window.cardano.eternl.enable();
         } 
-
-        return walletAPI
-  
-  
+        return walletAPI 
     } catch (err) {
-        console.log('enableWallet', err)
+        console.log('enableWallet', err);
     }
   }
 
   const getBalance = async () => {
     try {
         const balanceCBORHex = await API.getBalance();
-
         const balanceAmount = C.Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin();
         console.log('getBalance', balanceAmount.to_str());
-        return balanceAmount.to_str()
-
+        return balanceAmount.to_str();
     } catch (err) {
         console.log('getBalance', err);
     }
@@ -244,28 +230,29 @@ const Home: NextPage = () => {
 
     const address = params[0];
     const lcQty = params[1];
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
+      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", api_key),
       "Preview",
     );
-    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2"
-    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3"
+    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2";
+    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3";
     const _info = await fetchLittercoinInfo();
-    const _datum = _info?.datum
+    const _datum = _info?.datum;
     const oldDatum = Data.to(_datum as PlutusData);
 
     lucid.selectWallet(API);
-    const adminAddr = await lucid.wallet.address()
-    const oldAdaAmount = lcInfo.adaAmount
-    const oldLCAmount : number = lcInfo.lcAmount
+    const adminAddr = await lucid.wallet.address();
+    const oldAdaAmount = lcInfo.adaAmount;
+    const oldLCAmount : number = lcInfo.lcAmount;
     const newLCAmount : number = Number(oldLCAmount) + Number(lcQty);
     const newDatum = Data.to(new Constr(0, [BigInt(oldAdaAmount), BigInt(newLCAmount)]));
     const mintRedeemer = Data.to(new Constr(0, [new Constr(1, []),BigInt(oldAdaAmount),BigInt(0)]));
     const validatorRedeemer = Data.to(new Constr(0, [BigInt(lcQty)]));
-    const lcTokenName = "Littercoin"
-    const policyId = "6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4"
+    const lcTokenName = "Littercoin";
+    const policyId = "6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4";
     const lcUnit: Unit = policyId + utf8ToHex(lcTokenName);
-    const lcMintAddress : string = "addr_test1wp4y6ww4fkdy2fn642ghcutwcmphy4pkzy0nhumynecjm3qjr9eau" // lc minting policy address
+    const lcMintAddress : string = "addr_test1wp4y6ww4fkdy2fn642ghcutwcmphy4pkzy0nhumynecjm3qjr9eau"; // lc minting policy address
   
     const metaData : Json = {
         "version": "1.0",
@@ -285,7 +272,7 @@ const Home: NextPage = () => {
             "image": "ipfs/QmT3rYtkkw4wFBP5SfxENAfDY9NuYoZAz2HVng4cQqnVZe"
           }
         }
-      }
+      };
    
     // Validator UTXO reference script 
     const referenceLCValidatorUtxo = (await lucid.utxosAt(lcValidatorScriptAddress)).find(
@@ -326,33 +313,33 @@ const Home: NextPage = () => {
 
   const burnLC = async (lcQty) : Promise<TxHash> => {
 
-    console.log("qty", lcQty)
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
+      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", api_key),
       "Preview",
     );
-    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2"
-    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3"
-    const merchantToken = "31940b3430b1b0922b5ed146da240890e2b00129766b819d03388eba4c6974746572636f696e20417070726f766564204d65726368616e74"
+    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2";
+    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3";
+    const merchantToken = "31940b3430b1b0922b5ed146da240890e2b00129766b819d03388eba4c6974746572636f696e20417070726f766564204d65726368616e74";
     const _info = await fetchLittercoinInfo();
-    const _datum = _info?.datum
+    const _datum = _info?.datum;
     const oldDatum = Data.to(_datum as PlutusData);
 
     lucid.selectWallet(API);
     const merchAddr = await lucid.wallet.address()
-    const oldAdaAmount = lcInfo.adaAmount
-    const oldLCAmount : number = lcInfo.lcAmount
+    const oldAdaAmount = lcInfo.adaAmount;
+    const oldLCAmount : number = lcInfo.lcAmount;
     const newLCAmount : number = Number(oldLCAmount) - Number(lcQty);
-    const ratio : number = lcInfo.adaAmount / lcInfo.lcAmount
-    const withdrawAda : number = Number(ratio) * Number(lcQty)
+    const ratio : number = lcInfo.adaAmount / lcInfo.lcAmount;
+    const withdrawAda : number = Number(ratio) * Number(lcQty);
     const newAdaAmount : number = Number(oldAdaAmount) - Number(withdrawAda);
     const newDatum = Data.to(new Constr(0, [BigInt(newAdaAmount), BigInt(newLCAmount)]));
     const mintRedeemer = Data.to(new Constr(0, [new Constr(0, []),BigInt(newAdaAmount),BigInt(withdrawAda)]));
     const validatorRedeemer = Data.to(new Constr(1, [BigInt(lcQty)]));
-    const lcTokenName = "Littercoin"
-    const policyId = "6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4"
+    const lcTokenName = "Littercoin";
+    const policyId = "6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4";
     const lcUnit: Unit = policyId + utf8ToHex(lcTokenName);
-    const lcMintAddress : string = "addr_test1wp4y6ww4fkdy2fn642ghcutwcmphy4pkzy0nhumynecjm3qjr9eau" // lc minting policy address
+    const lcMintAddress : string = "addr_test1wp4y6ww4fkdy2fn642ghcutwcmphy4pkzy0nhumynecjm3qjr9eau"; // lc minting policy address
   
     // Validator UTXO reference script
     const referenceLCValidatorUtxo = (await lucid.utxosAt(lcValidatorScriptAddress)).find(
@@ -392,8 +379,9 @@ const Home: NextPage = () => {
 
   const mintNFT = async (nftAddress) : Promise<TxHash> => {
 
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
+      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", api_key),
       "Preview",
     );
 
@@ -412,12 +400,12 @@ const Home: NextPage = () => {
     const addr : string = lucid.utils.getAddressDetails(nftAddress.address).address.bech32
     */
 
-    const policyId = "31940b3430b1b0922b5ed146da240890e2b00129766b819d03388eba"
+    const policyId = "31940b3430b1b0922b5ed146da240890e2b00129766b819d03388eba";
     const name: string = "Littercoin Approved Merchant";
     const unit: Unit = policyId + utf8ToHex(name);
-    const addr : string = "addr_test1wqcegze5xzcmpy3ttmg5dk3ypzgw9vqp99mxhqvaqvugawsv6qrzk" // minting policy address
+    const addr : string = "addr_test1wqcegze5xzcmpy3ttmg5dk3ypzgw9vqp99mxhqvaqvugawsv6qrzk"; // minting policy address
     const qty = BigInt(1);  // only 1 NFT token
-    const adminAddr = await lucid.wallet.address()
+    const adminAddr = await lucid.wallet.address();
     const mintRedeemer = Data.to(new Constr(0, [new Constr(1, []),BigInt(0),BigInt(0)]));
     const referenceScriptUtxo = (await lucid.utxosAt(addr)).find(
       (utxo) => Boolean(utxo.scriptRef),
@@ -434,6 +422,7 @@ const Home: NextPage = () => {
   
     const signedTx = await tx.sign().complete();
     const txHash = await signedTx.submit();
+    console.log("txHash", txHash);
     setTx({ txId: txHash });
     return txHash;
   }   
@@ -441,20 +430,20 @@ const Home: NextPage = () => {
 
   const addAda = async (adaQty) : Promise<TxHash> => {
 
-    console.log("qty", adaQty)
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", "previewahbEiO6qnhyFm5a9Q1N55LabbIX8ZIde"),
+      new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", api_key),
       "Preview",
     );
-    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2"
-    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3"
+    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2";
+    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3";
     const _info = await fetchLittercoinInfo();
-    const _datum = _info?.datum
+    const _datum = _info?.datum;
     const oldDatum = Data.to(_datum as PlutusData);
 
     lucid.selectWallet(API);
-    const oldAdaAmount = lcInfo.adaAmount
-    const oldLCAmount : number = lcInfo.lcAmount
+    const oldAdaAmount = lcInfo.adaAmount;
+    const oldLCAmount : number = lcInfo.lcAmount;
     const newAdaAmount : number = Number(oldAdaAmount) + Number(adaQty);
     const newDatum = Data.to(new Constr(0, [BigInt(newAdaAmount), BigInt(oldLCAmount)]));
     const validatorRedeemer = Data.to(new Constr(2, [BigInt(adaQty)]));
@@ -502,7 +491,6 @@ const Home: NextPage = () => {
             Littercoin Smart Contract
           </h4>
            <LittercoinInfo littercoinInfo={lcInfo}/>
-           <LittercoinRatio littercoinRatio={adaLCRatio}/>
         </div>
    
         <div className={styles.borderwallet}>
@@ -521,7 +509,7 @@ const Home: NextPage = () => {
           </div>
             {walletIsEnabled && <div className={styles.border}><WalletInfo walletInfo={wInfo}/></div>}
             {tx.txId && <div className={styles.border}><b>Transaction Success!!!</b>
-            <p><a href={"https://preview.cexplorer.io/tx/" + tx.txId} target="_blank" rel="noopener noreferrer" >{tx.txId}</a></p>
+            <p>TxId &nbsp;&nbsp;<a href={"https://preview.cexplorer.io/tx/" + tx.txId} target="_blank" rel="noopener noreferrer" >{tx.txId}</a></p>
             <p>Please wait until the transaction is confirmed on the blockchain before doing another transaction</p>
           </div>}
           {walletIsEnabled && <div className={styles.border}><AddAda onAddAda={addAda}/></div>}
