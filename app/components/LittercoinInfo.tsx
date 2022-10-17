@@ -1,4 +1,4 @@
-const LittercoinInfo = ({ littercoinInfo }) => {
+const LittercoinInfo = ({ littercoinInfo } : any) => {
 
     var ratio : BigInt = BigInt(0);
     const lc : BigInt = BigInt(littercoinInfo.lcAmount);

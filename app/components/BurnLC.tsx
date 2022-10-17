@@ -1,10 +1,10 @@
 import { useState } from 'react'
 
-const BurnLC = ({ onBurnLC }) => {
+const BurnLC = ({ onBurnLC } : any) => {
 
     const [qty, setQty] = useState('')
 
-    const onSubmit = (e) => {
+    const onSubmit = (e : any) => {
         
         e.preventDefault() // prevent full page refresh
         onBurnLC( qty )

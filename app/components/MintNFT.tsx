@@ -1,10 +1,10 @@
 import { useState } from 'react'
 
-const MintNFT = ({ onMintNFT }) => {
+const MintNFT = ({ onMintNFT } : any) => {
 
     const [address, setAddress] = useState('')
 
-    const onSubmit = (e) => {
+    const onSubmit = (e : any) => {
         
         e.preventDefault() // prevent full page refresh
         onMintNFT( address )

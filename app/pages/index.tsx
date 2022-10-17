@@ -161,7 +161,7 @@ const Home: NextPage = () => {
   }
 
   // user selects what wallet to connect to
-  const handleWalletSelect = (obj) => {
+  const handleWalletSelect = (obj : any) => {
     const whichWalletSelected = obj.target.value
     setWhichWalletSelected(whichWalletSelected);
   }
@@ -226,7 +226,7 @@ const Home: NextPage = () => {
     }
   }
 
-  const mintLC = async (params) : Promise<TxHash> => {
+  const mintLC = async (params : any) : Promise<TxHash> => {
 
     const address = params[0];
     const lcQty = params[1];
@@ -311,7 +311,7 @@ const Home: NextPage = () => {
     return txHash;
    } 
 
-  const burnLC = async (lcQty) : Promise<TxHash> => {
+  const burnLC = async (lcQty : any) : Promise<TxHash> => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
@@ -377,7 +377,7 @@ const Home: NextPage = () => {
   } 
 
 
-  const mintNFT = async (nftAddress) : Promise<TxHash> => {
+  const mintNFT = async (nftAddress : any) : Promise<TxHash> => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(
@@ -428,7 +428,7 @@ const Home: NextPage = () => {
   }   
 
 
-  const addAda = async (adaQty) : Promise<TxHash> => {
+  const addAda = async (adaQty : any) : Promise<TxHash> => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const lucid = await Lucid.new(

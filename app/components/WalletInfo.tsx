@@ -1,4 +1,4 @@
-const WalletInfo = ({ walletInfo }) => {
+const WalletInfo = ({ walletInfo } : any) => {
 
     return (
         <div><b>Wallet Balance In Lovelace</b>

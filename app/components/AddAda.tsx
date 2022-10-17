@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import styles from '../styles/Home.module.css'
 
-const AddAda = ({ onAddAda }) => {
+const AddAda = ({ onAddAda } : any) => {
 
     const [qty, setQty] = useState('')
 
-    const onSubmit = (e) => {
+    const onSubmit = (e : any) => {
         
         e.preventDefault() // prevent full page refresh
         onAddAda(qty)

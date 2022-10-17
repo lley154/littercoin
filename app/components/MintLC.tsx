@@ -1,11 +1,11 @@
 import { useState } from 'react'
 
-const MintLC = ({ onMintLC }) => {
+const MintLC = ({ onMintLC } : any) => {
 
     const [address, setAddress] = useState('')
     const [qty, setQty] = useState('')
 
-    const onSubmit = (e) => {
+    const onSubmit = (e : any) => {
         
         e.preventDefault() // prevent full page refresh
         onMintLC([address, qty])
