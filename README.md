@@ -7,18 +7,18 @@
 
 ## Clone the repository
 ```
-git glone https://github.com/lley154/littercoin.git
+git clone https://github.com/lley154/littercoin.git
 ```
 
 ## Setting up to test the littercoin smart contracts
 ```
-[~/src/]$ export NEXT_PUBLIC_BLOCKFROST_API_KEY=>>>Your API Key Here <<<
-[~/src/]$ npm install --global yarn
-[~/src/]$ cd littercoin/app
-[~/src/littercoin/app]$ npm install react next react-router react-dom
-[~/src/littercoin/app]$ npm install create-next-app
-[~/src/littercoin/app]$ npm install lucid-cardano
-[~/src/littercoin/app]$ yarn dev
+export NEXT_PUBLIC_BLOCKFROST_API_KEY=>>>Your API Key Here <<<
+sudo npm install --global yarn
+cd littercoin/app
+[littercoin/app]$ npm install react next react-router react-dom
+[littercoin/app]$ npm install create-next-app
+[littercoin/app]$ npm install lucid-cardano
+[littercoin/app]$ yarn dev
 yarn run v1.22.19
 $ next dev
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
