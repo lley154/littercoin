@@ -79,8 +79,4 @@ The new plutus scripts will be created in the littercoin/deploy directory
 
 ## Support/Issues/Community
 
-Issues can be filed in the [GitHub Issue tracker](tbd).
-
-For more interactive discussion, you can join the [Discord](tbd).
-
-Thanks!
+[Slack](https://join.slack.com/t/openlittermap/shared_invite/zt-fdctasud-mu~OBQKReRdC9Ai9KgGROw) is our main medium of communication and collaboration. Power-users, newcomers, developers, a community of over 400 members - we're all there. 
