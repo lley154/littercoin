@@ -5,6 +5,12 @@
 ![Littercoin High Level Design](/images/littercoin_design.png)
 
 
+## The Littercoin Smart Contract 
+
+The Littercoin smart contract can be tested directly on the hosted site [here](https://littercoin-smart-contract.vercel.app/)
+or it can be downloaded and follow setup steps below.
+
+
 ## Clone the repository
 ```
 git clone https://github.com/lley154/littercoin.git
