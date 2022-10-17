@@ -219,15 +219,8 @@ const Home: NextPage = () => {
     try {
         const balanceCBORHex = await API.getBalance();
         const balanceAmount = C.Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin();
-        const collateralCBORHex = await API.experimental.getCollateral();
-        const collaterAmount = C.Value.from_bytes(Buffer.from(collateralCBORHex, "hex")).coin();
-        const wBal : BigInt = BigInt(balanceAmount.to_str());
-        const cBal : BigInt = BigInt(collaterAmount.to_str());
-        const total : Number = Number(wBal) - Number(cBal);
-    
-        console.log('getBalance', wBal);
-        console.log('getCol', cBal);
-        return total.toLocaleString();
+        const walletBalance : BigInt = BigInt(balanceAmount.to_str());
+        return walletBalance.toLocaleString();
     } catch (err) {
         console.log('getBalance error', err);
     }
