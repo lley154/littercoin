@@ -53,9 +53,18 @@ redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint.json"
 redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-lc.json"
 token_metadata_file_path="$BASE/scripts/cardano-cli/$ENV/data/lc-token-metadata.json"
 
-
 admin_pkh=$(cat $ADMIN_PKH)
-lc_amount=100
+
+# read in littercoin batch file for processing
+readarray rows < "$BASE/scripts/cardano-cli/$ENV/data/lc-minting-batch-file.txt"
+
+lc_amount=0
+for row in "${rows[@]}";do                                                      
+  row_array=(${row})                                                            
+  qty=${row_array[2]}                                                   
+  lc_amount=$(($lc_amount + ${qty}))
+done
+
 
 # Step 1: Get UTXOs from admin
 # There needs to be at least 2 utxos that can be consumed; one for minting of the token
@@ -71,7 +80,6 @@ else
     admin_utxo_in=$ADMIN_UTXO
     admin_utxo_addr=$ADMIN_CHANGE_ADDR
 fi
-
 
 
 # Step 2: Get the littercoin smart contract which has the thread token
@@ -116,35 +124,37 @@ jq -c '
   .fields[1].int          |= '$total_ada'' > $WORK/redeemer-mint-lc.json
 
 
-
 # Step 3: Build and submit the transaction
-$CARDANO_CLI transaction build \
-  --babbage-era \
-  --cardano-mode \
-  $network \
-  --change-address "$admin_utxo_addr" \
-  --tx-in-collateral "$ADMIN_COLLATERAL" \
-  --tx-in "$admin_utxo_in" \
-  --tx-in "$lc_validator_utxo_tx_in" \
-  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
-  --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint-lc.json" \
-  --policy-id "$lc_mint_mph" \
-  --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
-  --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$USER_ADDR+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
-  --required-signer-hash "$admin_pkh" \
-  --protocol-params-file "$WORK/pparms.json" \
-  --metadata-json-file "$token_metadata_file_path" \
-  --out-file $WORK/mint-lc-tx-alonzo.body
+printf '%s' "$CARDANO_CLI transaction build " > $WORK/cli-build.out
+printf '%s' "--babbage-era " >> $WORK/cli-build.out
+printf '%s' "--cardano-mode " >> $WORK/cli-build.out
+printf '%s' "$network "  >> $WORK/cli-build.out
+printf '%s'  "--change-address $admin_utxo_addr " >> $WORK/cli-build.out
+printf '%s'  "--tx-in-collateral $ADMIN_COLLATERAL " >> $WORK/cli-build.out
+printf '%s'  "--tx-in $admin_utxo_in " >> $WORK/cli-build.out
+printf '%s'  "--tx-in $lc_validator_utxo_tx_in " >> $WORK/cli-build.out
+printf '%s'  "--spending-tx-in-reference $LC_VAL_REF_SCRIPT " >> $WORK/cli-build.out
+printf '%s'  "--spending-plutus-script-v2 " >> $WORK/cli-build.out
+printf '%s'  "--spending-reference-tx-in-inline-datum-present " >> $WORK/cli-build.out
+printf '%s'  "--spending-reference-tx-in-redeemer-file $WORK/redeemer-mint.json " >> $WORK/cli-build.out
+printf '%s'  "--mint '$lc_amount $lc_mint_mph.$lc_token_name' " >> $WORK/cli-build.out
+printf '%s'  "--mint-tx-in-reference $LC_MINT_REF_SCRIPT " >> $WORK/cli-build.out
+printf '%s'  "--mint-plutus-script-v2 " >> $WORK/cli-build.out
+printf '%s'  "--mint-reference-tx-in-redeemer-file $WORK/redeemer-mint-lc.json " >> $WORK/cli-build.out
+printf '%s'  "--policy-id $lc_mint_mph " >> $WORK/cli-build.out
+printf '%s'  "--tx-out '$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name' " >> $WORK/cli-build.out
+printf '%s'  "--tx-out-inline-datum-file $WORK/lc-datum-out.json " >> $WORK/cli-build.out
+for row in "${rows[@]}";do
+  printf '%s' "--tx-out '$row' " | tr -d '\n' >> $WORK/cli-build.out                                                         
+done
+printf '%s'  "--required-signer-hash $admin_pkh " >> $WORK/cli-build.out
+printf '%s'  "--protocol-params-file $WORK/pparms.json " >> $WORK/cli-build.out
+printf '%s'  "--metadata-json-file $token_metadata_file_path " >> $WORK/cli-build.out
+printf '%s'  "--out-file $WORK/mint-lc-tx-alonzo.body " >> $WORK/cli-build.out
+
+bash $WORK/cli-build.out
 
 #  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-littercoin.costs"
-  
 
 echo "tx has been built"
 
@@ -158,7 +168,3 @@ echo "tx has been signed"
 
 echo "Submit the tx with plutus script and wait 5 seconds..."
 $CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
-
-
-
-

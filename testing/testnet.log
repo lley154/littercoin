@@ -1094,3 +1094,285 @@ Submit the tx with plutus script and wait 5 seconds...
 + /home/lawrence/.local/bin/cardano-cli transaction submit --tx-file /home/lawrence/src/littercoin/work/burn-lc-tx-alonzo.tx --testnet-magic 2
 Transaction successfully submitted.
 
+
+
+Batch Minting Test on testnet - 2022-10-17
+
+lawrence@lawrence-iMac:~/src/littercoin/scripts/cardano-cli/testnet/data$ cat lc-minting-batch-file.txt 
+addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+
+
+lawrence@lawrence-iMac:~/src/littercoin/scripts/cardano-cli$ ./mint-littercoin.sh testnet
++ '[' -z testnet ']'
++ ENV=testnet
++++ readlink -f ./mint-littercoin.sh
+++ dirname /home/lawrence/src/littercoin/scripts/cardano-cli/mint-littercoin.sh
++ MY_DIR=/home/lawrence/src/littercoin/scripts/cardano-cli
++ source /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/global-export-variables.sh
+++ set -e
+++ set -o pipefail
+++ export BASE=/home/lawrence/src/littercoin
+++ BASE=/home/lawrence/src/littercoin
+++ export WORK=/home/lawrence/src/littercoin/work
+++ WORK=/home/lawrence/src/littercoin/work
+++ export CARDANO_CLI=/home/lawrence/.local/bin/cardano-cli
+++ CARDANO_CLI=/home/lawrence/.local/bin/cardano-cli
+++ export CARDANO_NODE_SOCKET_PATH=/home/lawrence/src/littercoin/node.socket
+++ CARDANO_NODE_SOCKET_PATH=/home/lawrence/src/littercoin/node.socket
+++ export TESTNET_MAGIC=2
+++ TESTNET_MAGIC=2
+++ export ADMIN_VKEY=/home/lawrence/.local/keys/testnet/admin/key.vkey
+++ ADMIN_VKEY=/home/lawrence/.local/keys/testnet/admin/key.vkey
+++ export ADMIN_SKEY=/home/lawrence/.local/keys/testnet/admin/key.skey
+++ ADMIN_SKEY=/home/lawrence/.local/keys/testnet/admin/key.skey
+++ export ADMIN_PKH=/home/lawrence/.local/keys/testnet/admin/key.hash
+++ ADMIN_PKH=/home/lawrence/.local/keys/testnet/admin/key.hash
+++ export MERCHANT_SKEY=/home/lawrence/.local/keys/testnet/merchant/key.skey
+++ MERCHANT_SKEY=/home/lawrence/.local/keys/testnet/merchant/key.skey
+++ export MIN_ADA_OUTPUT_TX=2000000
+++ MIN_ADA_OUTPUT_TX=2000000
+++ export MIN_ADA_OUTPUT_TX_REF=20000000
+++ MIN_ADA_OUTPUT_TX_REF=20000000
+++ export COLLATERAL_ADA=11000000
+++ COLLATERAL_ADA=11000000
+++ export ADMIN_UTXO=817a13fcb42769be322c9f1063cb9783aaacdb31f4e295d5bb97ff17e250d7c7#0
+++ ADMIN_UTXO=817a13fcb42769be322c9f1063cb9783aaacdb31f4e295d5bb97ff17e250d7c7#0
+++ export ADMIN_COLLATERAL=e722b61f665a486baf81335774ca1f213bbb68b8905e7441417d5610e4a24a9a#0
+++ ADMIN_COLLATERAL=e722b61f665a486baf81335774ca1f213bbb68b8905e7441417d5610e4a24a9a#0
+++ export ADMIN_CHANGE_ADDR=addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7
+++ ADMIN_CHANGE_ADDR=addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7
+++ export MERCHANT_ADDR=addr_test1vq7k907l7e59t52skm8e0ezsnmmc7h4xy30kg2klwc5n8rqug2pds
+++ MERCHANT_ADDR=addr_test1vq7k907l7e59t52skm8e0ezsnmmc7h4xy30kg2klwc5n8rqug2pds
+++ export MERCHANT_UTXO_NFT_TOKEN=5b2fd4c1c21d00500f4b299c9d1eeeef7a8e0e22ea3f88b9e2128ca225d9d909#1
+++ MERCHANT_UTXO_NFT_TOKEN=5b2fd4c1c21d00500f4b299c9d1eeeef7a8e0e22ea3f88b9e2128ca225d9d909#1
+++ export MERCHANT_UTXO_LC_TOKEN=ee864c7522201d1b86c711c985acd7d5f19fdb9509aa63a4db0a98484584d213#1
+++ MERCHANT_UTXO_LC_TOKEN=ee864c7522201d1b86c711c985acd7d5f19fdb9509aa63a4db0a98484584d213#1
+++ export MERCHANT_UTXO=e70f8a3d2195d22d474bcc0775ac2d7f239cedebf708789ab266bc581c6eccd7#0
+++ MERCHANT_UTXO=e70f8a3d2195d22d474bcc0775ac2d7f239cedebf708789ab266bc581c6eccd7#0
+++ export MERCHANT_COLLATERAL=dbc3d08f752d876281c1c02c6813316f4bb39e15e3e4fd644799822b327686cb#1
+++ MERCHANT_COLLATERAL=dbc3d08f752d876281c1c02c6813316f4bb39e15e3e4fd644799822b327686cb#1
+++ export USER_ADDR=addr_test1vq5s7k4kwqz4rrfe8mm9jz9tpm7c5u93yfwwsaw708yxs5sm70qjg
+++ USER_ADDR=addr_test1vq5s7k4kwqz4rrfe8mm9jz9tpm7c5u93yfwwsaw708yxs5sm70qjg
+++ export LC_VAL_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#2
+++ LC_VAL_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#2
+++ export LC_MINT_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#3
+++ LC_MINT_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#3
+++ export NFT_MINT_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#4
+++ NFT_MINT_REF_SCRIPT=20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#4
++ '[' testnet == mainnet ']'
++ network='--testnet-magic 2'
++ echo 'Socket path: /home/lawrence/src/littercoin/node.socket'
+Socket path: /home/lawrence/src/littercoin/node.socket
++ ls -al /home/lawrence/src/littercoin/node.socket
+srw------- 1 lawrence lawrence 0 Oct 16 19:55 /home/lawrence/src/littercoin/node.socket
++ mkdir -p /home/lawrence/src/littercoin/work
++ mkdir -p /home/lawrence/src/littercoin/work-backup
++ rm -f /home/lawrence/src/littercoin/work/cli-build.out /home/lawrence/src/littercoin/work/lc-datum-in.json /home/lawrence/src/littercoin/work/lc-datum-out.json /home/lawrence/src/littercoin/work/lc-validator-utxo.json /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.body /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.tx /home/lawrence/src/littercoin/work/pparms.json /home/lawrence/src/littercoin/work/redeemer-mint-lc.json /home/lawrence/src/littercoin/work/redeemer-mint.json
++ rm -f '/home/lawrence/src/littercoin/work-backup/*'
++ /home/lawrence/.local/bin/cardano-cli query protocol-parameters --testnet-magic 2 --out-file /home/lawrence/src/littercoin/work/pparms.json
+++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/thread-token-minting-policy.hash
+++ jq -r .bytes
++ thread_token_mph=3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385
+++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/thread-token-name.json
+++ jq -r .bytes
++ thread_token_name=caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3
++ lc_mint_script=/home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-minting-policy.plutus
+++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-minting-policy.hash
+++ jq -r .bytes
++ lc_mint_mph=6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4
+++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-token-name.json
+++ jq -r .bytes
++ lc_token_name=4c6974746572636f696e
++ lc_validator_script=/home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-validator.plutus
+++ /home/lawrence/.local/bin/cardano-cli address build --payment-script-file /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-validator.plutus --testnet-magic 2
++ lc_validator_script_addr=addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2
++ redeemer_file_path=/home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/redeemer-mint.json
++ redeemer_lc_file_path=/home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/redeemer-mint-lc.json
++ token_metadata_file_path=/home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-token-metadata.json
+++ cat /home/lawrence/.local/keys/testnet/admin/key.hash
++ admin_pkh=b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
++ readarray rows
++ lc_amount=0
++ for row in "${rows[@]}"
++ row_array=(${row})
++ qty=100
++ lc_amount=100
++ for row in "${rows[@]}"
++ row_array=(${row})
++ qty=100
++ lc_amount=200
++ for row in "${rows[@]}"
++ row_array=(${row})
++ qty=100
++ lc_amount=300
++ for row in "${rows[@]}"
++ row_array=(${row})
++ qty=100
++ lc_amount=400
++ for row in "${rows[@]}"
++ row_array=(${row})
++ qty=100
++ lc_amount=500
++ '[' testnet == devnet ']'
++ admin_utxo_in=817a13fcb42769be322c9f1063cb9783aaacdb31f4e295d5bb97ff17e250d7c7#0
++ admin_utxo_addr=addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7
++ /home/lawrence/.local/bin/cardano-cli query utxo --address addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2 --testnet-magic 2 --out-file /home/lawrence/src/littercoin/work/lc-validator-utxo.json
+++ jq -r 'to_entries[] 
+| select(.value.value."3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385"."caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3") 
+| .key' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
++ lc_validator_utxo_tx_in=07c8e78a0daa59ef4e1805be01a5ffdfe88f359ef0ede8fc0759567ba43f31e8#0
+++ jq -r 'to_entries[] 
+| select(.value.value."3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385"."caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3") 
+| .value.inlineDatum' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
++ lc_validator_datum_in='{
+  "constructor": 0,
+  "fields": [
+    {
+      "int": 766122455
+    },
+    {
+      "int": 185
+    }
+  ]
+}'
++ echo -n '{
+  "constructor": 0,
+  "fields": [
+    {
+      "int": 766122455
+    },
+    {
+      "int": 185
+    }
+  ]
+}'
+++ jq -r '.fields[0].int' /home/lawrence/src/littercoin/work/lc-datum-in.json
++ total_ada=766122455
+++ jq -r '.fields[1].int' /home/lawrence/src/littercoin/work/lc-datum-in.json
++ total_lc=185
++ new_total_lc=685
++ cat /home/lawrence/src/littercoin/work/lc-datum-in.json
++ jq -c '
+  .fields[1].int   |= 685'
++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/redeemer-mint.json
++ jq -c '
+  .fields[0].int          |= 500'
++ cat /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/redeemer-mint-lc.json
++ jq -c '
+  .fields[1].int          |= 766122455'
++ printf %s '/home/lawrence/.local/bin/cardano-cli transaction build '
++ printf %s '--babbage-era '
++ printf %s '--cardano-mode '
++ printf %s '--testnet-magic 2 '
++ printf %s '--change-address addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7 '
++ printf %s '--tx-in-collateral e722b61f665a486baf81335774ca1f213bbb68b8905e7441417d5610e4a24a9a#0 '
++ printf %s '--tx-in 817a13fcb42769be322c9f1063cb9783aaacdb31f4e295d5bb97ff17e250d7c7#0 '
++ printf %s '--tx-in 07c8e78a0daa59ef4e1805be01a5ffdfe88f359ef0ede8fc0759567ba43f31e8#0 '
++ printf %s '--spending-tx-in-reference 20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#2 '
++ printf %s '--spending-plutus-script-v2 '
++ printf %s '--spending-reference-tx-in-inline-datum-present '
++ printf %s '--spending-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/work/redeemer-mint.json '
++ printf %s '--mint '\''500 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e'\'' '
++ printf %s '--mint-tx-in-reference 20a6c33162e21420d671f64a983023855fe2444cb0e8bb988718eb2d9d833aa4#3 '
++ printf %s '--mint-plutus-script-v2 '
++ printf %s '--mint-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/work/redeemer-mint-lc.json '
++ printf %s '--policy-id 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4 '
++ printf %s '--tx-out '\''addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2+766122455 + 1 3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385.caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3'\'' '
++ printf %s '--tx-out-inline-datum-file /home/lawrence/src/littercoin/work/lc-datum-out.json '
++ for row in "${rows[@]}"
++ printf %s '--tx-out '\''addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+'\'' '
++ tr -d '\n'
++ for row in "${rows[@]}"
++ printf %s '--tx-out '\''addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+'\'' '
++ tr -d '\n'
++ for row in "${rows[@]}"
++ printf %s '--tx-out '\''addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+'\'' '
++ tr -d '\n'
++ for row in "${rows[@]}"
++ printf %s '--tx-out '\''addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e
+'\'' '
++ tr -d '\n'
++ for row in "${rows[@]}"
++ printf %s '--tx-out '\''addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5+2000000 + 100 6a4d39d54d9a45267aaa917c716ec6c3725436111f3bf3649e712dc4.4c6974746572636f696e'\'' '
++ tr -d '\n'
++ printf %s '--required-signer-hash b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 '
++ printf %s '--protocol-params-file /home/lawrence/src/littercoin/work/pparms.json '
++ printf %s '--metadata-json-file /home/lawrence/src/littercoin/scripts/cardano-cli/testnet/data/lc-token-metadata.json '
++ printf %s '--out-file /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.body '
++ bash /home/lawrence/src/littercoin/work/cli-build.out
+Estimated transaction fee: Lovelace 563794
++ echo 'tx has been built'
+tx has been built
++ /home/lawrence/.local/bin/cardano-cli transaction sign --tx-body-file /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.body --testnet-magic 2 --signing-key-file /home/lawrence/.local/keys/testnet/admin/key.skey --out-file /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.tx
++ echo 'tx has been signed'
+tx has been signed
++ echo 'Submit the tx with plutus script and wait 5 seconds...'
+Submit the tx with plutus script and wait 5 seconds...
++ /home/lawrence/.local/bin/cardano-cli transaction submit --tx-file /home/lawrence/src/littercoin/work/mint-lc-tx-alonzo.tx --testnet-magic 2
+Transaction successfully submitted.
+lawrence@lawrence-iMac:~/src/littercoin/scripts/cardano-cli$ 
+
+
+7 UTxO Output(s)
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5
+ext
+t₳
+ 
+2.000000
+100
+Littercoin
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5
+ext
+t₳
+ 
+2.000000
+100
+Littercoin
+addr_test1qqqppuhrmgey82w7865asturshetzlhjqhycezytzf68wnwzxs6rl662f4u067gkj92tcdchflcc0z78mfz9d9scjcusv6d0x5
+ext
+t₳
+ 
+2.000000
+100
+Littercoin
+addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl
+ext
+t₳
+ 
+2.000000
+100
+Littercoin
+addr_test1qze9w9uvm0524psnam4hyrjscr9dznujt0p65p0mz7md94q76nzq682nke2r2znd4sw6xrxzs8qhdg5fwzs3tzm9c4vqawm0zl
+ext
+t₳
+ 
+2.000000
+100
+Littercoin
+addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7
+Account #0
+t₳
+ 
+4.436206
+addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2
+script
+t₳
+ 
+766.122455
+1
+caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3
+Inline Datum
+Hash	
+"a043cfcceeac86e9889f7090dc6291b18f97726d678f9a00445aaf2898bfc067"
+Bytecode	
+"d8799f1a2daa19d71902adff"
+JSON Script	
+{...} // 2 items
+
