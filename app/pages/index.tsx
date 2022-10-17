@@ -510,12 +510,12 @@ const Home: NextPage = () => {
             {walletIsEnabled && <div className={styles.border}><WalletInfo walletInfo={wInfo}/></div>}
             {tx.txId && <div className={styles.border}><b>Transaction Success!!!</b>
             <p>TxId &nbsp;&nbsp;<a href={"https://preview.cexplorer.io/tx/" + tx.txId} target="_blank" rel="noopener noreferrer" >{tx.txId}</a></p>
-            <p>Please wait until the transaction is confirmed on the blockchain before doing another transaction</p>
+            <p>Please wait until the transaction is confirmed on the blockchain and reload this page before doing another transaction</p>
           </div>}
-          {walletIsEnabled && <div className={styles.border}><AddAda onAddAda={addAda}/></div>}
-          {walletIsEnabled && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
-          {walletIsEnabled && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
-          {walletIsEnabled && <div className={styles.border}><MintNFT onMintNFT={mintNFT}/> </div>}
+          {walletIsEnabled && !tx.txId && <div className={styles.border}><AddAda onAddAda={addAda}/></div>}
+          {walletIsEnabled && !tx.txId && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
+          {walletIsEnabled && !tx.txId && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
+          {walletIsEnabled && !tx.txId && <div className={styles.border}><MintNFT onMintNFT={mintNFT}/></div>}
 
       </main>
 
