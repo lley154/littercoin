@@ -21,9 +21,7 @@ git clone https://github.com/lley154/littercoin.git
 export NEXT_PUBLIC_BLOCKFROST_API_KEY=>>>Your API Key Here <<<
 sudo npm install --global yarn
 cd littercoin/app
-[littercoin/app]$ npm install react next react-router react-dom
-[littercoin/app]$ npm install create-next-app
-[littercoin/app]$ npm install lucid-cardano
+[littercoin/app]$ npm install
 [littercoin/app]$ yarn dev
 yarn run v1.22.19
 $ next dev
