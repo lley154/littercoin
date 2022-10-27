@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "49e480ebc9c39c0f2c9f2fba4050f38cad828e029bf7d4165f104b0b3e7b8db7"
+txIdBS = "1d64e3a0cfe490797f1c80f77bcd722c5756db4cbfc6f8456f79d40d476a74aa"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer

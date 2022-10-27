@@ -32,7 +32,7 @@ import           GHC.Generics                           (Generic)
 import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
 import qualified Ledger.Address                         as Address (PaymentPubKeyHash(..))
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
-                                                        Value)
+                                                        TokenName(..), Value)
 import           Littercoin.Types                       (MintPolicyRedeemer(..), 
                                                         LCMintPolicyParams(..),
                                                         LCRedeemer(..),
@@ -88,14 +88,29 @@ PlutusTx.makeIsDataIndexed ''LCDatum [('LCDatum, 0)]
 PlutusTx.makeLift ''LCDatum
 
 
+-- | Check to see if the buy token belongs to a value
+{-# INLINABLE checkValue #-}
+checkValue :: Value.Value -> Value.Value -> Bool
+checkValue tokenValue outputValue  = 
+    let (tvCs, tvTn, tvAmt) = (Value.flattenValue tokenValue)!!0
+        valuesAtOutput = Value.flattenValue outputValue
+
+        inspectValues :: [(Value.CurrencySymbol, Value.TokenName, Integer)] -> Bool
+        inspectValues [] = False
+        inspectValues ((cs', tn', amt'):xs)
+            | (cs' == tvCs) && (tn' == tvTn) && (amt' == tvAmt) = True
+            | otherwise = inspectValues xs
+    in inspectValues valuesAtOutput
+
+
 -- | Check that the specified value is in the provided outputs
 {-# INLINABLE validOutputs #-}
 validOutputs :: Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutputs _ [] = False
 validOutputs txVal (x:xs)
-    | ContextsV2.txOutValue x == txVal = True
+    | checkValue txVal (ContextsV2.txOutValue x) = True
     | otherwise = validOutputs txVal xs
-    
+
 
 -- | The Littercoin minting policy is used to mint and burn littercoins according to the
 --   following conditions set out in the policy.     
@@ -153,7 +168,8 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity totalAdaAmount withdrawAm
     -- | Check that thread token is part of the transaction output.   If so, then this confirms that
     --   the littercoin validator has also been called and spent as part of this minting transaction.
     checkThreadToken :: Bool
-    checkThreadToken = validOutputs (totalAda <> (lcThreadTokenValue params)) (PlutusV2.txInfoOutputs info)
+    checkThreadToken = validOutputs (lcThreadTokenValue params) (PlutusV2.txInfoOutputs info)
+                    && validOutputs totalAda (PlutusV2.txInfoOutputs info)
 
         where
             totalAda :: Value.Value
