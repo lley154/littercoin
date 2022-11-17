@@ -123,8 +123,7 @@ mkLittercoinPolicy params (MintPolicyRedeemer mpPolarity mpTotalAdaAmount mpWith
 
     info :: TxInfo
     info = scriptContextTxInfo ctx  
-
-    -- For now this is a single signature witnes, with future plans to make this multi-sig
+    
     signedByAdmin :: Bool
     signedByAdmin =  txSignedBy info $ Address.unPaymentPubKeyHash (lcAdminPkh params)
 

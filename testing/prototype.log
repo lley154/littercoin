@@ -1,0 +1,861 @@
+[nix-shell:~/src/littercoin]$ cabal exec littercoin-pab
+[INFO] Slot 0: TxnValidate 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807
+[INFO] Starting PAB webserver on port 8080
+[INFO] Starting PAB backend server on port 9080
+[INFO] ********* PAB server is running *********
+[INFO] To start PAB simulation press return
+
+[INFO] Initializing Littercoin validator contract handle for wallet 1
+[INFO] Initialising contract InitContract with ID d174f0c5-3e67-4fc4-8469-abea626190f3
+[INFO] Activated instance d174f0c5-3e67-4fc4-8469-abea626190f3 on W[1]
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx da143e3b8aa55c7793ec29a717c66620e96d841c011d1a4bef26a5063216ef5c:
+                   {inputs:
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",2000000)])]) addressed to
+                       PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   mint: Value (Map [])
+                   fee: Value (Map [])
+                   mps:
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:}
+               Requires signatures:
+               Utxo index:
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx b906b9636916837fb8fdbface0bb14095bf5dd601cdec94c371d8c3caf324b37:
+                 {inputs:
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+
+                 collateral inputs:
+                   - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+
+                 outputs:
+                   - Value (Map [(,Map [("",9997999628)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                 mint: Value (Map [])
+                 fee: Value (Map [(,Map [("",372)])])
+                 mps:
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:}
+[INFO] d174f0c5-3e67-4fc4-8469-abea626190f3: "initLCValidator: thread token name= 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx 0d1a437c860d8731fd9d74b17c3bdb802b27773712943152925cde86891860dd:
+                   {inputs:
+                      - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                   mint: Value (Map [(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1),(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <0, 0>}
+               Requires signatures:
+               Utxo index:
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!51
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!52
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!53
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!54
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!55
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!56
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!57
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!58
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!59
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4:
+                 {inputs:
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+
+                 collateral inputs:
+                   - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!50
+
+                 outputs:
+                   - Value (Map [(,Map [("",9995895707)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                 mint: Value (Map [(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1),(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])])
+                 fee: Value (Map [(,Map [("",104293)])])
+                 mps:
+                   MintingPolicy { <script> }
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:
+                   <0, 0>}
+[INFO] W[1]: Signing tx: e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4
+[INFO] W[1]: Submitting tx: e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4
+[INFO] Slot 48: TxnValidate e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4
+[INFO] d174f0c5-3e67-4fc4-8469-abea626190f3: "initLCValidator: tx submitted successfully= UnbalancedTx {unBalancedTxTx = Tx {txInputs = fromList [TxIn {txInRef = TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 50}, txInType = Just ConsumePublicKeyAddress}], txCollateral = fromList [], txOutputs = [TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 8083c2a15e2830de23226540e3765aacb3a54a8e8eb7b92ed9ef128349997418}], txMint = Value (Map [(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1),(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]), txFee = Value (Map []), txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, txMintScripts = fromList [MintingPolicy { <script> }], txSignatures = fromList [], txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 [Constr 0 [Constr 0 [B \"\\b\\DC1\\DC4\\135\\224\\&2\\230G\\226>nhffZ\\183&\\164\\201%2\\233X\\159\\158g\\SI%\\133\\227X\\a\"],I 50]]})], txData = fromList [(8083c2a15e2830de23226540e3765aacb3a54a8e8eb7b92ed9ef128349997418,Datum {getDatum = Constr 0 [I 0,I 0]})]}, unBalancedTxRequiredSignatories = fromList [], unBalancedTxUtxoIndex = fromList [(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 50},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 51},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 52},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 53},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 54},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 55},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 56},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 57},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 58},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 59},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing})], unBalancedTxValidityTimeRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}}"
+[INFO] ThreadToken Token Name found: 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63
+[INFO] OwnerToken Token Name found: 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {, ""}: 99997895707
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 2000000
+[INFO] Press return to continue
+
+[INFO] Initializing contract handle for wallet 1
+[INFO] Initialising contract UseContract with ID 755efb45-0287-4cd4-91e4-99b0445cef52
+[INFO] Activated instance 755efb45-0287-4cd4-91e4-99b0445cef52 on W[1]
+[INFO] Initializing contract handle for wallet 2
+[INFO] Initialising contract UseContract with ID 28ef5bca-f6ec-4de9-89a4-09db8c274b8c
+[INFO] Activated instance 28ef5bca-f6ec-4de9-89a4-09db8c274b8c on W[2]
+[INFO] Calling addAdaContract endpoint for wallet 2
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: found littercoin utxo with datum= LCDatum {lcAdaAmount = 0, lcAmount = 0}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: found littercoin utxo oref= TxOutRef {txOutRefId = e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4, txOutRefIdx = 2}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx 506b0f570aed58652ceb3d684d973375d1c8e8db4005d4336a1053c866c58d1c:
+                   {inputs:
+                      - e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!2
+                        <10000000>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",10000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                   mint: Value (Map [])
+                   fee: Value (Map [])
+                   mps:
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <10000000, 0>
+                     <0, 0>}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!2
+                 , - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4:
+                 {inputs:
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!51
+
+                    - e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!2
+                      <10000000>
+                 collateral inputs:
+                   - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!51
+
+                 outputs:
+                   - Value (Map [(,Map [("",9991841095)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",10000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                 mint: Value (Map [])
+                 fee: Value (Map [(,Map [("",158905)])])
+                 mps:
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:
+                   <10000000, 0>
+                   <0, 0>}
+[INFO] W[1]: Signing tx: 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4
+[INFO] W[1]: Submitting tx: 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4
+[INFO] Slot 53: TxnValidate 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: tx submitted successfully= UnbalancedTx {unBalancedTxTx = Tx {txInputs = fromList [TxIn {txInRef = TxOutRef {txOutRefId = e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4, txOutRefIdx = 2}, txInType = Just (ConsumeScriptAddress Validator { <script> } (Redeemer {getRedeemer = Constr 2 [I 10000000]}) (Datum {getDatum = Constr 0 [I 0,I 0]}))}], txCollateral = fromList [], txOutputs = [TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 277d10ff9fc99423af06bbf41c0cff5be49ad144d7a60b3446a28a2d13d91105}], txMint = Value (Map []), txFee = Value (Map []), txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, txMintScripts = fromList [], txSignatures = fromList [], txRedeemers = fromList [], txData = fromList [(277d10ff9fc99423af06bbf41c0cff5be49ad144d7a60b3446a28a2d13d91105,Datum {getDatum = Constr 0 [I 10000000,I 0]}),(8083c2a15e2830de23226540e3765aacb3a54a8e8eb7b92ed9ef128349997418,Datum {getDatum = Constr 0 [I 0,I 0]})]}, unBalancedTxRequiredSignatories = fromList [(a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2,Nothing)], unBalancedTxUtxoIndex = fromList [(TxOutRef {txOutRefId = e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4, txOutRefIdx = 2},TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 8083c2a15e2830de23226540e3765aacb3a54a8e8eb7b92ed9ef128349997418})], unBalancedTxValidityTimeRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}}"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {, ""}: 99989736802
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 10000000
+[INFO] Ada added to Littercoin contract, press return to continue
+
+[INFO] Calling addAdaContract endpoint for wallet 2
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: found littercoin utxo with datum= LCDatum {lcAdaAmount = 10000000, lcAmount = 0}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: found littercoin utxo oref= TxOutRef {txOutRefId = 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4, txOutRefIdx = 1}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx 9b608ac6efe2fa7b0a8b16039ebfe91b3b8a9c390beefff1f91fe96a4a84ce99:
+                   {inputs:
+                      - 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4!1
+                        <10000000>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                   mint: Value (Map [])
+                   fee: Value (Map [])
+                   mps:
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <10000000, 0>
+                     <20000000, 0>}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4!1
+                 , - Value (Map [(,Map [("",10000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5:
+                 {inputs:
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!52
+
+                    - 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4!1
+                      <10000000>
+                 collateral inputs:
+                   - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!52
+
+                 outputs:
+                   - Value (Map [(,Map [("",9989841091)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                 mint: Value (Map [])
+                 fee: Value (Map [(,Map [("",158909)])])
+                 mps:
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:
+                   <10000000, 0>
+                   <20000000, 0>}
+[INFO] W[1]: Signing tx: c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5
+[INFO] W[1]: Submitting tx: c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5
+[INFO] Slot 57: TxnValidate c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "addAdaContract: tx submitted successfully= UnbalancedTx {unBalancedTxTx = Tx {txInputs = fromList [TxIn {txInRef = TxOutRef {txOutRefId = 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4, txOutRefIdx = 1}, txInType = Just (ConsumeScriptAddress Validator { <script> } (Redeemer {getRedeemer = Constr 2 [I 10000000]}) (Datum {getDatum = Constr 0 [I 10000000,I 0]}))}], txCollateral = fromList [], txOutputs = [TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just d3a12a215b12248e1661afc4008d62d8065fd4109fba654ff9ee6949ea45fa79}], txMint = Value (Map []), txFee = Value (Map []), txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, txMintScripts = fromList [], txSignatures = fromList [], txRedeemers = fromList [], txData = fromList [(277d10ff9fc99423af06bbf41c0cff5be49ad144d7a60b3446a28a2d13d91105,Datum {getDatum = Constr 0 [I 10000000,I 0]}),(d3a12a215b12248e1661afc4008d62d8065fd4109fba654ff9ee6949ea45fa79,Datum {getDatum = Constr 0 [I 20000000,I 0]})]}, unBalancedTxRequiredSignatories = fromList [(a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2,Nothing)], unBalancedTxUtxoIndex = fromList [(TxOutRef {txOutRefId = 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4, txOutRefIdx = 1},TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 277d10ff9fc99423af06bbf41c0cff5be49ad144d7a60b3446a28a2d13d91105})], unBalancedTxValidityTimeRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}}"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {, ""}: 99979577893
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 20000000
+[INFO] Ada added to Littercoin contract, press return to continue
+
+[INFO] Calling mint endpoint for wallet 1
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintLCToken: found littercoin utxo with datum= LCDatum {lcAdaAmount = 20000000, lcAmount = 0}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintLCToken: found littercoin utxo oref= TxOutRef {txOutRefId = c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5, txOutRefIdx = 1}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintLCToken: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx cd5db3661f5711005b623c8b924ae0ca33e4650b405c90d4fb71538e58217b07:
+                   {inputs:
+                      - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!53
+
+                      - c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5!1
+                        <100>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                     - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                       PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <20000000, 100>
+                     <20000000, 0>}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!53
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!54
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!55
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!56
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!57
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!58
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!59
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4!0
+                 , - Value (Map [(,Map [("",9991841095)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5!0
+                 , - Value (Map [(,Map [("",9989841091)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5!1
+                 , - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+                 ( e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!0
+                 , - Value (Map [(,Map [("",9995895707)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!1
+                 , - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5:
+                 {inputs:
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!53
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!54
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!55
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!56
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!57
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!58
+
+                    - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!59
+
+                    - 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4!0
+
+                    - c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5!0
+
+                    - c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5!1
+                      <100>
+                    - e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!0
+
+                    - e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4!1
+
+                 collateral inputs:
+                   - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!53
+
+                 outputs:
+                   - Value (Map [(,Map [("",89979577893)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",9995089697)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                 mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])])
+                 fee: Value (Map [(,Map [("",910303)])])
+                 mps:
+                   MintingPolicy { <script> }
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:
+                   <20000000, 100>
+                   <20000000, 0>}
+[INFO] W[1]: Signing tx: b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5
+[INFO] W[1]: Submitting tx: b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5
+[INFO] Slot 60: TxnValidate b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintLCToken: tx submitted successfully= UnbalancedTx {unBalancedTxTx = Tx {txInputs = fromList [TxIn {txInRef = TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 53}, txInType = Just ConsumePublicKeyAddress},TxIn {txInRef = TxOutRef {txOutRefId = c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5, txOutRefIdx = 1}, txInType = Just (ConsumeScriptAddress Validator { <script> } (Redeemer {getRedeemer = Constr 0 [I 100]}) (Datum {getDatum = Constr 0 [I 20000000,I 0]}))}], txCollateral = fromList [], txOutputs = [TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 094630ffe3d31120046d13f6739ad273d67915b72917673f464384314635f895},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]), txOutDatumHash = Nothing}], txMint = Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [(\"Littercoin\",100)])]), txFee = Value (Map []), txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, txMintScripts = fromList [MintingPolicy { <script> }], txSignatures = fromList [], txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 [Constr 1 [],I 20000000,I 0]})], txData = fromList [(094630ffe3d31120046d13f6739ad273d67915b72917673f464384314635f895,Datum {getDatum = Constr 0 [I 20000000,I 100]}),(d3a12a215b12248e1661afc4008d62d8065fd4109fba654ff9ee6949ea45fa79,Datum {getDatum = Constr 0 [I 20000000,I 0]})]}, unBalancedTxRequiredSignatories = fromList [(a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2,Nothing)], unBalancedTxUtxoIndex = fromList [(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 53},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 54},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 55},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 56},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 57},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 58},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807, txOutRefIdx = 59},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",10000000000)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = 85aab619a0bad8163e14ae13508b7fe69c3d42f13d900233d1e4dd617a075dd4, txOutRefIdx = 0},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",9991841095)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5, txOutRefIdx = 0},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",9989841091)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = c5adc0c28950d19b9c1d8e593de93053165312009162c9fb49a8916daa842db5, txOutRefIdx = 1},TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just d3a12a215b12248e1661afc4008d62d8065fd4109fba654ff9ee6949ea45fa79}),(TxOutRef {txOutRefId = e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4, txOutRefIdx = 0},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",9995895707)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = e0db7ce75ebe10f7e4ec4d158c3fe5553457118c3a2186b71ee9102186a56ae4, txOutRefIdx = 1},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]), txOutDatumHash = Nothing})], unBalancedTxValidityTimeRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}}"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4, "Littercoin"}: 100
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO]     {, ""}: 99978667590
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 20000000
+[INFO] Token minted for wallet 1, press return to continue
+
+[INFO] Calling mint endpoint for wallet 2, but does not have adminPkh
+[INFO] 28ef5bca-f6ec-4de9-89a4-09db8c274b8c: "mintLCToken: found littercoin utxo with datum= LCDatum {lcAdaAmount = 20000000, lcAmount = 100}"
+[INFO] 28ef5bca-f6ec-4de9-89a4-09db8c274b8c: "mintLCToken: found littercoin utxo oref= TxOutRef {txOutRefId = b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5, txOutRefIdx = 3}"
+[INFO] 28ef5bca-f6ec-4de9-89a4-09db8c274b8c: "mintLCToken: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[2]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx bf62fee7711fea333610234a5d2878dd4285c8e9bf5c60d52971c8e839b4cb6b:
+                   {inputs:
+                      - 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!20
+
+                      - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                        <100>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                     - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                       PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential)
+                   mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <20000000, 100>
+                     <20000000, 200>}
+               Requires signatures:
+                 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7
+               Utxo index:
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!20
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!21
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!22
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!23
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!24
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!25
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!26
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!27
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!28
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( 08111487e032e647e23e6e6866665ab726a4c92532e9589f9e670f2585e35807!29
+                 , - Value (Map [(,Map [("",10000000000)])]) addressed to
+                     PubKeyCredential: 80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                 , - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[ERROR] 28ef5bca-f6ec-4de9-89a4-09db8c274b8c: "WalletContractError (InsufficientFunds \"Total: Value (Map [(,Map [(\\\"\\\",90000000000)])]) expected: Value (Map [(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])])\")"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4, "Littercoin"}: 100
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO]     {, ""}: 99978667590
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 20000000
+[INFO] Token minted for wallet 2?, press return to continue
+
+[INFO] Calling burn endpoint for wallet 1, but does not have merchant Merchant
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: found littercoin utxo with datum= LCDatum {lcAdaAmount = 20000000, lcAmount = 100}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: found littercoin utxo oref= TxOutRef {txOutRefId = b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5, txOutRefIdx = 3}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx 8a8106b34e013fda8e9c3fadbed53dd064ab3f787141acb85a05d4bce5287960:
+                   {inputs:
+                      - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+
+                      - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                        <25>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",15000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                     - Value (Map [(,Map [("",5000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])]) addressed to
+                       PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",-25)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <20000000, 100>
+                     <15000000, 75>}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+                 , - Value (Map [(,Map [("",89979577893)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!1
+                 , - Value (Map [(,Map [("",9995089697)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!2
+                 , - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                 , - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!4
+                 , - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[ERROR] 755efb45-0287-4cd4-91e4-99b0445cef52: "WalletContractError (InsufficientFunds \"Total: Value (Map [(,Map [(\\\"\\\",9999089697)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [(\\\"Littercoin\\\",100)])]) expected: Value (Map [(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [(\\\"Littercoin Approved Merchant\\\",1)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [(\\\"Littercoin\\\",25)])])\")"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4, "Littercoin"}: 100
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO]     {, ""}: 99978667590
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 20000000
+[INFO] Token burned for wallet 1? Press return to continue
+
+[INFO] Calling mintMerchToken endpoint for wallet 1
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx befd4f34e1548b91c8c330393b8992d4d8aa025d30e0932754390518470bdd18:
+                   {inputs:
+                      - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                       PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   mint: Value (Map [(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+                 , - Value (Map [(,Map [("",89979577893)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!1
+                 , - Value (Map [(,Map [("",9995089697)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!2
+                 , - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!4
+                 , - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d:
+                 {inputs:
+                    - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+
+                    - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!1
+
+                    - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!2
+
+                    - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!4
+
+                 collateral inputs:
+                   - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!0
+
+                 outputs:
+                   - Value (Map [(,Map [("",9997089697)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",89975332727)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                 mint: Value (Map [(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])])
+                 fee: Value (Map [(,Map [("",245166)])])
+                 mps:
+                   MintingPolicy { <script> }
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:}
+[INFO] W[1]: Signing tx: ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d
+[INFO] W[1]: Submitting tx: ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d
+[INFO] Slot 73: TxnValidate ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintMerchantToken: Forged Value (Map [(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [(\"Littercoin Approved Merchant\",1)])])"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "mintMerchantToken: Token params MerchantTokenMintPolicyParams {mtMerchantTokenName = \"Littercoin Approved Merchant\", mtAdminPkh = a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, mtOwnerTokenValue = Value (Map [(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])])}"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4, "Littercoin"}: 100
+[INFO]     {a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c, "Littercoin Approved Merchant"}: 1
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO]     {, ""}: 99978422424
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 20000000
+[INFO] Merchant minted for wallet 1, press return to continue
+
+[INFO] Calling burn endpoint for wallet 1
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: found littercoin utxo with datum= LCDatum {lcAdaAmount = 20000000, lcAmount = 100}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: found littercoin utxo oref= TxOutRef {txOutRefId = b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5, txOutRefIdx = 3}"
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: littercoin hash= 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb"
+[INFO] W[1]: Balancing an unbalanced transaction:
+               Tx:
+                 Tx 47664fca7531ba3c7a0bb828083ea366b28000c0e99b2febbcd5e510b2132752:
+                   {inputs:
+                      - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!0
+
+                      - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                        <25>
+                   collateral inputs:
+                   outputs:
+                     - Value (Map [(,Map [("",15000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                       ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                     - Value (Map [(,Map [("",5000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])]) addressed to
+                       PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",-25)])])
+                   fee: Value (Map [])
+                   mps:
+                     MintingPolicy { <script> }
+                   signatures:
+                   validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                   data:
+                     <20000000, 100>
+                     <15000000, 75>}
+               Requires signatures:
+                 a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2
+               Utxo index:
+                 ( ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!0
+                 , - Value (Map [(,Map [("",9997089697)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!1
+                 , - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",100)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!2
+                 , - Value (Map [(,Map [("",89975332727)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!3
+                 , - Value (Map [(,Map [("",2000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!4
+                 , - Value (Map [(,Map [("",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential) )
+                 ( b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                 , - Value (Map [(,Map [("",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential) )
+               Validity range:
+                 (-∞ , +∞)
+[INFO] W[1]: Finished balancing:
+               Tx 3bfbd6002c0fef69d85941fd39897146c630fec7c7130345b99c05243518757d:
+                 {inputs:
+                    - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!0
+
+                    - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!1
+
+                    - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!2
+
+                    - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!3
+
+                    - b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5!3
+                      <25>
+                 collateral inputs:
+                   - ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d!0
+
+                 outputs:
+                   - Value (Map [(,Map [("",89977332727)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",75)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",9996266764)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                   - Value (Map [(,Map [("",15000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]) addressed to
+                     ScriptCredential: 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb (no staking credential)
+                   - Value (Map [(,Map [("",5000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [("Littercoin Approved Merchant",1)])]) addressed to
+                     PubKeyCredential: a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2 (no staking credential)
+                 mint: Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [("Littercoin",-25)])])
+                 fee: Value (Map [(,Map [("",822933)])])
+                 mps:
+                   MintingPolicy { <script> }
+                 signatures:
+                 validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+                 data:
+                   <20000000, 100>
+                   <15000000, 75>}
+[INFO] W[1]: Signing tx: 3bfbd6002c0fef69d85941fd39897146c630fec7c7130345b99c05243518757d
+[INFO] W[1]: Submitting tx: 3bfbd6002c0fef69d85941fd39897146c630fec7c7130345b99c05243518757d
+[INFO] Slot 81: TxnValidate 3bfbd6002c0fef69d85941fd39897146c630fec7c7130345b99c05243518757d
+[INFO] 755efb45-0287-4cd4-91e4-99b0445cef52: "burnLCToken: tx submitted successfully= UnbalancedTx {unBalancedTxTx = Tx {txInputs = fromList [TxIn {txInRef = TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 0}, txInType = Just ConsumePublicKeyAddress},TxIn {txInRef = TxOutRef {txOutRefId = b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5, txOutRefIdx = 3}, txInType = Just (ConsumeScriptAddress Validator { <script> } (Redeemer {getRedeemer = Constr 1 [I 25]}) (Datum {getDatum = Constr 0 [I 20000000,I 100]}))}], txCollateral = fromList [], txOutputs = [TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",15000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just abedc8ccf3e6803cbf7ac99fc0bd9540e3631c5e2a39ab7198d3f220c8cdb7da},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",5000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [(\"Littercoin Approved Merchant\",1)])]), txOutDatumHash = Nothing}], txMint = Value (Map [(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [(\"Littercoin\",-25)])]), txFee = Value (Map []), txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, txMintScripts = fromList [MintingPolicy { <script> }], txSignatures = fromList [], txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 [Constr 0 [],I 15000000,I 5000000]})], txData = fromList [(094630ffe3d31120046d13f6739ad273d67915b72917673f464384314635f895,Datum {getDatum = Constr 0 [I 20000000,I 100]}),(abedc8ccf3e6803cbf7ac99fc0bd9540e3631c5e2a39ab7198d3f220c8cdb7da,Datum {getDatum = Constr 0 [I 15000000,I 75]})]}, unBalancedTxRequiredSignatories = fromList [(a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2,Nothing)], unBalancedTxUtxoIndex = fromList [(TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 0},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",9997089697)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 1},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4,Map [(\"Littercoin\",100)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 2},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",89975332727)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 3},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c,Map [(\"Littercoin Approved Merchant\",1)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = ac69e7e012d2fd6b7a7c0ac684036130a470c45d5283ac5e09e6a4aece914b6d, txOutRefIdx = 4},TxOut {txOutAddress = Address {addressCredential = PubKeyCredential a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",2000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b,1)])]), txOutDatumHash = Nothing}),(TxOutRef {txOutRefId = b7331df16dfd39b38bfd0b9a4d47af0f4049e72656d0c4b5e114728bcd2084d5, txOutRefIdx = 3},TxOut {txOutAddress = Address {addressCredential = ScriptCredential 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb, addressStakingCredential = Nothing}, txOutValue = Value (Map [(,Map [(\"\",20000000)]),(66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac,Map [(0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63,1)])]), txOutDatumHash = Just 094630ffe3d31120046d13f6739ad273d67915b72917673f464384314635f895})], unBalancedTxValidityTimeRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}}"
+[INFO] Wallet 7: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 8: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 6: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 4: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 2: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 1: 
+[INFO]     {e4916e001d32ff86d056daf3437089d7795875fd9905fc21eae56ed4, "Littercoin"}: 75
+[INFO]     {a01dd20fcbe707fc3d07a7fe42612c0412f395a0441be93b651eff8c, "Littercoin Approved Merchant"}: 1
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x155dfa439b960cafce3a61067b72914d14f4e0a057d3732e8f2df952c14ee45b}: 1
+[INFO]     {, ""}: 99982599491
+[INFO] Wallet 10: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 9: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 3: 
+[INFO]     {, ""}: 100000000000
+[INFO] Wallet 5: 
+[INFO]     {, ""}: 100000000000
+[INFO] Script 5432f0e5b88534fe3e67b4aaca73509ee70327b3ff0bca12f2e8ddbb: 
+[INFO]     {66a30e2f4e4516faa638cf2613b2673fdd9de3af7d4d99109bde35ac, 0x0442d0756898cd0e0a2c62c6676182517845ef190bcf4468859f4cf8fde55a63}: 1
+[INFO]     {, ""}: 15000000
+[INFO] Token burned for wallet 1, press return to continue
