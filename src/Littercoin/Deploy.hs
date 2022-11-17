@@ -61,8 +61,8 @@ adminPubKeyHashBS = "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
 
-nftTokName :: PlutusV2.TokenName
-nftTokName = "Littercoin Approved Merchant"
+merchantTokName :: PlutusV2.TokenName
+merchantTokName = "Littercoin Approved Merchant"
 
 
 -------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ txOutRef' = TxV2.TxOutRef
         ,   TxV2.txOutRefIdx = txIdIdxInt
         }
 
-
+-- | Thread Token
 ttTokName :: Value.TokenName
 ttTokName = Value.TokenName $ sha2_256 txBS
     where
@@ -102,18 +102,34 @@ ttTokValue = ttVal
     (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol ttTokName)
 
 
+-- | Owner Token
+otTokName :: Value.TokenName
+otTokName = Value.TokenName $ sha2_256 $ sha2_256 txBS
+    where
+        txBS = (TxV2.getTxId(TxV2.txOutRefId txOutRef')) <> 
+                intToBBS(TxV2.txOutRefIdx txOutRef')  
 
-nftMintParams :: NFTMintPolicyParams
-nftMintParams = NFTMintPolicyParams 
+
+otTokValue :: Value.Value
+otTokValue = otVal
+  where
+    (_, otVal) = Value.split(threadTokenValue threadTokenCurSymbol otTokName)
+
+
+
+
+merchantTokenMintParams :: MerchantTokenMintPolicyParams
+merchantTokenMintParams = MerchantTokenMintPolicyParams 
     {
-        nftTokenName = nftTokName
-    ,   nftAdminPkh = adminPaymentPkh
+        mtTokenName = merchantTokName
+    ,   mtAdminPkh = adminPaymentPkh
+    ,   mtOwnerTokenValue = otTokValue
     }
 
-nftTokValue :: Value.Value
-nftTokValue = nftTokVal
+merchantTokValue :: Value.Value
+merchantTokValue = merchantTokVal
   where
-    (_, nftTokVal) = Value.split(nftTokenValue (nftCurSymbol nftMintParams) nftTokName)
+    (_, merchantTokVal) = Value.split(merchantTokenValue (merchantTokenCurSymbol merchantTokenMintParams) merchantTokName)
 
 
 mintParams :: LCMintPolicyParams
@@ -122,15 +138,17 @@ mintParams = LCMintPolicyParams
         lcTokenName = lcTokName -- the name of the littercoin
     ,   lcAdminPkh = adminPaymentPkh  -- the admin pkh who can only mint littercoins
     ,   lcThreadTokenValue = ttTokValue
-    ,   lcNFTTokenValue = nftTokValue  -- this contains the NFT that merchants used for burning
+    ,   lcMerchantTokenValue = merchantTokValue  -- this contains the MerchantToken that merchants used for burning
+    ,   lcOwnerTokenValue = otTokValue
     }
 
 lcvParams :: LCValidatorParams
 lcvParams = LCValidatorParams
-    {   lcvAdminPkh         = adminPaymentPkh
-    ,   lcvNFTTokenValue    = nftTokValue
-    ,   lcvLCTokenName      = lcTokName
+    {   lcvTokenName = lcTokName
+    ,   lcvAdminPkh = adminPaymentPkh
+    ,   lcvMerchantTokenValue = merchantTokValue
     ,   lcvThreadTokenValue = ttTokValue
+    ,   lcvOwnerTokenValue = otTokValue
     }
 
 
@@ -145,8 +163,10 @@ main = do
     -- Generate token name and metadata
     writeTTTokenValue    
     writeTTTokenName
+    writeOTTokenValue    
+    writeOTTokenName
     writeLCTokenName
-    writeNFTTokenName
+    writeMerchantTokenName
 
     -- Generate datum
     writeDatumInit
@@ -156,18 +176,18 @@ main = do
     writeRedeemerAdd
     writeRedeemerMint
     writeRedeemerMintLC
-    writeRedeemerMintNFT
+    writeRedeemerMintMerchantToken
     writeRedeemerBurn
     writeRedeemerBurnLC
-    writeRedeemerBurnNFT
+    writeRedeemerBurnMerchantToken
 
     -- Generate plutus scripts and hashes
     writeTTMintingPolicy
     writeTTMintingPolicyHash
     writeLCMintingPolicy
     writeLCMintingPolicyHash
-    writeNFTMintingPolicy
-    writeNFTMintingPolicyHash
+    writeMerchantTokenMintingPolicy
+    writeMerchantTokenMintingPolicyHash
     writeLCValidator
     writeLCValidatorHash
     
@@ -183,19 +203,30 @@ writeTTTokenName :: IO ()
 writeTTTokenName = 
     LBS.writeFile "deploy/thread-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ttTokName)    
 
+
+writeOTTokenValue :: IO ()
+writeOTTokenValue = 
+    LBS.writeFile "deploy/owner-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData otTokValue)    
+
+
+writeOTTokenName :: IO ()
+writeOTTokenName = 
+    LBS.writeFile "deploy/owner-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData otTokName)    
+
+
 writeLCTokenName :: IO ()
 writeLCTokenName = 
     LBS.writeFile "deploy/lc-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData lcTokName)    
 
-writeNFTTokenName :: IO ()
-writeNFTTokenName = 
-    LBS.writeFile "deploy/nft-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData nftTokName)    
+writeMerchantTokenName :: IO ()
+writeMerchantTokenName = 
+    LBS.writeFile "deploy/merchant-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData merchantTokName)    
 
 
 writeDatumInit :: IO ()
 writeDatumInit = 
     let lcDatum = LCDatum 
-            {   adaAmount = 0                                         
+            {   lcAdaAmount = 0                                         
             ,   lcAmount = 0
             }
         dat = PlutusTx.toBuiltinData lcDatum
@@ -236,16 +267,16 @@ writeRedeemerMintLC =
         LBS.writeFile "deploy/redeemer-mint-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
-writeRedeemerMintNFT :: IO ()
-writeRedeemerMintNFT = 
+writeRedeemerMintMerchantToken :: IO ()
+writeRedeemerMintMerchantToken = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = True     -- mint token
-             ,  mpTotalAdaAmount = 0  -- ingored for NFT minting
+             ,  mpTotalAdaAmount = 0  -- ingored for MerchantToken minting
              ,  mpWithdrawAmount = 0  -- ignored during minting   
              }
     in
-        LBS.writeFile "deploy/redeemer-mint-nft.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-mint-merchant.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 
@@ -266,16 +297,16 @@ writeRedeemerBurnLC =
     in
         LBS.writeFile "deploy/redeemer-burn-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
-writeRedeemerBurnNFT :: IO ()
-writeRedeemerBurnNFT = 
+writeRedeemerBurnMerchantToken :: IO ()
+writeRedeemerBurnMerchantToken = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = False      -- burn token
-             ,  mpTotalAdaAmount = 0    -- ingored for NFT burn
-             ,  mpWithdrawAmount = 0    -- ingored for NFT burn   
+             ,  mpTotalAdaAmount = 0    -- ingored for MerchantToken burn
+             ,  mpWithdrawAmount = 0    -- ingored for MerchantToken burn   
              }
     in
-        LBS.writeFile "deploy/redeemer-burn-nft.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-burn-merchant.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 
@@ -320,11 +351,11 @@ writeLCMintingPolicyHash =
 
 
 
-writeNFTMintingPolicy :: IO ()
-writeNFTMintingPolicy = void $ writeFileTextEnvelope "deploy/nft-minting-policy.plutus" Nothing serialisedScript
+writeMerchantTokenMintingPolicy :: IO ()
+writeMerchantTokenMintingPolicy = void $ writeFileTextEnvelope "deploy/merchant-minting-policy.plutus" Nothing serialisedScript
   where
     script :: PlutusV2.Script
-    script = PlutusV2.unMintingPolicyScript $ nftPolicy nftMintParams 
+    script = PlutusV2.unMintingPolicyScript $ merchantTokenPolicy merchantTokenMintParams 
 
     scriptSBS :: SBS.ShortByteString
     scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
@@ -332,11 +363,11 @@ writeNFTMintingPolicy = void $ writeFileTextEnvelope "deploy/nft-minting-policy.
     serialisedScript :: PlutusScript PlutusScriptV2
     serialisedScript = PlutusScriptSerialised scriptSBS
 
-writeNFTMintingPolicyHash :: IO ()
-writeNFTMintingPolicyHash = 
-    LBS.writeFile "deploy/nft-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
+writeMerchantTokenMintingPolicyHash :: IO ()
+writeMerchantTokenMintingPolicyHash = 
+    LBS.writeFile "deploy/merchant-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
   where
-    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ nftPolicy nftMintParams
+    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ merchantTokenPolicy merchantTokenMintParams
 
 
 writeLCValidator :: IO ()

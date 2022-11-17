@@ -17,9 +17,9 @@ module Littercoin.OnChain
     , lcValidator
     , LCDatum(..)
     , minAda
-    , nftCurSymbol
-    , nftPolicy
-    , nftTokenValue
+    , merchantTokenCurSymbol
+    , merchantTokenPolicy
+    , merchantTokenValue
     , threadTokenCurSymbol
     , threadTokenPolicy 
     , threadTokenValue
@@ -37,7 +37,7 @@ import           Littercoin.Types                       (MintPolicyRedeemer(..),
                                                         LCMintPolicyParams(..),
                                                         LCRedeemer(..),
                                                         LCValidatorParams(..),
-                                                        NFTMintPolicyParams(..),
+                                                        MerchantTokenMintPolicyParams(..),
                                                         ThreadTokenRedeemer(..))
 import qualified Plutus.Script.Utils.Typed              as Typed (Any, validatorScript)
 import qualified Plutus.Script.Utils.V2.Scripts         as PSU.V2  (scriptCurrencySymbol, Validator, 
@@ -76,11 +76,28 @@ minAda = Ada.lovelaceValueOf 2000000
 intToBBS :: Integer -> BuiltinByteString
 intToBBS y = consByteString (y + 48::Integer) emptyByteString -- 48 is ASCII code for '0'
 
+
+-- | ActionDatum is used to determine what action to perform on the smart contract
+--   0 = Add Ada
+--   1 = Mint Ada
+--   2 = Burn Ada
+--   3 = Mint Merchant Token
+data ActionDatum = ActionDatum
+    {   adAction            :: !Integer
+    ,   adAdaAmount           :: !Integer
+    ,   adDestination       :: !Address.PaymentPubKeyHash
+    ,   adReturn            :: !Address.PaymentPubKeyHash                                                                       -- 8
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+PlutusTx.makeIsDataIndexed ''ActionDatum [('ActionDatum, 0)]
+PlutusTx.makeLift ''ActionDatum
+
+
 -- | LCDatum is used to record the amount of Littercoin minted and the amount
 --   of Ada locked at the smart contract.  This is then used during Littercoin
 --   burning to payout the corresponding amount of Ada per Littercoin to the merchant.
 data LCDatum = LCDatum
-    {   adaAmount           :: Integer                                         
+    {   lcAdaAmount           :: Integer                                         
     ,   lcAmount            :: Integer                                                                         
     } deriving (Show, Generic, FromJSON, ToJSON)
 
@@ -104,28 +121,25 @@ mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ContextsV2.Scr
 mkLittercoinPolicy params (MintPolicyRedeemer polarity totalAdaAmount withdrawAmount) ctx = 
 
     case polarity of
-        True ->   traceIfFalse "LP1" signedByAdmin 
-               && traceIfFalse "LP2" checkMintedAmount
-               && traceIfFalse "LP3" checkThreadToken -- confirm that thread token is part of transaction
-                
-        False ->  traceIfFalse "LP4" checkBurnedAmount 
-               && traceIfFalse "LP5" checkNFTValue -- check for merchant NFT
-               && traceIfFalse "LP6" checkThreadToken -- confirm that thread token is part of transaction
-   
+        True ->    traceIfFalse "LP1" signedByAdmin 
+                && traceIfFalse "LP2" checkMintedAmount 
+                && traceIfFalse "LP3" checkOwnerToken
+                && traceIfFalse "LP4" checkThreadToken
+                               
+        False ->   traceIfFalse "LP5" signedByAdmin
+                && traceIfFalse "LP6" checkBurnedAmount
+                && traceIfFalse "LP7" checkMerchantToken 
+                && traceIfFalse "LP8" checkThreadToken
   where
 
     tn :: PlutusV2.TokenName
     tn = lcTokenName params
 
-
     info :: PlutusV2.TxInfo
     info = PlutusV2.scriptContextTxInfo ctx  
 
-
-    -- | For now this is a single signature witnes, with future plans to make this multi-sig
     signedByAdmin :: Bool
     signedByAdmin =  ContextsV2.txSignedBy info $ Address.unPaymentPubKeyHash (lcAdminPkh params)
-
 
     -- | Check that the token name minted is greater than 1
     checkMintedAmount :: Bool
@@ -140,10 +154,14 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity totalAdaAmount withdrawAm
         [(_, tn', amt)] -> tn' == tn && amt <= (-1)
         _               -> False
         
-        
-    -- | Check for NFT Merchant token if burning littercoin
-    checkNFTValue :: Bool
-    checkNFTValue = validOutputs (withdrawAda <> (lcNFTTokenValue params)) (PlutusV2.txInfoOutputs info)
+    -- Check for Owner token for minting of littercoin
+    checkOwnerToken :: Bool
+    checkOwnerToken = validOutputs (minAda <> (lcOwnerTokenValue params)) (PlutusV2.txInfoOutputs info)
+    
+
+    -- | Check for MerchantToken Merchant token if burning littercoin
+    checkMerchantToken :: Bool
+    checkMerchantToken = validOutputs (withdrawAda <> (lcMerchantTokenValue params)) (PlutusV2.txInfoOutputs info)
 
         where
             withdrawAda :: Value.Value
@@ -177,29 +195,30 @@ lcCurSymbol :: LCMintPolicyParams -> PlutusV2.CurrencySymbol
 lcCurSymbol mpParams = PSU.V2.scriptCurrencySymbol $ lcPolicy mpParams 
 
 
--- | mkPFTPolicy is the minting policy for creating the approved merchant NFT.
---   When a merchant has one of a merchant approved NFT, they are authorized to burn littercoin
+-- | mkPFTPolicy is the minting policy for creating the approved merchant MerchantToken.
+--   When a merchant has one of a merchant approved MerchantToken, they are authorized to burn littercoin
 --   and receive Ada from the littercoin smart contract.
-{-# INLINABLE mkNFTPolicy #-}
-mkNFTPolicy :: NFTMintPolicyParams -> MintPolicyRedeemer -> ContextsV2.ScriptContext -> Bool
-mkNFTPolicy params (MintPolicyRedeemer polarity _ _) ctx = 
+{-# INLINABLE mkMerchantTokenPolicy #-}
+mkMerchantTokenPolicy :: MerchantTokenMintPolicyParams -> MintPolicyRedeemer -> ContextsV2.ScriptContext -> Bool
+mkMerchantTokenPolicy params (MintPolicyRedeemer polarity _ _) ctx = 
 
     case polarity of
-        True ->    traceIfFalse "NFTP1" checkMintedAmount 
-                && traceIfFalse "NFTP2" signedByAdmin 
+        True ->    traceIfFalse "MTP1" checkMintedAmount 
+                -- && traceIfFalse "MTP2" signedByAdmin 
+                && traceIfFalse "MTP3" checkOwnerToken 
                 
-        False ->   traceIfFalse "NFTP3" checkBurnedAmount 
+        False ->   traceIfFalse "MTP4" checkBurnedAmount 
 
   where
     tn :: PlutusV2.TokenName
-    tn = nftTokenName params
+    tn = mtTokenName params
 
     info :: PlutusV2.TxInfo
     info = PlutusV2.scriptContextTxInfo ctx  
 
     -- | For now this is a single signature witnes, with future plans to make this multi-sig
-    signedByAdmin :: Bool
-    signedByAdmin =  ContextsV2.txSignedBy info $ Address.unPaymentPubKeyHash (nftAdminPkh params)
+    --signedByAdmin :: Bool
+    --signedByAdmin =  ContextsV2.txSignedBy info $ Address.unPaymentPubKeyHash (mtAdminPkh params)
 
     -- | Check that there is only 1 token minted
     checkMintedAmount :: Bool
@@ -212,32 +231,37 @@ mkNFTPolicy params (MintPolicyRedeemer polarity _ _) ctx =
     checkBurnedAmount = case Value.flattenValue (PlutusV2.txInfoMint info) of
         [(_, tn', amt)] -> tn' == tn && amt == (-1)
         _               -> False
+
+    -- Check for Owner token for minting of merchant token
+    checkOwnerToken :: Bool
+    checkOwnerToken = validOutputs (minAda <> (mtOwnerTokenValue params)) (PlutusV2.txInfoOutputs info)
+
            
 
 -- | Wrap the minting policy using the boilerplate template haskell code
-nftPolicy :: NFTMintPolicyParams -> PlutusV2.MintingPolicy
-nftPolicy mp = PlutusV2.mkMintingPolicyScript $
+merchantTokenPolicy :: MerchantTokenMintPolicyParams -> PlutusV2.MintingPolicy
+merchantTokenPolicy mp = PlutusV2.mkMintingPolicyScript $
     $$(PlutusTx.compile [|| wrap ||])
     `PlutusTx.applyCode`
     PlutusTx.liftCode mp
   where
-    wrap mp' = PSU.V2.mkUntypedMintingPolicy $ mkNFTPolicy mp' 
+    wrap mp' = PSU.V2.mkUntypedMintingPolicy $ mkMerchantTokenPolicy mp' 
 
 
--- | Provide the currency symbol of the minting policy which requires NFTMintPolicyParams
+-- | Provide the currency symbol of the minting policy which requires MerchantTokenMintPolicyParams
 --   as a parameter to the minting policy
-{-# INLINABLE nftCurSymbol #-}
-nftCurSymbol :: NFTMintPolicyParams -> Value.CurrencySymbol
-nftCurSymbol mpParams = PSU.V2.scriptCurrencySymbol $ nftPolicy mpParams 
+{-# INLINABLE merchantTokenCurSymbol #-}
+merchantTokenCurSymbol :: MerchantTokenMintPolicyParams -> Value.CurrencySymbol
+merchantTokenCurSymbol mpParams = PSU.V2.scriptCurrencySymbol $ merchantTokenPolicy mpParams 
 
 
--- | Provide the Value of an nft merchant token
-{-# INLINABLE nftTokenValue #-}
-nftTokenValue :: Value.CurrencySymbol -> PlutusV2.TokenName -> Value.Value
-nftTokenValue cs' tn' = Value.singleton cs' tn' 1
+-- | Provide the Value of a merchant Token
+{-# INLINABLE merchantTokenValue #-}
+merchantTokenValue :: Value.CurrencySymbol -> PlutusV2.TokenName -> Value.Value
+merchantTokenValue cs' tn' = Value.singleton cs' tn' 1
 
 
--- | Mint a unique NFT representing a littercoin validator thread token
+-- | Mint a unique MerchantToken representing a littercoin validator thread token
 mkThreadTokenPolicy :: ThreadTokenRedeemer -> ContextsV2.ScriptContext -> Bool
 mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx = 
         traceIfFalse "TP1" maxRefIdx             -- refIdx must be less than 256
@@ -257,9 +281,11 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx =
     ownSymbol = ContextsV2.ownCurrencySymbol ctx
     minted = ContextsV2.txInfoMint info
     threadToken = sha2_256 $ TxV2.getTxId refHash <> intToBBS refIdx
+    ownerToken = sha2_256 threadToken
 
     checkMintedAmount :: Bool
     checkMintedAmount = minted == threadTokenValue ownSymbol (PlutusV2.TokenName threadToken) 
+                                <> threadTokenValue ownSymbol (PlutusV2.TokenName ownerToken)
 
 
 -- | Wrap the minting policy using the boilerplate template haskell code
@@ -291,19 +317,26 @@ threadTokenValue cs' tn' = Value.singleton cs' tn' 1
 {-# INLINABLE mkLCValidator #-}
 mkLCValidator :: LCValidatorParams -> LCDatum -> LCRedeemer -> ContextsV2.ScriptContext -> Bool
 mkLCValidator params dat red ctx = 
+
     case red of
         MintLC qty -> (traceIfFalse "LCV1" $ checkAmountMint qty)        
                   &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
-                  &&   traceIfFalse "LCV3" signedByAdmin  
-        BurnLC qty -> (traceIfFalse "LCV4" $ checkAmountBurn qty)           
-                  &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
-                  &&   traceIfFalse "LCV7" checkValueAmountBurn                 
+                  &&   traceIfFalse "LCV3" signedByAdmin
+                  &&   traceIfFalse "LCV4" checkOwnerToken
+                  &&   traceIfFalse "LCV5" checkValueAmountMint  
+
+        BurnLC qty -> (traceIfFalse "LCV6" $ checkAmountBurn qty)           
+                  &&  (traceIfFalse "LCV7" $ checkLCDatumBurn qty)
+                  &&   traceIfFalse "LCV8" signedByAdmin
+                  &&   traceIfFalse "LCV9" checkValueAmountBurn 
+                  &&   traceIfFalse "LCV10" checkMerchantToken                
                     
-        AddAda qty -> (traceIfFalse "LCV8" $ checkLCDatumAdd qty)  
-                 &&    traceIfFalse "LCV9" checkValueAmountAdd 
+        AddAda qty -> (traceIfFalse "LCV11" $ checkLCDatumAdd qty)
+                  &&   traceIfFalse "LCV12" signedByAdmin  
+                  &&   traceIfFalse "LCV13" checkValueAmountAdd  
       where        
         tn :: PlutusV2.TokenName
-        tn = lcvLCTokenName params
+        tn = lcvTokenName params
         
         info :: ContextsV2.TxInfo
         info = PlutusV2.scriptContextTxInfo ctx  
@@ -331,6 +364,13 @@ mkLCValidator params dat red ctx =
         --   matches the quantity indicated in the redeemer
         checkLCDatumMint :: Integer -> Bool
         checkLCDatumMint q = ((lcAmount outputDat) - (lcAmount dat)) == q
+
+        -- | Check that the Ada spent matches and that the thread token is also present
+        checkValueAmountMint :: Bool
+        checkValueAmountMint = validOutputs (adaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
+
+            where     
+                adaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
         
         -- | Check that the tx is signed by the admin 
         signedByAdmin :: Bool
@@ -346,31 +386,47 @@ mkLCValidator params dat red ctx =
         --   matches the quantity indicated in the redeemer
         checkLCDatumBurn :: Integer -> Bool
         checkLCDatumBurn q = ((lcAmount dat) - (lcAmount outputDat)) == q &&
-                             ((adaAmount dat) - (adaAmount outputDat) == q * r)
+                             ((lcAdaAmount dat) - (lcAdaAmount outputDat) == q * r)
             where
                 r :: Integer
-                r = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
+                r = divide (lcAdaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
                 
         -- | Check that the Ada spent matches Littercoin burned and that the
-        -- | merch NFT token is also present
+        -- | merch MerchantToken token is also present
         checkValueAmountBurn :: Bool
         checkValueAmountBurn = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
             where     
-                newAdaBalance = Ada.lovelaceValueOf (adaAmount outputDat)
+                newAdaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
                 
         -- | Check that the difference between Ada amount in the output and the input datum
         --   matches the quantity indicated in the redeemer
         checkLCDatumAdd :: Integer -> Bool
-        checkLCDatumAdd q = (adaAmount outputDat) - (adaAmount dat) == q
+        checkLCDatumAdd q = (lcAdaAmount outputDat) - (lcAdaAmount dat) == q
         
         -- | Check that the Ada added matches increase in the datum
         checkValueAmountAdd :: Bool
         checkValueAmountAdd = validOutputs (addAda <> tt) (ContextsV2.txInfoOutputs info)
             where
                 addAda :: Value.Value
-                addAda = Ada.lovelaceValueOf (adaAmount outputDat)
+                addAda = Ada.lovelaceValueOf (lcAdaAmount outputDat)
+
                 tt :: Value.Value 
                 tt = lcvThreadTokenValue params
+
+
+        -- Check for Owner token required for minting
+        checkOwnerToken :: Bool
+        checkOwnerToken = validOutputs (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)
+
+
+        -- Check for Merchant token if burning littercoin
+        checkMerchantToken :: Bool
+        checkMerchantToken = validOutputs (withdrawAda <> (lcvMerchantTokenValue params)) (ContextsV2.txInfoOutputs info)
+
+            where
+                withdrawAda :: Value.Value
+                withdrawAda = Ada.lovelaceValueOf ((lcAdaAmount dat) - (lcAdaAmount outputDat))
+
                 
                 
 -- | Creating a wrapper around littercoin validator for 

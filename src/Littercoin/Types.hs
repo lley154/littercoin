@@ -11,7 +11,7 @@ module Littercoin.Types
    , LCMintPolicyParams(..)
    , LCRedeemer(..)
    , LCValidatorParams(..)
-   , NFTMintPolicyParams(..)
+   , MerchantTokenMintPolicyParams(..)
    , ThreadTokenRedeemer(..)    
 
 )where
@@ -41,40 +41,32 @@ PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)]
 PlutusTx.makeLift ''MintPolicyRedeemer
 
 
--- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh, ThreadToken and NFT Token value 
+-- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh, ThreadToken and MerchantToken Token value 
 --   as a parameter into the minting poicy which will make the Littercoin minting policy unique
 data LCMintPolicyParams = LCMintPolicyParams
     { 
-      lcTokenName                 :: Value.TokenName
-    , lcAdminPkh                  :: Address.PaymentPubKeyHash
-    , lcThreadTokenValue          :: Value.Value    -- LC validator thread token
-    , lcNFTTokenValue             :: Value.Value    -- Merchant NFT identification token
+      lcTokenName               :: Value.TokenName  -- littercoin token name
+    , lcAdminPkh                :: Address.PaymentPubKeyHash
+    , lcThreadTokenValue        :: Value.Value    -- LC validator thread token
+    , lcOwnerTokenValue         :: Value.Value
+    , lcMerchantTokenValue      :: Value.Value    
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
 PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
 PlutusTx.makeLift ''LCMintPolicyParams
 
 
--- | TokenParams are parameters that are passed to the endpoints for use in the PAB
-data TokenParams = TokenParams
+-- | The merchant MerchantToken minting policy params passes the Merchant token name and adminPkh as a parameter 
+--   into the minting poicy which will make the merchant MerchantToken policy unique
+data MerchantTokenMintPolicyParams = MerchantTokenMintPolicyParams
     { 
-      tpLCTokenName         :: BuiltinByteString 
-    , tpNFTTokenName        :: BuiltinByteString  
-    , tpQty                 :: Integer
-    , tpAdminPkh            :: Address.PaymentPubKeyHash     
-    } deriving (Generic, FromJSON, ToJSON, Haskell.Show, Playground.ToSchema)
-
-
--- | The merchant NFT minting policy params passes the NFT token name and adminPkh as a parameter 
---   into the minting poicy which will make the merchant NFT policy unique
-data NFTMintPolicyParams = NFTMintPolicyParams
-    { 
-      nftTokenName                 :: Value.TokenName
-    , nftAdminPkh                  :: Address.PaymentPubKeyHash 
+      mtTokenName                 :: Value.TokenName  -- merchant token name
+    , mtAdminPkh                  :: Address.PaymentPubKeyHash 
+    , mtOwnerTokenValue           :: Value.Value
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
-PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
-PlutusTx.makeLift ''NFTMintPolicyParams
+PlutusTx.makeIsDataIndexed ''MerchantTokenMintPolicyParams [('MerchantTokenMintPolicyParams,0)] 
+PlutusTx.makeLift ''MerchantTokenMintPolicyParams
 
 
 -- | The thread token redeemer passes a utxo from the Littercoin admin's wallet 
@@ -88,13 +80,14 @@ data ThreadTokenRedeemer = ThreadTokenRedeemer
 PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)] 
 
 
--- | LCValidatorParams is used to pass the admin pkh, NFT & Littercoin token names as a parameter to the 
+-- | LCValidatorParams is used to pass the admin pkh, MerchantToken & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: Address.PaymentPubKeyHash
-    ,   lcvNFTTokenValue            :: Value.Value      -- Merchant NFT identification token
-    ,   lcvLCTokenName              :: Value.TokenName  
+    ,   lcvTokenName                :: Value.TokenName  -- Littercoin token name
+    ,   lcvMerchantTokenValue       :: Value.Value      -- MerchantToken identification token
     ,   lcvThreadTokenValue         :: Value.Value      -- LC validator thread token
+    ,   lcvOwnerTokenValue          :: Value.Value
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 
