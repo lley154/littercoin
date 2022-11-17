@@ -11,7 +11,7 @@ module Littercoin.Types
    , LCMintPolicyParams(..)
    , LCRedeemer(..)
    , LCValidatorParams(..)
-   , NFTMintPolicyParams(..)
+   , MerchantTokenMintPolicyParams(..)
    , ThreadTokenRedeemer(..)     
 )where
 
@@ -29,46 +29,53 @@ import qualified    Prelude as Haskell                  (Show)
 -- | The mint policy reeemder indicates if the token is to be minted or burned
 data MintPolicyRedeemer = MintPolicyRedeemer
     { 
-      mpPolarity                  :: !Bool  -- True = Mint, False = Burn
-    , mpWithdrawAmount            :: !Integer -- The amount of Ada to withdraw from the Littercoin contract
-                                              -- only used during burning for Littercoin minting policy
+      mpPolarity                  :: Bool     -- True = Mint, False = Burn
+    , mpTotalAdaAmount            :: Integer  -- The total amount of Ada locked in the littercoin smart
+                                              -- contract.   
+    , mpWithdrawAmount            :: Integer  -- The amount of Ada to withdraw from the Littercoin contract
+                                              -- Only used during littercoin burning
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)] 
 PlutusTx.makeLift ''MintPolicyRedeemer
 
 
--- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh and NFT Token value 
+-- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh, MerchantToken OwnerToken value 
 --   as a parameter into the minting poicy which will make the Littercoin minting policy unique
 data LCMintPolicyParams = LCMintPolicyParams
     { 
       lcTokenName                 :: !Value.TokenName
     , lcAdminPkh                  :: !Address.PaymentPubKeyHash
-    , lcNFTTokenValue             :: !Value.Value  
+    , lcMerchantTokenValue        :: !Value.Value  
+    , lcOwnerTokenValue           :: !Value.Value
+    , lcThreadTokenValue          :: !Value.Value
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
 PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
 PlutusTx.makeLift ''LCMintPolicyParams
 
 
--- | The merchant NFT minting policy params passes the NFT token name and adminPkh as a parameter 
---   into the minting poicy which will make the merchant NFT policy unique
-data NFTMintPolicyParams = NFTMintPolicyParams
+-- | The merchant token minting policy params passes the merchant token name and adminPkh as a parameter 
+--   into the minting poicy which will make the merchant token policy unique
+data MerchantTokenMintPolicyParams = MerchantTokenMintPolicyParams
     { 
-      nftTokenName                 :: !Value.TokenName
-    , nftAdminPkh                  :: !Address.PaymentPubKeyHash 
+      mtMerchantTokenName         :: !Value.TokenName
+    , mtAdminPkh                  :: !Address.PaymentPubKeyHash 
+    , mtOwnerTokenValue           :: !Value.Value
+
     } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
 
-PlutusTx.makeIsDataIndexed ''NFTMintPolicyParams [('NFTMintPolicyParams,0)] 
-PlutusTx.makeLift ''NFTMintPolicyParams
+PlutusTx.makeIsDataIndexed ''MerchantTokenMintPolicyParams [('MerchantTokenMintPolicyParams,0)] 
+PlutusTx.makeLift ''MerchantTokenMintPolicyParams
 
--- | LCValidatorParams is used to pass the admin pkh, NFT & Littercoin token names as a parameter to the 
+-- | LCValidatorParams is used to pass the admin pkh, merchant, owner & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: !Address.PaymentPubKeyHash
-    ,   lcvNFTTokenValue            :: !Value.Value
     ,   lcvLCTokenName              :: !Value.TokenName
+    ,   lcvMerchantTokenValue       :: !Value.Value
     ,   lcvThreadTokenValue         :: !Value.Value  
+     ,  lcvOwnerTokenValue          :: !Value.Value
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 

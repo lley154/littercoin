@@ -25,15 +25,23 @@ import           Wallet.Emulator.Wallet                 (knownWallet)
 adminPkh1 :: PaymentPubKeyHash
 adminPkh1 = CW.paymentPubKeyHash (CW.fromWalletNumber $ CW.WalletNumber 1)
 
+threadTokenName :: Value.TokenName
+threadTokenName = ""
+
+ownerTokenName :: Value.TokenName
+ownerTokenName = ""
+
+
+
 main :: IO ()
 main = void $ Simulator.runSimulationWith handlers $ do
 
     let w1 = knownWallet 1
         w2 = knownWallet 2
         tokenName = "Littercoin"
-        nftTokenName = "Littercoin Approved Merchant"
-        qty1 = 100
-        qty2 = 25
+        merchantTokenName = "Littercoin Approved Merchant"
+        qty1 = 100 :: Integer  -- amount of littercoin
+        qty2 = 25 :: Integer -- amount of littercoin
         adaAmount = 10000000 -- 10 Ada
 
     --setLocaleEncoding utf8
@@ -49,16 +57,19 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     void $ Simulator.callEndpointOnInstance initHandle "init" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = qty1  -- ignored for init
         , tpAdminPkh = adminPkh1
+        , tpThreadTokenName = threadTokenName
+        , tpOwnerTokenName = ownerTokenName
         }
     Simulator.waitNSlots 2
 
-    ttTokenName <- flip Simulator.waitForState initHandle $ \json -> case (fromJSON json :: Result (Monoid.Last Value.TokenName)) of
-                    Success (Monoid.Last (Just ttTokenName)) -> Just ttTokenName
+    (ttTokenName, otTokenName) <- flip Simulator.waitForState initHandle $ \json -> case (fromJSON json :: Result (Monoid.Last (Value.TokenName, Value.TokenName))) of
+                    Success (Monoid.Last (Just (ttTokenName, otTokenName))) -> Just (ttTokenName, otTokenName)
                     _                                        -> Nothing
     Simulator.logString @(Builtin Contracts) $ "ThreadToken Token Name found: " ++ show ttTokenName
+    Simulator.logString @(Builtin Contracts) $ "OwnerToken Token Name found: " ++ show otTokenName
     
     balances_init <- Simulator.currentBalances
     Simulator.logBalances @(Builtin Contracts) balances_init
@@ -75,12 +86,14 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Add some add to the Ada to the Littercoin smart contract by a donnor
     Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "addAdaContract" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = adaAmount
         , tpAdminPkh = adminPkh1 
-        })
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 2
 
@@ -93,12 +106,14 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Add some Ada to the Littercoin smart contract by a donnor
     Simulator.logString @(Builtin Contracts) "Calling addAdaContract endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h2 "addAdaContract" (ttTokenName, TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "addAdaContract" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = adaAmount
         , tpAdminPkh = adminPkh1 
-        })
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 2
 
@@ -111,12 +126,14 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Mint some littercoins for wallet 1
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "mintLC" (ttTokenName, TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "mintLC" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = qty1
-        , tpAdminPkh = adminPkh1
-        })
+        , tpAdminPkh = adminPkh1 
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 5
 
@@ -129,12 +146,14 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
     -- Try minting some littercoins with incorrect pkh
     Simulator.logString @(Builtin Contracts) "Calling mint endpoint for wallet 2, but does not have adminPkh"
-    void $ Simulator.callEndpointOnInstance h2 "mintLC" (ttTokenName, TokenParams
+    void $ Simulator.callEndpointOnInstance h2 "mintLC" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = qty1
-        , tpAdminPkh = adminPkh1
-        })
+        , tpAdminPkh = adminPkh1 
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 2
 
@@ -144,14 +163,16 @@ main = void $ Simulator.runSimulationWith handlers $ do
     Simulator.logString @(Builtin Contracts) "Token minted for wallet 2?, press return to continue"
     void $ liftIO getLine
     
-    -- Burn Littercoin but merchant does not have approved NFT
-    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1, but does not have merchant NFT"
-    void $ Simulator.callEndpointOnInstance h1 "burnLC" (ttTokenName, TokenParams
+    -- Burn Littercoin but merchant does not have approved Merchant
+    Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1, but does not have merchant Merchant"
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = qty2
         , tpAdminPkh = adminPkh1 
-        })
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 2
 
@@ -162,32 +183,36 @@ main = void $ Simulator.runSimulationWith handlers $ do
     void $ liftIO getLine
 
 
-    -- Mint the merchant NFT to allow for burning of littercoin
-    Simulator.logString @(Builtin Contracts) "Calling mintNFT endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "mintNFT" $ TokenParams
-        { tpLCTokenName = tokenName -- ignored for NFT minting
-        , tpNFTTokenName = nftTokenName
-        , tpQty = 1
-        , tpAdminPkh = adminPkh1
+    -- Mint the merchant Merchant to allow for burning of littercoin
+    Simulator.logString @(Builtin Contracts) "Calling mintMerchToken endpoint for wallet 1"
+    void $ Simulator.callEndpointOnInstance h1 "mintMerchToken" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpMerchantTokenName = merchantTokenName
+        , tpQty = qty1  -- ignored for merchant token
+        , tpAdminPkh = adminPkh1 
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
         }
 
     Simulator.waitNSlots 5    
 
-    balances_nft <- Simulator.currentBalances
-    Simulator.logBalances @(Builtin Contracts) balances_nft
+    balances_merchant <- Simulator.currentBalances
+    Simulator.logBalances @(Builtin Contracts) balances_merchant
 
-    Simulator.logString @(Builtin Contracts) "NFT minted for wallet 1, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Merchant minted for wallet 1, press return to continue"
     void $ liftIO getLine
 
 
-    -- Burn Littercoin with merchant approved NFT
+    -- Burn Littercoin with merchant approved Merchant
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 1"
-    void $ Simulator.callEndpointOnInstance h1 "burnLC" (ttTokenName, TokenParams
+    void $ Simulator.callEndpointOnInstance h1 "burnLC" $ TokenParams
         { tpLCTokenName = tokenName
-        , tpNFTTokenName = nftTokenName
+        , tpMerchantTokenName = merchantTokenName
         , tpQty = qty2
-        , tpAdminPkh = adminPkh1 -- ignored for littercoin burning
-        })
+        , tpAdminPkh = adminPkh1 
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
+        }
 
     Simulator.waitNSlots 5
 
@@ -200,17 +225,19 @@ main = void $ Simulator.runSimulationWith handlers $ do
 
 
     {-
-    -- Burn the merchant NFT to remove it
+    -- Burn the merchant Merchant to remove it
     Simulator.logString @(Builtin Contracts) "Calling burn endpoint for wallet 2"
-    void $ Simulator.callEndpointOnInstance h1 "burnNFT" $ TokenParams
-        { tpLCTokenName = tokenName -- ignored for NFT minting
-        , tpNFTTokenName = nftTokenName
-        , tpQty = 1
-        , tpAdminPkh = adminPkh1 -- ignored for NFT burning
+    void $ Simulator.callEndpointOnInstance h1 "burnMerchant" $ TokenParams
+        { tpLCTokenName = tokenName
+        , tpMerchantTokenName = merchantTokenName
+        , tpQty = adaAmount
+        , tpAdminPkh = adminPkh1 
+        , tpThreadTokenName = ttTokenName
+        , tpOwnerTokenName = otTokenName
         }
 
     Simulator.waitNSlots 5
-    Simulator.logString @(Builtin Contracts) "NFT burned for wallet 2, press return to continue"
+    Simulator.logString @(Builtin Contracts) "Merchant burned for wallet 2, press return to continue"
     void $ liftIO getLine
     
     -- Pressing enter results in the balances being printed
