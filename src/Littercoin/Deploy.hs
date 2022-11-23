@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "c3570784426917cfe31f4f9bd854740333adde7fcc72f8e5de3bba9f59fa6cd4"
+txIdBS = "570784d01669bcd18196cb6f9b8e8d9393d4162ce54c5e9420efbd6326a47593"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -62,7 +62,16 @@ lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
 
 merchantTokName :: PlutusV2.TokenName
-merchantTokName = "Littercoin Approved Merchant"
+merchantTokName = "Merchant Token Littercoin"
+
+merchantTokMPH :: PlutusV2.MintingPolicyHash
+merchantTokMPH = "66e10f73639b97d976275fe11778fadab379c1bf7cedd4dfb4219d9b"
+
+ownerTokName :: PlutusV2.TokenName
+ownerTokName = "Owner Token Littercoin"
+
+ownerTokMPH :: PlutusV2.MintingPolicyHash
+ownerTokMPH = "9842d1c0c35c346399c0b18529bd469e30b46c000297c9b932bf151d"
 
 
 -------------------------------------------------------------------------------------
@@ -101,7 +110,7 @@ ttTokValue = ttVal
   where
     (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol ttTokName)
 
-
+{-
 -- | Owner Token
 otTokName :: Value.TokenName
 otTokName = Value.TokenName $ sha2_256 $ sha2_256 txBS
@@ -117,20 +126,38 @@ otTokValue = otVal
 
 
 
+-}
+
+ownerTokValue :: Value.Value
+ownerTokValue = Value.singleton ownerTokCurSymbol ownerTokName 1
+  where
+    ownerTokCurSymbol :: CurrencySymbol
+    ownerTokCurSymbol = Value.mpsSymbol ownerTokMPH
+
+
+merchantTokValue :: Value.Value
+merchantTokValue = Value.singleton merchantTokCurSymbol merchantTokName 1
+  where
+    merchantTokCurSymbol :: CurrencySymbol
+    merchantTokCurSymbol = Value.mpsSymbol merchantTokMPH
+
+
 
 merchantTokenMintParams :: MerchantTokenMintPolicyParams
 merchantTokenMintParams = MerchantTokenMintPolicyParams 
     {
         mtTokenName = merchantTokName
     ,   mtAdminPkh = adminPaymentPkh
-    ,   mtOwnerTokenValue = otTokValue
+    ,   mtOwnerTokenValue = ownerTokValue
     }
 
+{-
 merchantTokValue :: Value.Value
 merchantTokValue = merchantTokVal
   where
     (_, merchantTokVal) = Value.split(merchantTokenValue (merchantTokenCurSymbol merchantTokenMintParams) merchantTokName)
 
+-}
 
 mintParams :: LCMintPolicyParams
 mintParams = LCMintPolicyParams 
@@ -139,7 +166,7 @@ mintParams = LCMintPolicyParams
     ,   lcAdminPkh = adminPaymentPkh  -- the admin pkh who can only mint littercoins
     ,   lcThreadTokenValue = ttTokValue
     ,   lcMerchantTokenValue = merchantTokValue  -- this contains the MerchantToken that merchants used for burning
-    ,   lcOwnerTokenValue = otTokValue
+    ,   lcOwnerTokenValue = ownerTokValue
     }
 
 lcvParams :: LCValidatorParams
@@ -148,7 +175,7 @@ lcvParams = LCValidatorParams
     ,   lcvAdminPkh = adminPaymentPkh
     ,   lcvMerchantTokenValue = merchantTokValue
     ,   lcvThreadTokenValue = ttTokValue
-    ,   lcvOwnerTokenValue = otTokValue
+    ,   lcvOwnerTokenValue = ownerTokValue
     }
 
 
@@ -161,12 +188,13 @@ main::IO ()
 main = do
 
     -- Generate token name and metadata
-    writeTTTokenValue    
     writeTTTokenName
-    writeOTTokenValue    
-    writeOTTokenName
+    writeTTTokenValue    
+    writeOwnerTokenName
+    writeOwnerTokenValue    
     writeLCTokenName
     writeMerchantTokenName
+    writeMerchantTokenValue
 
     -- Generate datum
     writeDatumInit
@@ -175,10 +203,10 @@ main = do
     writeRedeemerInit
     writeRedeemerAdd
     writeRedeemerMint
-    writeRedeemerMintLC
+    writeRedeemerMintVal
     writeRedeemerMintMerchantToken
     writeRedeemerBurn
-    writeRedeemerBurnLC
+    writeRedeemerBurnVal
     writeRedeemerBurnMerchantToken
 
     -- Generate plutus scripts and hashes
@@ -204,14 +232,14 @@ writeTTTokenName =
     LBS.writeFile "deploy/thread-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ttTokName)    
 
 
-writeOTTokenValue :: IO ()
-writeOTTokenValue = 
-    LBS.writeFile "deploy/owner-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData otTokValue)    
+writeOwnerTokenValue :: IO ()
+writeOwnerTokenValue = 
+    LBS.writeFile "deploy/owner-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ownerTokValue)    
 
 
-writeOTTokenName :: IO ()
-writeOTTokenName = 
-    LBS.writeFile "deploy/owner-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData otTokName)    
+writeOwnerTokenName :: IO ()
+writeOwnerTokenName = 
+    LBS.writeFile "deploy/owner-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData ownerTokName)    
 
 
 writeLCTokenName :: IO ()
@@ -221,6 +249,10 @@ writeLCTokenName =
 writeMerchantTokenName :: IO ()
 writeMerchantTokenName = 
     LBS.writeFile "deploy/merchant-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData merchantTokName)    
+
+writeMerchantTokenValue :: IO ()
+writeMerchantTokenValue = 
+    LBS.writeFile "deploy/merchant-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData merchantTokValue)    
 
 
 writeDatumInit :: IO ()
@@ -244,19 +276,19 @@ writeRedeemerInit =
 
 writeRedeemerAdd :: IO ()
 writeRedeemerAdd = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ AddAda 42
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData AddAda
     in
         LBS.writeFile "deploy/redeemer-add-ada.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 writeRedeemerMint :: IO ()
 writeRedeemerMint = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintLC 42
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData MintLC
     in
         LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
-writeRedeemerMintLC :: IO ()
-writeRedeemerMintLC = 
+writeRedeemerMintVal :: IO ()
+writeRedeemerMintVal = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = True    -- mint token
@@ -264,7 +296,7 @@ writeRedeemerMintLC =
              ,  mpWithdrawAmount = 0 -- ignored during minting   
              }
     in
-        LBS.writeFile "deploy/redeemer-mint-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-mint-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 writeRedeemerMintMerchantToken :: IO ()
@@ -282,12 +314,12 @@ writeRedeemerMintMerchantToken =
 
 writeRedeemerBurn :: IO ()
 writeRedeemerBurn = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 42
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData BurnLC
     in
         LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
-writeRedeemerBurnLC :: IO ()
-writeRedeemerBurnLC = 
+writeRedeemerBurnVal :: IO ()
+writeRedeemerBurnVal = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = False    -- mint token
@@ -295,7 +327,7 @@ writeRedeemerBurnLC =
              ,  mpWithdrawAmount = 0  -- upate with amount of Ada to withdrawl from contract   
              }
     in
-        LBS.writeFile "deploy/redeemer-burn-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-burn-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 writeRedeemerBurnMerchantToken :: IO ()
 writeRedeemerBurnMerchantToken = 

@@ -98,9 +98,9 @@ PlutusTx.makeLift ''LCValidatorParams
 --   to add and remove Ada from the littercoin contract.   Also specify the amount 
 --   as well in the redeemer.
 data LCRedeemer = 
-       MintLC Integer    -- mint littercoin
-     | BurnLC Integer    -- burn littercoin and retreive Ada
-     | AddAda Integer    -- add Ada to the smart contract
+       MintLC     -- mint littercoin
+     | BurnLC     -- burn littercoin and retreive Ada
+     | AddAda     -- add Ada to the smart contract
      
     deriving Haskell.Show
 

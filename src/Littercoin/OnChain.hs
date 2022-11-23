@@ -30,7 +30,7 @@ where
 import           Data.Aeson                             (FromJSON, ToJSON)
 import           GHC.Generics                           (Generic)
 import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
-import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress)
+import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..))
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
                                                         Value)
 import           Littercoin.Types                       (MintPolicyRedeemer(..), 
@@ -81,14 +81,15 @@ intToBBS y = consByteString (y + 48::Integer) emptyByteString -- 48 is ASCII cod
 
 -- | ActionDatum is used to determine what action to perform on the smart contract
 --   0 = Add Ada
---   1 = Mint Ada
---   2 = Burn Ada
---   3 = Mint Merchant Token
+--   1 = Mint Littercoin
+--   2 = Burn Littecoin
 data ActionDatum = ActionDatum
     {   adAction            :: Integer
-    ,   adAdaAmount         :: Integer
-    ,   adDest              :: Address.PaymentPubKeyHash
-    ,   adReturn            :: Address.PaymentPubKeyHash                                                                       -- 8
+    ,   adAmount            :: Integer
+    ,   adDestPayment       :: Address.PaymentPubKeyHash
+    ,   adDestStake         :: Address.StakePubKeyHash
+    ,   adReturnPayment     :: Address.PaymentPubKeyHash
+    ,   adReturnStake       :: Address.StakePubKeyHash                                                                        -- 8
     } deriving (Show, Generic, FromJSON, ToJSON)
 
 PlutusTx.makeIsDataIndexed ''ActionDatum [('ActionDatum, 0)]
@@ -311,11 +312,9 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx =
     ownSymbol = ContextsV2.ownCurrencySymbol ctx
     minted = ContextsV2.txInfoMint info
     threadToken = sha2_256 $ TxV2.getTxId refHash <> intToBBS refIdx
-    ownerToken = sha2_256 threadToken
 
     checkMintedAmount :: Bool
     checkMintedAmount = minted == threadTokenValue ownSymbol (PlutusV2.TokenName threadToken) 
-                                <> threadTokenValue ownSymbol (PlutusV2.TokenName ownerToken)
 
 
 -- | Wrap the minting policy using the boilerplate template haskell code
@@ -349,20 +348,18 @@ mkLCValidator :: LCValidatorParams -> LCDatum -> LCRedeemer -> ContextsV2.Script
 mkLCValidator params dat red ctx = 
 
     case red of
-        MintLC qty -> (traceIfFalse "LCV1" $ checkAmountMint qty)        
-                  &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
+        MintLC     ->  traceIfFalse "LCV2" checkLCDatumMint
                   &&   traceIfFalse "LCV3" signedByAdmin
                   &&   traceIfFalse "LCV4" checkOwnerToken
                   &&   traceIfFalse "LCV5" checkAdaAmountMint
                   &&   traceIfFalse "LCV6" checkMintDestAddr  
 
-        BurnLC qty -> (traceIfFalse "LCV7" $ checkAmountBurn qty)           
-                  &&  (traceIfFalse "LCV8" $ checkLCDatumBurn qty)
+        BurnLC     ->  traceIfFalse "LCV8" checkLCDatumBurn
                   &&   traceIfFalse "LCV9" signedByAdmin
                   &&   traceIfFalse "LCV10" checkAdaAmountBurn 
-                  &&   traceIfFalse "LCV11" checkMerchantToken                
+                  &&   traceIfFalse "LCV11" checkBurnDestAddr                
                     
-        AddAda qty -> (traceIfFalse "LCV12" $ checkLCDatumAdd qty)
+        AddAda    ->  traceIfFalse "LCV12" $ checkLCDatumAdd
                   &&   traceIfFalse "LCV13" signedByAdmin  
                   &&   traceIfFalse "LCV14" checkAdaAmountAdd  
       where        
@@ -384,17 +381,50 @@ mkLCValidator params dat red ctx =
                     
             _   -> traceError "LCV18"                        -- expected exactly one continuing output
             
-                            
-        -- | Check that the Littercoin token name minted is equal to the amount in the redeemer
+     
+        getActDatum :: Maybe TxV2.OutputDatum
+        getActDatum = getDatumInput (lcvOwnerTokenValue params) (ContextsV2.txInfoInputs info)
+
+        getAmount :: TxV2.OutputDatum -> Maybe Integer
+        getAmount (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                            Just (d') -> Just (adAmount d')
+                                            Nothing  -> traceError "LCV19"     -- error decoding datum data
+        getAmount _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
+
+        mintLCAmount :: Value.Value
+        mintLCAmount = Ada.lovelaceValueOf ((lcAmount outputDat) - (lcAmount dat))
+
+        withdrawAdaAmount :: Value.Value
+        withdrawAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount outputDat) - (lcAdaAmount dat))
+
+        getAddr :: TxV2.OutputDatum -> Maybe Address.Address
+        getAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                            Just (d') -> Just (Address.pubKeyHashAddress (adDestPayment d') (Just (adDestStake d')))
+                                            Nothing  -> traceError "LCV19"     -- error decoding datum data
+        getAddr _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
+
+
+        -- | Check that the Littercoin token name minted is equal to the amount in the action
+        --   datum
         checkAmountMint :: Integer -> Bool
         checkAmountMint q = case Value.flattenValue (ContextsV2.txInfoMint info) of
             [(_, tn', amt)] -> tn' == tn && amt == q
             _               -> False
             
         -- | Check that the difference between LCAmount in the output and the input datum
-        --   matches the quantity indicated in the redeemer
-        checkLCDatumMint :: Integer -> Bool
-        checkLCDatumMint q = ((lcAmount outputDat) - (lcAmount dat)) == q
+        --   matches the quantity indicated in the action Datum
+        checkLCDatumMint :: Bool
+        checkLCDatumMint = 
+
+            case getActDatum of 
+                (Just outDatum) -> case getAmount outDatum of
+                    (Just lcAmt) -> (((lcAmount outputDat) - (lcAmount dat)) == lcAmt ) &&
+                                    (checkAmountMint lcAmt)
+                   
+                    Nothing -> False
+
+                Nothing -> False
+
 
         -- | Check that the Ada matches output datum and that the thread token is present
         checkAdaAmountMint :: Bool
@@ -413,15 +443,26 @@ mkLCValidator params dat red ctx =
             [(_, tn', amt)] -> tn' == tn && amt == (negate q)
             _               -> False
             
+
         -- | Check that the difference between LCAmount in the output and the input datum
         --   matches the quantity indicated in the redeemer
-        checkLCDatumBurn :: Integer -> Bool
-        checkLCDatumBurn q = ((lcAmount dat) - (lcAmount outputDat)) == q &&
-                             ((lcAdaAmount dat) - (lcAdaAmount outputDat) == q * r)
+        checkLCDatumBurn :: Bool
+        checkLCDatumBurn = 
+            case getActDatum of 
+                (Just outDatum) -> case getAmount outDatum of
+                    (Just lcAmt) -> ((lcAmount dat) - (lcAmount outputDat)) == lcAmt &&
+                                    ((lcAdaAmount dat) - (lcAdaAmount outputDat) == lcAmt * r) &&
+                                    (checkAmountBurn lcAmt)
+                   
+                    Nothing -> False
+
+                Nothing -> False
+
             where
                 r :: Integer
                 r = divide (lcAdaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
-                
+
+
         -- | Check that the Ada spent matches Littercoin burned and that the
         -- | merch MerchantToken token is also present
         checkAdaAmountBurn :: Bool
@@ -429,11 +470,21 @@ mkLCValidator params dat red ctx =
             where     
                 newAdaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
                 
+
         -- | Check that the difference between Ada amount in the output and the input datum
-        --   matches the quantity indicated in the redeemer
-        checkLCDatumAdd :: Integer -> Bool
-        checkLCDatumAdd q = (lcAdaAmount outputDat) - (lcAdaAmount dat) == q
-        
+        --   matches the quantity indicated in the action datum
+        checkLCDatumAdd :: Bool
+        checkLCDatumAdd = 
+                
+            case getActDatum of 
+                (Just outDatum) -> case getAmount outDatum of
+                    (Just lcAmt) -> (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt
+                   
+                    Nothing -> False
+
+                Nothing -> False
+
+
         -- | Check that the Ada added matches increase in the datum
         checkAdaAmountAdd :: Bool
         checkAdaAmountAdd = validOutput (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
@@ -444,13 +495,28 @@ mkLCValidator params dat red ctx =
 
         -- Check for Owner token required for minting
         checkOwnerToken :: Bool
-        checkOwnerToken = validOutput (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)
+        checkOwnerToken = 
+            
+            case getActDatum of 
+                (Just outDatum) -> case getReturnAddr outDatum of
+                    (Just destAddr) -> validOutput' destAddr (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)
+                   
+                    Nothing -> False
+
+                Nothing -> False
+
+            where
+                getReturnAddr :: TxV2.OutputDatum -> Maybe Address.Address
+                getReturnAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                                    Just (d') -> Just (Address.pubKeyHashAddress (adReturnPayment d') (Just (adReturnStake d')))
+                                                    Nothing  -> traceError "LCV19"     -- error decoding datum data
+                getReturnAddr _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
 
 
         -- Check minting destination address
         checkMintDestAddr :: Bool
         checkMintDestAddr = 
-            case getDatum of 
+            case getActDatum of 
                 (Just outDatum) -> case getAddr outDatum of
                     (Just destAddr) -> validOutput' destAddr (minAda <> mintLCAmount) (ContextsV2.txInfoOutputs info)
                    
@@ -458,27 +524,17 @@ mkLCValidator params dat red ctx =
 
                 Nothing -> False
 
-            where
-                getDatum :: Maybe TxV2.OutputDatum
-                getDatum = getDatumInput (lcvOwnerTokenValue params) (ContextsV2.txInfoInputs info)
 
-                mintLCAmount :: Value.Value
-                mintLCAmount = Ada.lovelaceValueOf ((lcAmount outputDat) - (lcAmount dat))
+        -- Check burn destination address for Ada sent
+        checkBurnDestAddr :: Bool
+        checkBurnDestAddr = 
+            case getActDatum of 
+                (Just outDatum) -> case getAddr outDatum of
+                    (Just destAddr) -> validOutput' destAddr (withdrawAdaAmount <> (lcvMerchantTokenValue params)) (ContextsV2.txInfoOutputs info)
+                   
+                    Nothing -> False
 
-                getAddr :: TxV2.OutputDatum -> Maybe Address.Address
-                getAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                                                    Just (d') -> Just (Address.pubKeyHashAddress (adDest d') Nothing)
-                                                    Nothing  -> traceError "LCV19"     -- error decoding datum data
-                getAddr _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
-
-
-        -- Check for Merchant token if burning littercoin
-        checkMerchantToken :: Bool
-        checkMerchantToken = validOutput (withdrawAda <> (lcvMerchantTokenValue params)) (ContextsV2.txInfoOutputs info)
-
-            where
-                withdrawAda :: Value.Value
-                withdrawAda = Ada.lovelaceValueOf ((lcAdaAmount dat) - (lcAdaAmount outputDat))
+                Nothing -> False
 
 
                 
