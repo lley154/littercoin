@@ -4,7 +4,7 @@
 # You must do these steps first before running this script
 ##############################################################
 #
-# Step 1.   Find the admin UTXO (and admin pkh) you will use
+# Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
 # Step 2.   Update src/Littercoin/Deploy.hs with that UTXO (and admin pkh) 
 # Step 3.   nix-shell, cabal repl, main
 # Step 4.   Copy deploy/* scripts/cardano-cli/[devnet|testnet|mainnet]/data
@@ -58,37 +58,40 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
-#token_metadata_file_path="$BASE/scripts/cardano-cli/$ENV/data/token-metadata.json"
+owner_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/owner-token-name.json | jq -r '.bytes')
 lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
 lc_mint_script="$BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.plutus"
 lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
-nft_mint_script="$BASE/scripts/cardano-cli/$ENV/data/nft-minting-policy.plutus"
-nft_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$nft_mint_script" $network)
+merchant_token_mint_script="$BASE/scripts/cardano-cli/$ENV/data/merchant-minting-policy.plutus"
+merchant_token_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$merchant_token_mint_script" $network)
 
+echo "starting littercoin init-tx.sh"
 
-echo "starting littercoin thread token mint"
-echo "Script: $thread_token_script"
+echo $lc_validator_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-validator.addr
+echo $lc_mint_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.addr
+echo $merchant_token_mint_script_addr > $BASE/scripts/cardano-cli/$ENV/data/merchant-minting-policy.addr
+
 
 ################################################################
 # Mint the threadtoken and attach it to the littercoin contract
 ################################################################
 
 # Step 1: Get UTXOs from admin
-# There needs to be at least 2 utxos that can be consumed; one for minting of the token
+# There needs to be at least 2 utxos that can be consumed; one for spending of the token
 # and one uxto for collateral
-if [ "$ENV" == "devnet" ];
-then
-    admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
-    $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
-    cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
-    readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
-    admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
-else
-    admin_utxo_in=$ADMIN_UTXO
-    admin_utxo_addr=$ADMIN_CHANGE_ADDR
-fi
+
+admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
+$CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
+
+cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
+admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+
+cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace == '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-collateral-valid.json
+readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
+admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
 
 
@@ -98,24 +101,22 @@ $CARDANO_CLI transaction build \
   --cardano-mode \
   $network \
   --change-address "$admin_utxo_addr" \
-  --tx-in-collateral "$ADMIN_COLLATERAL" \
+  --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $thread_token_mph.$thread_token_name" \
+  --mint "1 $thread_token_mph.$thread_token_name + 1 $thread_token_mph.$owner_token_name" \
   --mint-script-file "$thread_token_script" \
   --mint-redeemer-file "$redeemer_file_path" \
+  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$owner_token_name" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
-  --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json"  \
+  --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
   --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_mint_script" \
-  --tx-out "$nft_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
-  --tx-out-reference-script-file "$nft_mint_script" \
+  --tx-out "$merchant_token_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$merchant_token_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/init-tx-alonzo.body
-
-# --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/token-mint-alonzo.costs"
-
 
 
 echo "tx has been built"

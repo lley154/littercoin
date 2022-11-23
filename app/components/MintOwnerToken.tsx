@@ -1,30 +1,30 @@
 import { useState } from 'react'
 
-const MintNFT = ({ onMintNFT } : any) => {
+const MintOwnerToken = ({ onMintOwnerToken } : any) => {
 
     const [address, setAddress] = useState('')
 
     const onSubmit = (e : any) => {
         
         e.preventDefault() // prevent full page refresh
-        onMintNFT( address )
+        onMintOwnerToken( address )
     }
 
     return (
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Merchant Wallet Address</b> 
+                <b>Owner Wallet Address</b> 
                 <br></br>
-                <input name='address' type='text' id='address' placeholder='Enter Merchant Wallet Address' 
+                <input name='address' type='text' id='address' placeholder='Enter Owner Wallet Address' 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 />
             </div>
             <br></br>                     
-            <input type='submit' value='Mint Merchant NFT'/>
+            <input type='submit' value='Mint Owner Token'/>
         </form>
     )
 }
 
-export default MintNFT
+export default MintOwnerToken
