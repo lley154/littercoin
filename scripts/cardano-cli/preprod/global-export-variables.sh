@@ -17,11 +17,13 @@ export ADMIN_VKEY=/home/lawrence/.local/keys/testnet/admin/key.vkey
 export ADMIN_SKEY=/home/lawrence/.local/keys/testnet/admin/key.skey
 export ADMIN_PKH=/home/lawrence/.local/keys/testnet/admin/key.pkh
 export MIN_ADA_OUTPUT_TX=2000000
-export MIN_ADA_OUTPUT_TX_REF=25000000
+export MIN_ADA_OUTPUT_TX_REF=30000000
 export COLLATERAL_ADA=5000000
-export LC_VAL_REF_SCRIPT=0f17b0d0ae070a17b02362f661c106d59d7dfeec8278e40e601699ffe47fe8a6#2
-export LC_MINT_REF_SCRIPT=0f17b0d0ae070a17b02362f661c106d59d7dfeec8278e40e601699ffe47fe8a6#3
-export OWNER_TOKEN_MPH=9842d1c0c35c346399c0b18529bd469e30b46c000297c9b932bf151d
+export LC_VAL_REF_SCRIPT=4d51ade45bca3c35c33fc9b1c7e222cb6ac661e9be6db4eea95966b72bf7e1ca#2
+export LC_MINT_REF_SCRIPT=4d51ade45bca3c35c33fc9b1c7e222cb6ac661e9be6db4eea95966b72bf7e1ca#3
+export OWNER_TOKEN_MPH=66e10f73639b97d976275fe11778fadab379c1bf7cedd4dfb4219d9b
 export OWNER_TOKEN_NAME=4f776e657220546f6b656e204c6974746572636f696e
+export MERCHANT_TOKEN_MPH=
+export MERCHANT_TOKEN_NAME=
 
 

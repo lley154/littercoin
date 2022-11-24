@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "570784d01669bcd18196cb6f9b8e8d9393d4162ce54c5e9420efbd6326a47593"
+txIdBS = "225328786edacd4ec4b930cdfb2c37d838d05b296d5630d8e7d6a2a73c74c8fc"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -71,7 +71,13 @@ ownerTokName :: PlutusV2.TokenName
 ownerTokName = "Owner Token Littercoin"
 
 ownerTokMPH :: PlutusV2.MintingPolicyHash
-ownerTokMPH = "9842d1c0c35c346399c0b18529bd469e30b46c000297c9b932bf151d"
+ownerTokMPH = "66e10f73639b97d976275fe11778fadab379c1bf7cedd4dfb4219d9b"
+
+donationTokName :: PlutusV2.TokenName
+donationTokName = "Donation Littercoin"
+
+donationTokMPH :: PlutusV2.MintingPolicyHash
+donationTokMPH = "d17c72f434ff89d37a1b1ee88721ae5aa0809eaafd1ac3d1df248794"
 
 
 -------------------------------------------------------------------------------------
@@ -110,23 +116,6 @@ ttTokValue = ttVal
   where
     (_, ttVal) = Value.split(threadTokenValue threadTokenCurSymbol ttTokName)
 
-{-
--- | Owner Token
-otTokName :: Value.TokenName
-otTokName = Value.TokenName $ sha2_256 $ sha2_256 txBS
-    where
-        txBS = (TxV2.getTxId(TxV2.txOutRefId txOutRef')) <> 
-                intToBBS(TxV2.txOutRefIdx txOutRef')  
-
-
-otTokValue :: Value.Value
-otTokValue = otVal
-  where
-    (_, otVal) = Value.split(threadTokenValue threadTokenCurSymbol otTokName)
-
-
-
--}
 
 ownerTokValue :: Value.Value
 ownerTokValue = Value.singleton ownerTokCurSymbol ownerTokName 1
@@ -141,23 +130,14 @@ merchantTokValue = Value.singleton merchantTokCurSymbol merchantTokName 1
     merchantTokCurSymbol :: CurrencySymbol
     merchantTokCurSymbol = Value.mpsSymbol merchantTokMPH
 
-
-
-merchantTokenMintParams :: MerchantTokenMintPolicyParams
-merchantTokenMintParams = MerchantTokenMintPolicyParams 
-    {
-        mtTokenName = merchantTokName
-    ,   mtAdminPkh = adminPaymentPkh
-    ,   mtOwnerTokenValue = ownerTokValue
-    }
-
-{-
-merchantTokValue :: Value.Value
-merchantTokValue = merchantTokVal
+donationTokValue :: Value.Value
+donationTokValue = Value.singleton donationTokCurSymbol donationTokName 1
   where
-    (_, merchantTokVal) = Value.split(merchantTokenValue (merchantTokenCurSymbol merchantTokenMintParams) merchantTokName)
+    donationTokCurSymbol :: CurrencySymbol
+    donationTokCurSymbol = Value.mpsSymbol donationTokMPH
 
--}
+
+
 
 mintParams :: LCMintPolicyParams
 mintParams = LCMintPolicyParams 
@@ -176,6 +156,7 @@ lcvParams = LCValidatorParams
     ,   lcvMerchantTokenValue = merchantTokValue
     ,   lcvThreadTokenValue = ttTokValue
     ,   lcvOwnerTokenValue = ownerTokValue
+    ,   lcvDonationTokenValue = donationTokValue
     }
 
 
@@ -204,18 +185,14 @@ main = do
     writeRedeemerAdd
     writeRedeemerMint
     writeRedeemerMintVal
-    writeRedeemerMintMerchantToken
     writeRedeemerBurn
     writeRedeemerBurnVal
-    writeRedeemerBurnMerchantToken
 
     -- Generate plutus scripts and hashes
     writeTTMintingPolicy
     writeTTMintingPolicyHash
     writeLCMintingPolicy
     writeLCMintingPolicyHash
-    writeMerchantTokenMintingPolicy
-    writeMerchantTokenMintingPolicyHash
     writeLCValidator
     writeLCValidatorHash
     
@@ -276,14 +253,14 @@ writeRedeemerInit =
 
 writeRedeemerAdd :: IO ()
 writeRedeemerAdd = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData AddAda
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ AddAda 123
     in
         LBS.writeFile "deploy/redeemer-add-ada.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 writeRedeemerMint :: IO ()
 writeRedeemerMint = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData MintLC
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintLC 123
     in
         LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
@@ -299,22 +276,10 @@ writeRedeemerMintVal =
         LBS.writeFile "deploy/redeemer-mint-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
-writeRedeemerMintMerchantToken :: IO ()
-writeRedeemerMintMerchantToken = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
-             {
-                mpPolarity = True     -- mint token
-             ,  mpTotalAdaAmount = 0  -- ingored for MerchantToken minting
-             ,  mpWithdrawAmount = 0  -- ignored during minting   
-             }
-    in
-        LBS.writeFile "deploy/redeemer-mint-merchant.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
-
 
 writeRedeemerBurn :: IO ()
 writeRedeemerBurn = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData BurnLC
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 123
     in
         LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
@@ -328,18 +293,6 @@ writeRedeemerBurnVal =
              }
     in
         LBS.writeFile "deploy/redeemer-burn-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
-writeRedeemerBurnMerchantToken :: IO ()
-writeRedeemerBurnMerchantToken = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
-             {
-                mpPolarity = False      -- burn token
-             ,  mpTotalAdaAmount = 0    -- ingored for MerchantToken burn
-             ,  mpWithdrawAmount = 0    -- ingored for MerchantToken burn   
-             }
-    in
-        LBS.writeFile "deploy/redeemer-burn-merchant.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
 
 
 
@@ -380,26 +333,6 @@ writeLCMintingPolicyHash =
     LBS.writeFile "deploy/lc-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
   where
     mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ lcPolicy mintParams
-
-
-
-writeMerchantTokenMintingPolicy :: IO ()
-writeMerchantTokenMintingPolicy = void $ writeFileTextEnvelope "deploy/merchant-minting-policy.plutus" Nothing serialisedScript
-  where
-    script :: PlutusV2.Script
-    script = PlutusV2.unMintingPolicyScript $ merchantTokenPolicy merchantTokenMintParams 
-
-    scriptSBS :: SBS.ShortByteString
-    scriptSBS = SBS.toShort . LBS.toStrict $ serialise script
-
-    serialisedScript :: PlutusScript PlutusScriptV2
-    serialisedScript = PlutusScriptSerialised scriptSBS
-
-writeMerchantTokenMintingPolicyHash :: IO ()
-writeMerchantTokenMintingPolicyHash = 
-    LBS.writeFile "deploy/merchant-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
-  where
-    mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ merchantTokenPolicy merchantTokenMintParams
 
 
 writeLCValidator :: IO ()

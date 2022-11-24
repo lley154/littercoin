@@ -141,6 +141,9 @@ const Home: NextPage = () => {
 
     const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
     const threadToken = process.env.NEXT_PUBLIC_THREAD_TOKEN as string;
+
+    console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
+    console.log("threadToken", threadToken);
     
     const utxo = await lucid.utxosAt(lcValidatorScriptAddress);
     //console.log("utxo at script address", utxo);    
@@ -261,16 +264,7 @@ const Home: NextPage = () => {
 
     lucid.selectWallet(API);
 
-    /*
-    const { paymentCredential } = lucid.utils.getAddressDetails(
-      await lucid.wallet.address(),
-    );
-    */
     const returnAddr = await lucid.wallet.address();
-
-    //const { paymentCredential, stakeCredential } = lucid.utils.getAddressDetails(
-    //  await lucid.wallet.address(),
-    //);
 
     const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
     const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
@@ -284,15 +278,12 @@ const Home: NextPage = () => {
     console.log("returnStakeCred", returnStakeCred);
 
     const newDatum = Data.to(new Constr(0, [
-      BigInt(0),                                // 0 = mint action
+      BigInt(Date.now()),                       // sequence number
       BigInt(lcQty),                            // amount of littercoin to mint
       utf8ToHex(destPaymentCred?.hash!),        // destination payment pkh
       utf8ToHex(destStakeCred?.hash!),          // desination stake pkh
       utf8ToHex(returnPaymentCred?.hash!),      // return payment pkh
       utf8ToHex(returnStakeCred?.hash!)]));     // return stake pkh
-
-    // utf8ToHex(paymentCredential?.hash!)]));   // pkh of this wallet
-    console.log("newDatum", newDatum);
 
     const tx = await lucid
     .newTx()
@@ -422,7 +413,6 @@ const Home: NextPage = () => {
     const ownerAddress = await lucid.wallet.address();
     const ownerToken : string = process.env.NEXT_PUBLIC_OWNER_TOKEN as string;
     
-
     console.log("ownerToken", ownerToken);
 
     const tx = await lucid
@@ -480,10 +470,6 @@ const Home: NextPage = () => {
         type: "all",
         scripts: [
           { type: "sig", keyHash: paymentCredential?.hash! },
-          {
-            type: "before",
-            slot: lucid.utils.unixTimeToSlot(Date.now() + 1000000),
-          },
         ],
       },
     );
@@ -497,7 +483,6 @@ const Home: NextPage = () => {
     const tx = await lucid
       .newTx()
       .mintAssets({ [unit]: BigInt(1) })
-      .validTo(Date.now() + 100000)
       .attachMintingPolicy(mintingPolicy)
       .payToAddress(ownerAddress, { [unit]: BigInt(1) })
       .complete();
@@ -514,41 +499,68 @@ const Home: NextPage = () => {
   const addAda = async (adaQty : any) : Promise<TxHash> => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+    const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
+    var network;
+
+    switch(process.env.NEXT_PUBLIC_NETWORK) { 
+      case undefined: { 
+         network = "Mainnet" as Network; 
+         break; 
+      } 
+      case "Preprod": { 
+         network = "Preprod" as Network;
+         break; 
+      } 
+      default: { 
+         network = "Mainnet" as Network;
+         break; 
+      } 
+    } 
+
     const lucid = await Lucid.new(
-      new Blockfrost("https://cardano-preprod.blockfrost.io/api/v0", api_key),
-      "Preview",
+      new Blockfrost(blockfrost_url, api_key),
+      network,
     );
-    const lcValidatorScriptAddress: string = "addr_test1wzuz36yejxwh69u62k096ylgnswaaqjfqpcm5j2j39zp3lgwvxgu2";
-    const threadToken = "3c71662cfdfeebbaa8363c63d94ddf336c557c6776b789b05c23c385caf74d41a0b16a6d2bf601796c2b73912538cd2faaccae1d9c6da7d405873fd3";
-    const _info = await fetchLittercoinInfo();
-    const _datum = _info?.datum;
-    const oldDatum = Data.to(_datum as PlutusData);
+
+    const mintingPolicy: MintingPolicy = lucid.utils.nativeScriptFromJson(
+      {
+        type: "all",
+        scripts: [
+          {
+            type: "after",
+            slot: 1001,
+          },
+        ],
+      },
+    );
+
+    const policyId: PolicyId = lucid.utils.mintingPolicyToId(
+      mintingPolicy,
+    );
+  
+    const unit: Unit = policyId + utf8ToHex("Donation Littercoin");
+
+
+    const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    const lovelaceQty = adaQty * 1000000;
 
     lucid.selectWallet(API);
-    const oldAdaAmount = lcInfo.adaAmount;
-    const oldLCAmount : number = lcInfo.lcAmount;
-    const newAdaAmount : number = Number(oldAdaAmount) + Number(adaQty);
-    const newDatum = Data.to(new Constr(0, [BigInt(newAdaAmount), BigInt(oldLCAmount)]));
-    const validatorRedeemer = Data.to(new Constr(2, [BigInt(adaQty)]));
 
-    // Validator UTXO reference script
-    const referenceLCValidatorUtxo = (await lucid.utxosAt(lcValidatorScriptAddress)).find(
-      (utxo) => Boolean(utxo.scriptRef),
-    );
-    if (!referenceLCValidatorUtxo) throw new Error("LC Validator Reference script not found");
-
-    // Validator UTXO spending
-    const lcValidatorUtxo = (await lucid.utxosAt(lcValidatorScriptAddress)).find((utxo) =>
-      utxo.datum === oldDatum && !utxo.scriptRef
-    );
-    if (!lcValidatorUtxo) throw new Error("LC Validator Spending script utxo not found");
+    const newDatum = Data.to(new Constr(0, [
+      BigInt(Date.now()),                       // sequence number
+      BigInt(lovelaceQty ),                     // amount of Ada to add
+      utf8ToHex(""),        
+      utf8ToHex(""),         
+      utf8ToHex(""),      
+      utf8ToHex("")]));    
 
     const tx = await lucid
-      .newTx()
-      .readFrom([referenceLCValidatorUtxo]) // plutusV2 validator reference script from reference utxo
-      .collectFrom([lcValidatorUtxo], validatorRedeemer) // spending utxos which includes threadtoken
-      .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(newAdaAmount), [threadToken] : BigInt(1), })
-      .complete();
+    .newTx()
+    .mintAssets({ [unit]: BigInt(1) })
+    .attachMintingPolicy(mintingPolicy)
+    .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(lovelaceQty), [unit]: BigInt(1) })
+    .validFrom(Date.now() - 1000000)
+    .complete();  
 
     const signedTx = await tx.sign().complete();
     const txHash = await signedTx.submit();

@@ -11,7 +11,6 @@ module Littercoin.Types
    , LCMintPolicyParams(..)
    , LCRedeemer(..)
    , LCValidatorParams(..)
-   , MerchantTokenMintPolicyParams(..)
    , ThreadTokenRedeemer(..)    
 
 )where
@@ -23,7 +22,7 @@ import qualified    Ledger.Value as Value               (TokenName(..), Value)
 import qualified    Plutus.V2.Ledger.Tx as Tx           (TxOutRef(..))
 import              Playground.Contract as Playground   (ToSchema)
 import qualified    PlutusTx                            (makeIsDataIndexed, makeLift)
-import              PlutusTx.Prelude                    (Bool(..), BuiltinByteString, Integer)
+import              PlutusTx.Prelude                    (Bool(..), Integer)
 import qualified    Prelude as Haskell                  (Show)
 
 
@@ -56,19 +55,6 @@ PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)]
 PlutusTx.makeLift ''LCMintPolicyParams
 
 
--- | The merchant MerchantToken minting policy params passes the Merchant token name and adminPkh as a parameter 
---   into the minting poicy which will make the merchant MerchantToken policy unique
-data MerchantTokenMintPolicyParams = MerchantTokenMintPolicyParams
-    { 
-      mtTokenName                 :: Value.TokenName  -- merchant token name
-    , mtAdminPkh                  :: Address.PaymentPubKeyHash 
-    , mtOwnerTokenValue           :: Value.Value
-    } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
-
-PlutusTx.makeIsDataIndexed ''MerchantTokenMintPolicyParams [('MerchantTokenMintPolicyParams,0)] 
-PlutusTx.makeLift ''MerchantTokenMintPolicyParams
-
-
 -- | The thread token redeemer passes a utxo from the Littercoin admin's wallet 
 --   to the thread token miting policy which is used to create the a thread token.
 --   A Thread token is needed to make sure we always include the correct validator
@@ -84,10 +70,11 @@ PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)]
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: Address.PaymentPubKeyHash
-    ,   lcvTokenName                :: Value.TokenName  -- Littercoin token name
-    ,   lcvMerchantTokenValue       :: Value.Value      -- MerchantToken identification token
-    ,   lcvThreadTokenValue         :: Value.Value      -- LC validator thread token
-    ,   lcvOwnerTokenValue          :: Value.Value
+    ,   lcvTokenName                :: Value.TokenName  
+    ,   lcvMerchantTokenValue       :: Value.Value     
+    ,   lcvThreadTokenValue         :: Value.Value      
+    ,   lcvOwnerTokenValue          :: Value.Value      
+    ,   lcvDonationTokenValue       :: Value.Value    
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 
@@ -98,9 +85,9 @@ PlutusTx.makeLift ''LCValidatorParams
 --   to add and remove Ada from the littercoin contract.   Also specify the amount 
 --   as well in the redeemer.
 data LCRedeemer = 
-       MintLC     -- mint littercoin
-     | BurnLC     -- burn littercoin and retreive Ada
-     | AddAda     -- add Ada to the smart contract
+       MintLC Integer    -- mint littercoin & sequence number
+     | BurnLC Integer    -- burn littercoin and retreive Ada & sequence number
+     | AddAda Integer    -- add Ada to the smart contract & sequence number
      
     deriving Haskell.Show
 
