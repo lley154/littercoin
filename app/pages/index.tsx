@@ -522,6 +522,8 @@ const Home: NextPage = () => {
       network,
     );
 
+    lucid.selectWallet(API);
+
     const mintingPolicy: MintingPolicy = lucid.utils.nativeScriptFromJson(
       {
         type: "all",
@@ -539,20 +541,21 @@ const Home: NextPage = () => {
     );
   
     const unit: Unit = policyId + utf8ToHex("Donation Littercoin");
-
-
     const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
     const lovelaceQty = adaQty * 1000000;
+    const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
+    const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
 
-    lucid.selectWallet(API);
+    console.log("destPaymentCred", destPaymentCred);
+    console.log("destStakeCred", destStakeCred);
 
     const newDatum = Data.to(new Constr(0, [
       BigInt(Date.now()),                       // sequence number
       BigInt(lovelaceQty ),                     // amount of Ada to add
-      utf8ToHex(""),        
-      utf8ToHex(""),         
-      utf8ToHex(""),      
-      utf8ToHex("")]));    
+      utf8ToHex(destPaymentCred?.hash!),        // destination payment pkh
+      utf8ToHex(destStakeCred?.hash!),          // desination stake pkh
+      utf8ToHex(""),                            // return payment pkh
+      utf8ToHex("")]));                         // return stake pkh 
 
     const tx = await lucid
     .newTx()
@@ -572,14 +575,14 @@ const Home: NextPage = () => {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Littercoin Preview Testnet</title>
+        <title>Littercoin</title>
         <meta name="description" content="Littercoin web tools page" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className={styles.main}>
         <h3 className={styles.title}>
-          Littercoin Preview Testnet
+          Littercoin {process.env.NEXT_PUBLIC_NETWORK}
         </h3>
         <div className={styles.border}>
           <h4>

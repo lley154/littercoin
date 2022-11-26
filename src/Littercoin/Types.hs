@@ -88,6 +88,7 @@ data LCRedeemer =
        MintLC Integer    -- mint littercoin & sequence number
      | BurnLC Integer    -- burn littercoin and retreive Ada & sequence number
      | AddAda Integer    -- add Ada to the smart contract & sequence number
+     | SpendAction       -- spend the action utxo at the script address
      
     deriving Haskell.Show
 
@@ -95,7 +96,8 @@ PlutusTx.makeIsDataIndexed
   ''LCRedeemer
   [ ('MintLC, 0),
     ('BurnLC, 1),
-    ('AddAda, 2)
+    ('AddAda, 2),
+    ('SpendAction, 3)
   ]
 PlutusTx.makeLift ''LCRedeemer
 

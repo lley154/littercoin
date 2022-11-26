@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "225328786edacd4ec4b930cdfb2c37d838d05b296d5630d8e7d6a2a73c74c8fc"
+txIdBS = "666b2c6b3cce0aac2f62c234048397c806bfd41e9f83733928c48f902153ce97"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -176,6 +176,8 @@ main = do
     writeLCTokenName
     writeMerchantTokenName
     writeMerchantTokenValue
+    writeDonationTokenName
+    writeDonationTokenValue
 
     -- Generate datum
     writeDatumInit
@@ -187,6 +189,8 @@ main = do
     writeRedeemerMintVal
     writeRedeemerBurn
     writeRedeemerBurnVal
+    writeRedeemerSpendAction
+    writeRedeemerSpendAction
 
     -- Generate plutus scripts and hashes
     writeTTMintingPolicy
@@ -232,6 +236,16 @@ writeMerchantTokenValue =
     LBS.writeFile "deploy/merchant-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData merchantTokValue)    
 
 
+writeDonationTokenName :: IO ()
+writeDonationTokenName = 
+    LBS.writeFile "deploy/donation-token-name.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData donationTokName)    
+
+writeDonationTokenValue :: IO ()
+writeDonationTokenValue = 
+    LBS.writeFile "deploy/donation-token-value.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData donationTokValue)    
+
+
+
 writeDatumInit :: IO ()
 writeDatumInit = 
     let lcDatum = LCDatum 
@@ -258,14 +272,14 @@ writeRedeemerAdd =
         LBS.writeFile "deploy/redeemer-add-ada.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
-writeRedeemerMint :: IO ()
-writeRedeemerMint = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintLC 123
-    in
-        LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
 writeRedeemerMintVal :: IO ()
 writeRedeemerMintVal = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintLC 123
+    in
+        LBS.writeFile "deploy/redeemer-mint-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+writeRedeemerMint :: IO ()
+writeRedeemerMint = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = True    -- mint token
@@ -273,18 +287,18 @@ writeRedeemerMintVal =
              ,  mpWithdrawAmount = 0 -- ignored during minting   
              }
     in
-        LBS.writeFile "deploy/redeemer-mint-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
-
-writeRedeemerBurn :: IO ()
-writeRedeemerBurn = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 123
-    in
-        LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 writeRedeemerBurnVal :: IO ()
 writeRedeemerBurnVal = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 123
+    in
+        LBS.writeFile "deploy/redeemer-burn-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+writeRedeemerBurn :: IO ()
+writeRedeemerBurn = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = False    -- mint token
@@ -292,7 +306,15 @@ writeRedeemerBurnVal =
              ,  mpWithdrawAmount = 0  -- upate with amount of Ada to withdrawl from contract   
              }
     in
-        LBS.writeFile "deploy/redeemer-burn-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+        LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
+
+
+
+writeRedeemerSpendAction :: IO ()
+writeRedeemerSpendAction = 
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData SpendAction
+    in
+        LBS.writeFile "deploy/redeemer-spend-action.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 

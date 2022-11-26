@@ -50,7 +50,8 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 # load in local variable values
 validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
-redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada.json"
+redeemer_add_ada_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada.json"
+redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
 admin_pkh=$(cat $ADMIN_PKH)
@@ -82,8 +83,15 @@ add_ada_datum_in=$(jq -r 'to_entries[]
 echo -n "$add_ada_datum_in" > $WORK/add-ada-datum-in.json
 
 
-# Get the sequence number from the add ada datum
-add_ada_sequence=$(jq -r '.fields[1].int' $WORK/add-ada-datum-in.json)
+# Get the sequence number and Ada amount from the add Ada datum
+add_ada_sequence=$(jq -r '.fields[0].int' $WORK/add-ada-datum-in.json)
+add_ada_amount=$(jq -r '.fields[1].int' $WORK/add-ada-datum-in.json)
+dest_payment_key_encoded=$(jq -r '.fields[2].bytes' $WORK/add-ada-datum-in.json)
+dest_payment_key=$(echo -n "$dest_payment_key_encoded=" | xxd -r -p)
+dest_stake_key_encoded=$(jq -r '.fields[3].bytes' $WORK/add-ada-datum-in.json)
+dest_stake_key=$(echo -n "$dest_stake_key_encoded=" | xxd -r -p)
+
+dest_addr=$($BECH32 $ADDR_PREFIX <<< $BECH32_NETWORK$dest_payment_key$dest_stake_key)
 
 
 # Pull the utxo with the thread token in it
@@ -113,8 +121,8 @@ jq -c '
   .fields[0].int   |= '$new_total_ada'' > $WORK/lc-datum-out.json
 
 
-# Upate the redeemer for the validator with the amount of littercoin being minted
-cat $redeemer_file_path | \
+# Upate the redeemer for the validator and include the sequence number
+cat $redeemer_add_ada_file_path | \
 jq -c '
   .fields[0].int          |= '$add_ada_sequence'' > $WORK/redeemer-add-ada.json
 
@@ -128,7 +136,6 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --tx-in "$add_ada_utxo_in_txid" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
@@ -136,9 +143,18 @@ $CARDANO_CLI transaction build \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
   --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
+  --tx-in "$add_ada_utxo_in_txid" \
+  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file "$redeemer_spend_action_file_path" \
+  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + 1 $DONOR_TOKEN_MPH.$DONOR_TOKEN_NAME" \
+  --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/add-ada-tx-alonzo.body
+
+# --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/add-ada-tx-alonzo.costs"
 
 
 echo "tx has been built"
@@ -151,8 +167,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-#echo "Submit the tx with plutus script and wait 5 seconds..."
-#$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
+echo "Submit the tx with plutus script and wait 5 seconds..."
+$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
 
 
 

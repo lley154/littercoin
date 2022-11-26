@@ -128,7 +128,7 @@ getDatumOutput :: Value.Value -> [ContextsV2.TxOut] -> Maybe TxV2.OutputDatum
 getDatumOutput _ [] = Nothing
 getDatumOutput txVal (x:xs)
     | (ContextsV2.txOutValue x == txVal) = Just (ContextsV2.txOutDatum x)
-    | otherwise = getDatumOutput txVal xs
+    | otherwise = trace "getDatumOuput: otherwise" (getDatumOutput txVal xs)
 
 
 -- | Find a datum for a give value in the provided inputs
@@ -147,10 +147,10 @@ getDatumInput _  _ [] = Nothing
 getDatumInput txVal seqNum (x:xs) = case getDatumOutput txVal [ContextsV2.txInInfoResolved x] of
                                 (Just outputDatum)  -> case getSequence outputDatum of
                                                         (Just seq)  -> if seq == seqNum then (Just outputDatum)
-                                                                        else getDatumInput txVal seqNum xs
-                                                        Nothing     -> getDatumInput txVal seqNum xs 
+                                                                        else trace "seq != seqNum" (getDatumInput txVal seqNum xs)
+                                                        Nothing     -> trace "getSequence: Nothing" (getDatumInput txVal seqNum xs)
 
-                                Nothing             -> getDatumInput txVal seqNum xs
+                                Nothing             -> trace "getDatumOuput: Nothing" (getDatumInput txVal seqNum xs)
 
 
 -- | The Littercoin minting policy is used to mint and burn littercoins according to the
@@ -286,18 +286,22 @@ mkLCValidator params dat red ctx =
         MintLC seq    ->  traceIfFalse "LCV1" signedByAdmin
                   &&   (traceIfFalse "LCV2" $ checkLCDatumMint seq)
                   &&   (traceIfFalse "LCV3" $ checkOwnerToken seq)
-                  &&   traceIfFalse "LCV4" checkAdaAmountMint
                   &&   (traceIfFalse "LCV5" $ checkMintDestAddr seq)
                   &&   (traceIfFalse "LCV6" $ checkOwnerToken seq)
+                  &&   traceIfFalse "LCV4" checkThreadToken
 
         BurnLC seq    ->  traceIfFalse "LCV8" signedByAdmin
                   &&   (traceIfFalse "LCV9" $ checkLCDatumBurn seq)
-                  &&   traceIfFalse "LCV10" checkAdaAmountBurn
-                  &&   (traceIfFalse "LCV11" $ checkBurnDestAddr seq)                
+                  &&   (traceIfFalse "LCV11" $ checkBurnDestAddr seq)
+                  &&   traceIfFalse "LCV10" checkThreadToken                
                     
         AddAda seq    ->  traceIfFalse "LCV12" signedByAdmin
                   &&   (traceIfFalse "LCV13" $ checkLCDatumAdd seq)  
-                  &&   traceIfFalse "LCV14" checkAdaAmountAdd  
+                  &&   traceIfFalse "LCV14" checkThreadToken 
+
+        SpendAction   -> traceIfFalse "LCV15" signedByAdmin
+                  &&   traceIfFalse "LCV16" checkThreadToken
+
       where        
         tn :: PlutusV2.TokenName
         tn = lcvTokenName params
@@ -327,8 +331,12 @@ mkLCValidator params dat red ctx =
         mintLCAmount :: Value.Value
         mintLCAmount = Ada.lovelaceValueOf ((lcAmount outputDat) - (lcAmount dat))
 
+        addAdaAmount :: Value.Value
+        addAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount outputDat) - (lcAdaAmount dat))
+
         withdrawAdaAmount :: Value.Value
-        withdrawAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount outputDat) - (lcAdaAmount dat))
+        withdrawAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount dat) - (lcAdaAmount outputDat))
+
 
         getAddr :: TxV2.OutputDatum -> Maybe Address.Address
         getAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
@@ -359,17 +367,9 @@ mkLCValidator params dat red ctx =
                 Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
 
-
-        -- | Check that the Ada matches output datum and that the thread token is present
-        checkAdaAmountMint :: Bool
-        checkAdaAmountMint = validOutput (adaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
-
-            where     
-                adaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
-        
         -- Check minting destination address
         checkMintDestAddr :: Integer -> Bool
         checkMintDestAddr seqNumber = 
@@ -380,7 +380,7 @@ mkLCValidator params dat red ctx =
                 Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
 
         -- Check for Owner token required for minting
@@ -394,7 +394,7 @@ mkLCValidator params dat red ctx =
 
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
                 getReturnAddr :: TxV2.OutputDatum -> Maybe Address.Address
                 getReturnAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
@@ -424,17 +424,10 @@ mkLCValidator params dat red ctx =
 
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
                 r :: Integer
                 r = divide (lcAdaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
-
-        -- | Check that the Ada spent matches Littercoin burned and that the
-        -- | merch MerchantToken token is also present
-        checkAdaAmountBurn :: Bool
-        checkAdaAmountBurn = validOutput (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
-            where     
-                newAdaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
 
         -- Check burn destination address for Ada sent
         checkBurnDestAddr :: Integer -> Bool
@@ -446,7 +439,7 @@ mkLCValidator params dat red ctx =
                 Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
 
         -- | Check that the difference between Ada amount in the output and the input datum
@@ -455,23 +448,22 @@ mkLCValidator params dat red ctx =
         checkLCDatumAdd seqNumber =        
             case getActionDatum of 
                 (Just outDatum) -> case getAmount outDatum of
-                    (Just lcAmt) -> trace "compare amounts" (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt            
-                    Nothing -> trace "getAmount Failed" False
-                Nothing -> trace "getActionDatum Failed" False
+                    (Just lcAmt) -> trace "checkLCDatumAdd: lcAmt" (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt            
+                    Nothing -> trace "getAmount: Nothing" False
+                Nothing -> trace "getActionDatum: Nothing" False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (lcvDonationTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (addAdaAmount <> lcvDonationTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
-            
 
         -- | Check that the Ada added matches increase in the datum
-        checkAdaAmountAdd :: Bool
-        checkAdaAmountAdd = validOutput (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
+        checkThreadToken :: Bool
+        checkThreadToken = validOutput (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
             where
                 newAdaBalance :: Value.Value
                 newAdaBalance = Ada.lovelaceValueOf (lcAdaAmount outputDat)
 
-                
+
 -- | Creating a wrapper around littercoin validator for 
 --   performance improvements by not using a typed validator
 {-# INLINABLE wrapLCValidator #-}
