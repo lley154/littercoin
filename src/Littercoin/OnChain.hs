@@ -27,7 +27,7 @@ where
 import           Data.Aeson                             (FromJSON, ToJSON)
 import           GHC.Generics                           (Generic)
 import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
-import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..), )
+import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..), toPubKeyHash)
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
                                                         Value)
 import           Littercoin.Types                       (MintPolicyRedeemer(..), 
@@ -113,13 +113,20 @@ validOutput txVal (x:xs)
     | ContextsV2.txOutValue x == txVal = True
     | otherwise = validOutput txVal xs
     
+{-# INLINABLE checkAddress #-}
+checkAddress :: Address.Address -> Bool
+checkAddress addr = case Address.toPubKeyHash addr of
+                        Just (pkh) -> trace (decodeUtf8 (PlutusV2.getPubKeyHash pkh)) True
+                        Nothing    -> False
+
 
 -- | Check that the value is locked at an address for the provided outputs
 {-# INLINABLE validOutput' #-}
 validOutput' :: Address.Address -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput' _ _ [] = False
 validOutput' addr txVal (x:xs)
-    | (ContextsV2.txOutAddress x == addr) && (ContextsV2.txOutValue x == txVal) = True
+    | trace "validOutput':" (checkAddress (ContextsV2.txOutAddress x)) && (ContextsV2.txOutAddress x == addr) 
+    && (ContextsV2.txOutValue x == txVal) = True
     | otherwise = validOutput' addr txVal xs
 
 
