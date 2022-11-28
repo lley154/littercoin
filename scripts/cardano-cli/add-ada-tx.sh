@@ -83,8 +83,8 @@ add_ada_datum_in=$(jq -r 'to_entries[]
 echo -n "$add_ada_datum_in" > $WORK/add-ada-datum-in.json
 
 
-# Get the sequence number and Ada amount from the add Ada datum
-add_ada_sequence=$(jq -r '.fields[0].int' $WORK/add-ada-datum-in.json)
+# Get the sequence number and Ada amount from the action datum
+action_sequence_num=$(jq -r '.fields[0].int' $WORK/add-ada-datum-in.json)
 add_ada_amount=$(jq -r '.fields[1].int' $WORK/add-ada-datum-in.json)
 dest_payment_key_encoded=$(jq -r '.fields[2].bytes' $WORK/add-ada-datum-in.json)
 dest_payment_key=$(echo -n "$dest_payment_key_encoded=" | xxd -r -p)
@@ -124,7 +124,7 @@ jq -c '
 # Upate the redeemer for the validator and include the sequence number
 cat $redeemer_add_ada_file_path | \
 jq -c '
-  .fields[0].int          |= '$add_ada_sequence'' > $WORK/redeemer-add-ada.json
+  .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-add-ada.json
 
 
 

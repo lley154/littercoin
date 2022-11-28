@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "666b2c6b3cce0aac2f62c234048397c806bfd41e9f83733928c48f902153ce97"
+txIdBS = "44ae9d41015848708e2506a2a1577bf9720d4c888eac57303fb9b52b3c4915c9"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -374,7 +374,7 @@ writeLCValidatorHash =
     LBS.writeFile "deploy/lc-validator.hash" $ encode $ PlutusTx.toBuiltinData $ PTSU.V2.validatorHash $ typedLCValidator $ PlutusTx.toBuiltinData lcvParams
 
 
--- | Decode from hex base 16 to a base 10 bytestring is needed because
+-- | Decode from hex base 16 to a base 10 bytestring because
 --   that is how it is stored in the ledger onchain
 decodeHex :: B.ByteString -> BuiltinByteString
 decodeHex hexBS =    

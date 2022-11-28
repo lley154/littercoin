@@ -27,7 +27,7 @@ where
 import           Data.Aeson                             (FromJSON, ToJSON)
 import           GHC.Generics                           (Generic)
 import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
-import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..))
+import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..), )
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
                                                         Value)
 import           Littercoin.Types                       (MintPolicyRedeemer(..), 
@@ -43,7 +43,7 @@ import qualified Plutus.Script.Utils.V2.Typed.Scripts.Validators as ValidatorsV2
                                                         validatorHash)
 import qualified Plutus.V2.Ledger.Api                   as PlutusV2 (CurrencySymbol, getDatum,  
                                                         MintingPolicy, mkMintingPolicyScript, mkValidatorScript, 
-                                                        scriptContextTxInfo, TokenName(..), TxInfo, 
+                                                        PubKeyHash(..), scriptContextTxInfo, TokenName(..), TxInfo, 
                                                         txInfoMint, txInfoOutputs, 
                                                         unsafeFromBuiltinData)
 import qualified Plutus.V2.Ledger.Contexts              as ContextsV2 (getContinuingOutputs, ownCurrencySymbol, 
@@ -64,10 +64,11 @@ import           Prelude                                (Show (..))
 -------------------------------------------------
 
 -- | Min Ada is the minimum amout of ada that needs to be included when 
---   transfering/minting a native asset.
+--   transfering/minting a native asset so we can match a known
+--   input value for the owner and merchant token transactions.
 {-# INLINABLE minAda #-}
 minAda :: Value.Value
-minAda = Ada.lovelaceValueOf 2000000
+minAda = Ada.lovelaceValueOf 5000000
 
 -- | Create a BuitinByteString from an Integer
 {-# INLINEABLE intToBBS #-}
@@ -117,9 +118,9 @@ validOutput txVal (x:xs)
 {-# INLINABLE validOutput' #-}
 validOutput' :: Address.Address -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput' _ _ [] = False
-validOutput' scriptAddr txVal (x:xs)
-    | (ContextsV2.txOutAddress x == scriptAddr) && (ContextsV2.txOutValue x == txVal) = True
-    | otherwise = validOutput' scriptAddr txVal xs
+validOutput' addr txVal (x:xs)
+    | (ContextsV2.txOutAddress x == addr) && (ContextsV2.txOutValue x == txVal) = True
+    | otherwise = validOutput' addr txVal xs
 
 
 -- | Find a datum for a given value in the provided outputs
@@ -127,7 +128,7 @@ validOutput' scriptAddr txVal (x:xs)
 getDatumOutput :: Value.Value -> [ContextsV2.TxOut] -> Maybe TxV2.OutputDatum
 getDatumOutput _ [] = Nothing
 getDatumOutput txVal (x:xs)
-    | (ContextsV2.txOutValue x == txVal) = Just (ContextsV2.txOutDatum x)
+    | (ContextsV2.txOutValue x == txVal) = trace "getDatumOuput: x == txVal " (Just (ContextsV2.txOutDatum x))
     | otherwise = trace "getDatumOuput: otherwise" (getDatumOutput txVal xs)
 
 
@@ -146,11 +147,11 @@ getDatumInput :: Value.Value -> Integer -> [ContextsV2.TxInInfo] -> Maybe TxV2.O
 getDatumInput _  _ [] = Nothing
 getDatumInput txVal seqNum (x:xs) = case getDatumOutput txVal [ContextsV2.txInInfoResolved x] of
                                 (Just outputDatum)  -> case getSequence outputDatum of
-                                                        (Just seq)  -> if seq == seqNum then (Just outputDatum)
-                                                                        else trace "seq != seqNum" (getDatumInput txVal seqNum xs)
-                                                        Nothing     -> trace "getSequence: Nothing" (getDatumInput txVal seqNum xs)
+                                                        (Just seq)  -> if seq == seqNum then trace "getDatumInput: seq == seqNum" (Just outputDatum)
+                                                                        else trace "getDatumInput: seq != seqNum" (getDatumInput txVal seqNum xs)
+                                                        Nothing     -> trace "getDatumInput: getSequence: Nothing" (getDatumInput txVal seqNum xs)
 
-                                Nothing             -> trace "getDatumOuput: Nothing" (getDatumInput txVal seqNum xs)
+                                Nothing             -> trace "getDatumInput: getDatumOuput: Nothing" (getDatumInput txVal seqNum xs)
 
 
 -- | The Littercoin minting policy is used to mint and burn littercoins according to the
@@ -286,21 +287,20 @@ mkLCValidator params dat red ctx =
         MintLC seq    ->  traceIfFalse "LCV1" signedByAdmin
                   &&   (traceIfFalse "LCV2" $ checkLCDatumMint seq)
                   &&   (traceIfFalse "LCV3" $ checkOwnerToken seq)
-                  &&   (traceIfFalse "LCV5" $ checkMintDestAddr seq)
-                  &&   (traceIfFalse "LCV6" $ checkOwnerToken seq)
-                  &&   traceIfFalse "LCV4" checkThreadToken
+                  &&   (traceIfFalse "LCV4" $ checkMintDestAddr seq)
+                  &&   traceIfFalse "LCV5" checkThreadToken
 
-        BurnLC seq    ->  traceIfFalse "LCV8" signedByAdmin
-                  &&   (traceIfFalse "LCV9" $ checkLCDatumBurn seq)
-                  &&   (traceIfFalse "LCV11" $ checkBurnDestAddr seq)
-                  &&   traceIfFalse "LCV10" checkThreadToken                
+        BurnLC seq    ->  traceIfFalse "LCV6" signedByAdmin
+                  &&   (traceIfFalse "LCV7" $ checkLCDatumBurn seq)
+                  &&   (traceIfFalse "LCV8" $ checkBurnDestAddr seq)
+                  &&   traceIfFalse "LCV9" checkThreadToken                
                     
-        AddAda seq    ->  traceIfFalse "LCV12" signedByAdmin
-                  &&   (traceIfFalse "LCV13" $ checkLCDatumAdd seq)  
-                  &&   traceIfFalse "LCV14" checkThreadToken 
+        AddAda seq    ->  traceIfFalse "LCV10" signedByAdmin
+                  &&   (traceIfFalse "LCV11" $ checkLCDatumAdd seq)  
+                  &&   traceIfFalse "LCV12" checkThreadToken 
 
-        SpendAction   -> traceIfFalse "LCV15" signedByAdmin
-                  &&   traceIfFalse "LCV16" checkThreadToken
+        SpendAction   -> traceIfFalse "LCV13" signedByAdmin
+                  &&   traceIfFalse "LCV14" checkThreadToken
 
       where        
         tn :: PlutusV2.TokenName
@@ -388,9 +388,9 @@ mkLCValidator params dat red ctx =
         checkOwnerToken seqNumber = 
             case getActionDatum of 
                 (Just outDatum) -> case getReturnAddr outDatum of
-                    (Just returnAddr) -> validOutput' returnAddr (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)       
-                    Nothing -> False
-                Nothing -> False
+                    (Just returnAddr) -> trace "checkOwnerToken:validOutput'" (validOutput' returnAddr (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)) 
+                    Nothing -> trace "checkOwnerToken:getReturnAddr: Nothing" False
+                Nothing -> trace "checkOwnerToken:getActionDatum: Nothing" False
 
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
@@ -398,7 +398,7 @@ mkLCValidator params dat red ctx =
 
                 getReturnAddr :: TxV2.OutputDatum -> Maybe Address.Address
                 getReturnAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                                                    Just (d') -> Just (Address.pubKeyHashAddress (adReturnPayment d') (Just (adReturnStake d')))
+                                                    Just (d') -> trace "checkOwnerToken: getReturnAddr" (trace (decodeUtf8 (PlutusV2.getPubKeyHash (Address.unPaymentPubKeyHash (adReturnPayment d')))) (Just (Address.pubKeyHashAddress (adReturnPayment d') (Just (adReturnStake d')))))
                                                     Nothing  -> traceError "LCV23"     -- error decoding datum data
                 getReturnAddr _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
 
@@ -449,8 +449,8 @@ mkLCValidator params dat red ctx =
             case getActionDatum of 
                 (Just outDatum) -> case getAmount outDatum of
                     (Just lcAmt) -> trace "checkLCDatumAdd: lcAmt" (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt            
-                    Nothing -> trace "getAmount: Nothing" False
-                Nothing -> trace "getActionDatum: Nothing" False
+                    Nothing -> trace "checkLCDatumAdd: getAmount: Nothing" False
+                Nothing -> trace "checkLCDatumAdd: getActionDatum: Nothing" False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
                 getActionDatum = getDatumInput (addAdaAmount <> lcvDonationTokenValue params) seqNumber (ContextsV2.txInfoInputs info)

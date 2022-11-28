@@ -264,18 +264,15 @@ const Home: NextPage = () => {
 
     lucid.selectWallet(API);
 
-    const returnAddr = await lucid.wallet.address();
+    const destPaymentCred = lucid.utils.getAddressDetails(address).paymentCredential;
+    const destStakeCred = lucid.utils.getAddressDetails(address).stakeCredential;
+    const returnPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
+    const returnStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
 
-    const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
-    const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
-
-    const returnPaymentCred = lucid.utils.getAddressDetails(address).paymentCredential;
-    const returnStakeCred = lucid.utils.getAddressDetails(address).stakeCredential;
-
-    console.log("destPaymentCred", destPaymentCred);
-    console.log("destStakeCred", destStakeCred);
-    console.log("returnPaymentCred", returnPaymentCred);
-    console.log("returnStakeCred", returnStakeCred);
+    console.log("destPaymentCred", destPaymentCred?.hash!);
+    console.log("destStakeCred", destStakeCred?.hash!);
+    console.log("returnPaymentCred", returnPaymentCred?.hash!);
+    console.log("returnStakeCred", returnStakeCred?.hash!);
 
     const newDatum = Data.to(new Constr(0, [
       BigInt(Date.now()),                       // sequence number
@@ -367,6 +364,7 @@ const Home: NextPage = () => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
+    const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
     var network;
 
     switch(process.env.NEXT_PUBLIC_NETWORK) { 
@@ -420,8 +418,8 @@ const Home: NextPage = () => {
       .mintAssets({ [unit]: BigInt(1) })
       .validTo(Date.now() + 100000)
       .attachMintingPolicy(mintingPolicy)
-      .payToAddress(merchAddress, { [unit]: BigInt(1) })
-      .payToAddress(ownerAddress, { [ownerToken]: BigInt(1) })
+      .payToAddress(merchAddress, { ["lovelace"] : BigInt(minAda), [unit]: BigInt(1) })
+      .payToAddress(ownerAddress, { ["lovelace"] : BigInt(minAda), [ownerToken]: BigInt(1) })
       .complete();
 
     const signedTx = await tx.sign().complete();
@@ -437,6 +435,7 @@ const Home: NextPage = () => {
 
     const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
+    const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
     var network;
 
     switch(process.env.NEXT_PUBLIC_NETWORK) { 
@@ -484,7 +483,7 @@ const Home: NextPage = () => {
       .newTx()
       .mintAssets({ [unit]: BigInt(1) })
       .attachMintingPolicy(mintingPolicy)
-      .payToAddress(ownerAddress, { [unit]: BigInt(1) })
+      .payToAddress(ownerAddress, { ["lovelace"] : BigInt(minAda), [unit]: BigInt(1) })
       .complete();
   
     const signedTx = await tx.sign().complete();
@@ -546,8 +545,8 @@ const Home: NextPage = () => {
     const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
     const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
 
-    console.log("destPaymentCred", destPaymentCred);
-    console.log("destStakeCred", destStakeCred);
+    console.log("destPaymentCred", destPaymentCred?.hash!);
+    console.log("destStakeCred", destStakeCred?.hash!);
 
     const newDatum = Data.to(new Constr(0, [
       BigInt(Date.now()),                       // sequence number
