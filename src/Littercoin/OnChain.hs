@@ -27,7 +27,7 @@ where
 import           Data.Aeson                             (FromJSON, ToJSON)
 import           GHC.Generics                           (Generic)
 import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
-import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), pubKeyHashAddress, StakePubKeyHash(..), toPubKeyHash)
+import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), toPubKeyHash)
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
                                                         Value)
 import           Littercoin.Types                       (MintPolicyRedeemer(..), 
@@ -133,38 +133,21 @@ validOutput txVal (x:xs)
     | ContextsV2.txOutValue x == txVal = True
     | otherwise = validOutput txVal xs
     
-{-# INLINABLE checkAddress #-}
-checkAddress :: Address.Address -> Bool
-checkAddress addr = case Address.toPubKeyHash addr of
-                        Just (pkh) -> trace "checkAddress: " (trace (decodeUtf8 (encodeHex (PlutusV2.getPubKeyHash pkh))) True)
-                        Nothing    -> False
-
 
 {-# INLINABLE checkAddress' #-}
 checkAddress' :: BuiltinByteString -> Address.Address -> Bool
 checkAddress' pkh outAddr = case Address.toPubKeyHash outAddr of
-                                Just (outPkh) -> trace "checkAddress': " trace (decodeUtf8 (encodeHex (PlutusV2.getPubKeyHash outPkh))) trace (decodeUtf8 pkh) (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
-                                Nothing -> trace "checkAddress': False" False
+                                Just (outPkh) -> (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
+                                Nothing -> False
                     
-
-
--- | Check that the value is locked at an address for the provided outputs
-{-# INLINABLE validOutput' #-}
-validOutput' :: Address.Address -> Value.Value -> [ContextsV2.TxOut] -> Bool
-validOutput' _ _ [] = False
-validOutput' addr txVal (x:xs)
-    | trace "validOutput':check Address" (checkAddress (ContextsV2.txOutAddress x)) && (ContextsV2.txOutAddress x == addr) 
-    && (ContextsV2.txOutValue x == txVal) = True
-    | otherwise = trace "validOutput':otherwise" validOutput' addr txVal xs
-
 
 -- | Check that the value is locked at an address for the provided outputs
 {-# INLINABLE validOutput'' #-}
 validOutput'' :: BuiltinByteString -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput'' _ _ [] = False
 validOutput'' pkh txVal (x:xs)
-    | trace "validOutput'':check Address'" (checkAddress' pkh (ContextsV2.txOutAddress x)) && (ContextsV2.txOutValue x == txVal) = True
-    | otherwise = trace "validOutput'':otherwise" validOutput'' pkh txVal xs
+    | (checkAddress' pkh (ContextsV2.txOutAddress x)) && (ContextsV2.txOutValue x == txVal) = True
+    | otherwise = validOutput'' pkh txVal xs
 
 
 -- | Find a datum for a given value in the provided outputs
@@ -172,8 +155,8 @@ validOutput'' pkh txVal (x:xs)
 getDatumOutput :: Value.Value -> [ContextsV2.TxOut] -> Maybe TxV2.OutputDatum
 getDatumOutput _ [] = Nothing
 getDatumOutput txVal (x:xs)
-    | (ContextsV2.txOutValue x == txVal) = trace "getDatumOuput: x == txVal " (Just (ContextsV2.txOutDatum x))
-    | otherwise = trace "getDatumOuput: otherwise" (getDatumOutput txVal xs)
+    | (ContextsV2.txOutValue x == txVal) = Just (ContextsV2.txOutDatum x)
+    | otherwise = getDatumOutput txVal xs
 
 
 -- | Find a datum for a give value in the provided inputs
@@ -191,11 +174,11 @@ getDatumInput :: Value.Value -> Integer -> [ContextsV2.TxInInfo] -> Maybe TxV2.O
 getDatumInput _  _ [] = Nothing
 getDatumInput txVal seqNum (x:xs) = case getDatumOutput txVal [ContextsV2.txInInfoResolved x] of
                                 (Just outputDatum)  -> case getSequence outputDatum of
-                                                        (Just seq)  -> if seq == seqNum then trace "getDatumInput: seq == seqNum" (Just outputDatum)
-                                                                        else trace "getDatumInput: seq != seqNum" (getDatumInput txVal seqNum xs)
-                                                        Nothing     -> trace "getDatumInput: getSequence: Nothing" (getDatumInput txVal seqNum xs)
+                                                        (Just seq)  -> if seq == seqNum then Just outputDatum
+                                                                        else getDatumInput txVal seqNum xs
+                                                        Nothing     -> getDatumInput txVal seqNum xs
 
-                                Nothing             -> trace "getDatumInput: getDatumOuput: Nothing" (getDatumInput txVal seqNum xs)
+                                Nothing             -> getDatumInput txVal seqNum xs
 
 
 -- | The Littercoin minting policy is used to mint and burn littercoins according to the
@@ -412,8 +395,8 @@ mkLCValidator params dat red ctx =
             case getActionDatum of 
                 (Just outDatum) -> case getReturnPkh outDatum of
                     (Just returnPkh) -> validOutput'' returnPkh (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)
-                    Nothing -> trace "checkOwnerToken:getReturnAddr: Nothing" False
-                Nothing -> trace "checkOwnerToken:getActionDatum: Nothing" False
+                    Nothing -> False
+                Nothing -> False
 
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
@@ -500,9 +483,9 @@ mkLCValidator params dat red ctx =
         checkLCDatumAdd seqNumber =        
             case getActionDatum of 
                 (Just outDatum) -> case getAmount outDatum of
-                    (Just lcAmt) -> trace "checkLCDatumAdd: lcAmt" (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt            
-                    Nothing -> trace "checkLCDatumAdd: getAmount: Nothing" False
-                Nothing -> trace "checkLCDatumAdd: getActionDatum: Nothing" False
+                    (Just lcAmt) -> (lcAdaAmount outputDat) - (lcAdaAmount dat) == lcAmt            
+                    Nothing -> False
+                Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
                 getActionDatum = getDatumInput (addAdaAmount <> lcvDonationTokenValue params) seqNumber (ContextsV2.txInfoInputs info)

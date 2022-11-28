@@ -173,7 +173,9 @@ $CARDANO_CLI transaction build \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-lc-tx-alonzo.body
-
+  
+    
+#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"
 
 echo "tx has been built"
 
