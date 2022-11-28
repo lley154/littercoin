@@ -76,17 +76,14 @@ intToBBS :: Integer -> BuiltinByteString
 intToBBS y = consByteString (y + 48::Integer) emptyByteString -- 48 is ASCII code for '0'
 
 
--- | ActionDatum is used to determine what action to perform on the smart contract
---   0 = Add Ada
---   1 = Mint Littercoin
---   2 = Burn Littecoin
+-- | ActionDatum is used for actions to perform on the smart contract
 data ActionDatum = ActionDatum
     {   adSequence          :: Integer
     ,   adAmount            :: Integer
-    ,   adDestPayment       :: Address.PaymentPubKeyHash
-    ,   adDestStake         :: Address.StakePubKeyHash
-    ,   adReturnPayment     :: Address.PaymentPubKeyHash
-    ,   adReturnStake       :: Address.StakePubKeyHash                                                                        -- 8
+    ,   adDestPaymentPkh    :: BuiltinByteString
+    ,   adDestStakePkh      :: BuiltinByteString
+    ,   adReturnPaymentPkh  :: BuiltinByteString
+    ,   adReturnStakePkh    :: BuiltinByteString
     } deriving (Show, Generic, FromJSON, ToJSON)
 
 PlutusTx.makeIsDataIndexed ''ActionDatum [('ActionDatum, 0)]
@@ -104,6 +101,29 @@ data LCDatum = LCDatum
 PlutusTx.makeIsDataIndexed ''LCDatum [('LCDatum, 0)]
 PlutusTx.makeLift ''LCDatum
 
+-- Convert from a byte string to its hex (base16) representation. Example: [2, 14, 255] => "020eff"
+{-# INLINEABLE encodeHex #-}
+encodeHex :: BuiltinByteString -> BuiltinByteString
+encodeHex input = go 0
+  where
+    len = lengthOfByteString input
+    go :: Integer -> BuiltinByteString
+    go i
+      | i == len = emptyByteString
+      | otherwise =
+        consByteString (toChar $ byte `quotient` 16) $
+          consByteString (toChar $ byte `remainder` 16) (go $ i + 1)
+      where
+        byte = indexByteString input i
+
+        toChar :: Integer -> Integer
+        toChar x
+          -- 48 is ASCII code for '0'
+          | x < 10 = x + 48
+          -- 97 is ASCII code for 'a'
+          -- x - 10 + 97 = x + 87
+          | otherwise = x + 87
+
 
 -- | Check that the specified value is in the provided outputs
 {-# INLINABLE validOutput #-}
@@ -116,8 +136,16 @@ validOutput txVal (x:xs)
 {-# INLINABLE checkAddress #-}
 checkAddress :: Address.Address -> Bool
 checkAddress addr = case Address.toPubKeyHash addr of
-                        Just (pkh) -> trace (decodeUtf8 (PlutusV2.getPubKeyHash pkh)) True
+                        Just (pkh) -> trace "checkAddress: " (trace (decodeUtf8 (encodeHex (PlutusV2.getPubKeyHash pkh))) True)
                         Nothing    -> False
+
+
+{-# INLINABLE checkAddress' #-}
+checkAddress' :: BuiltinByteString -> Address.Address -> Bool
+checkAddress' pkh outAddr = case Address.toPubKeyHash outAddr of
+                                Just (outPkh) -> trace "checkAddress': " trace (decodeUtf8 (encodeHex (PlutusV2.getPubKeyHash outPkh))) trace (decodeUtf8 pkh) (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
+                                Nothing -> trace "checkAddress': False" False
+                    
 
 
 -- | Check that the value is locked at an address for the provided outputs
@@ -125,9 +153,18 @@ checkAddress addr = case Address.toPubKeyHash addr of
 validOutput' :: Address.Address -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput' _ _ [] = False
 validOutput' addr txVal (x:xs)
-    | trace "validOutput':" (checkAddress (ContextsV2.txOutAddress x)) && (ContextsV2.txOutAddress x == addr) 
+    | trace "validOutput':check Address" (checkAddress (ContextsV2.txOutAddress x)) && (ContextsV2.txOutAddress x == addr) 
     && (ContextsV2.txOutValue x == txVal) = True
-    | otherwise = validOutput' addr txVal xs
+    | otherwise = trace "validOutput':otherwise" validOutput' addr txVal xs
+
+
+-- | Check that the value is locked at an address for the provided outputs
+{-# INLINABLE validOutput'' #-}
+validOutput'' :: BuiltinByteString -> Value.Value -> [ContextsV2.TxOut] -> Bool
+validOutput'' _ _ [] = False
+validOutput'' pkh txVal (x:xs)
+    | trace "validOutput'':check Address'" (checkAddress' pkh (ContextsV2.txOutAddress x)) && (ContextsV2.txOutValue x == txVal) = True
+    | otherwise = trace "validOutput'':otherwise" validOutput'' pkh txVal xs
 
 
 -- | Find a datum for a given value in the provided outputs
@@ -335,21 +372,12 @@ mkLCValidator params dat red ctx =
                                             Nothing  -> traceError "LCV19"     -- error decoding datum data
         getAmount _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
 
-        mintLCAmount :: Value.Value
-        mintLCAmount = Ada.lovelaceValueOf ((lcAmount outputDat) - (lcAmount dat))
 
         addAdaAmount :: Value.Value
         addAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount outputDat) - (lcAdaAmount dat))
 
         withdrawAdaAmount :: Value.Value
         withdrawAdaAmount = Ada.lovelaceValueOf ((lcAdaAmount dat) - (lcAdaAmount outputDat))
-
-
-        getAddr :: TxV2.OutputDatum -> Maybe Address.Address
-        getAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                                            Just (d') -> Just (Address.pubKeyHashAddress (adDestPayment d') (Just (adDestStake d')))
-                                            Nothing  -> traceError "LCV21"     -- error decoding datum data
-        getAddr _ = traceError "LCV22" -- expecting inline datum not datum hash or no datum
 
         -- | Check that the tx is signed by the admin 
         signedByAdmin :: Bool
@@ -377,25 +405,13 @@ mkLCValidator params dat red ctx =
                 getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
 
-        -- Check minting destination address
-        checkMintDestAddr :: Integer -> Bool
-        checkMintDestAddr seqNumber = 
-            case getActionDatum of 
-                (Just outDatum) -> case getAddr outDatum of
-                    (Just destAddr) -> validOutput' destAddr (minAda <> mintLCAmount) (ContextsV2.txInfoOutputs info)                  
-                    Nothing -> False
-                Nothing -> False
-            where
-                getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
-
 
         -- Check for Owner token required for minting
         checkOwnerToken :: Integer -> Bool
         checkOwnerToken seqNumber = 
             case getActionDatum of 
-                (Just outDatum) -> case getReturnAddr outDatum of
-                    (Just returnAddr) -> trace "checkOwnerToken:validOutput'" (validOutput' returnAddr (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)) 
+                (Just outDatum) -> case getReturnPkh outDatum of
+                    (Just returnPkh) -> validOutput'' returnPkh (minAda <> (lcvOwnerTokenValue params)) (ContextsV2.txInfoOutputs info)
                     Nothing -> trace "checkOwnerToken:getReturnAddr: Nothing" False
                 Nothing -> trace "checkOwnerToken:getActionDatum: Nothing" False
 
@@ -403,11 +419,34 @@ mkLCValidator params dat red ctx =
                 getActionDatum :: Maybe TxV2.OutputDatum
                 getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
-                getReturnAddr :: TxV2.OutputDatum -> Maybe Address.Address
-                getReturnAddr (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                                                    Just (d') -> trace "checkOwnerToken: getReturnAddr" (trace (decodeUtf8 (PlutusV2.getPubKeyHash (Address.unPaymentPubKeyHash (adReturnPayment d')))) (Just (Address.pubKeyHashAddress (adReturnPayment d') (Just (adReturnStake d')))))
-                                                    Nothing  -> traceError "LCV23"     -- error decoding datum data
-                getReturnAddr _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+                getReturnPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
+                getReturnPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                                        Just (d') -> Just (adReturnPaymentPkh d')
+                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
+                getReturnPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+
+
+
+        -- Check minting destination address
+        checkMintDestAddr :: Integer -> Bool
+        checkMintDestAddr seqNumber = 
+            case getActionDatum of 
+                (Just outDatum) -> case getDestPkh outDatum of
+                    (Just destPkh) -> validOutput'' destPkh (minAda <> mintLCAmount) (ContextsV2.txInfoOutputs info)                  
+                    Nothing -> False
+                Nothing -> False
+            where
+                getActionDatum :: Maybe TxV2.OutputDatum
+                getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+
+                getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
+                getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                                        Just (d') -> Just (adDestPaymentPkh d')
+                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
+                getDestPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+
+                mintLCAmount :: Value.Value
+                mintLCAmount = ContextsV2.txInfoMint info
 
 
 
@@ -440,13 +479,19 @@ mkLCValidator params dat red ctx =
         checkBurnDestAddr :: Integer -> Bool
         checkBurnDestAddr seqNumber = 
             case getActionDatum of 
-                (Just outDatum) -> case getAddr outDatum of
-                    (Just destAddr) -> validOutput' destAddr (withdrawAdaAmount <> (lcvMerchantTokenValue params)) (ContextsV2.txInfoOutputs info)       
+                (Just outDatum) -> case getDestPkh outDatum of
+                    (Just destPkh) -> validOutput'' destPkh (withdrawAdaAmount <> (lcvMerchantTokenValue params)) (ContextsV2.txInfoOutputs info)       
                     Nothing -> False
                 Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
                 getActionDatum = getDatumInput (minAda <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+
+                getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
+                getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                                                        Just (d') -> Just (adDestPaymentPkh d')
+                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
+                getDestPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
 
 
         -- | Check that the difference between Ada amount in the output and the input datum

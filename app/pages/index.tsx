@@ -264,15 +264,15 @@ const Home: NextPage = () => {
 
     lucid.selectWallet(API);
 
-    const destPaymentCred = lucid.utils.getAddressDetails(address).paymentCredential;
-    const destStakeCred = lucid.utils.getAddressDetails(address).stakeCredential;
     const returnPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
     const returnStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
+    const destPaymentCred = lucid.utils.getAddressDetails(address).paymentCredential;
+    const destStakeCred = lucid.utils.getAddressDetails(address).stakeCredential;
 
-    console.log("destPaymentCred", destPaymentCred?.hash!);
-    console.log("destStakeCred", destStakeCred?.hash!);
-    console.log("returnPaymentCred", returnPaymentCred?.hash!);
-    console.log("returnStakeCred", returnStakeCred?.hash!);
+    console.log("destPaymentCred", destPaymentCred);
+    console.log("destStakeCred", destStakeCred);
+    console.log("returnPaymentCred", returnPaymentCred);
+    console.log("returnStakeCred", returnStakeCred);
 
     const newDatum = Data.to(new Constr(0, [
       BigInt(Date.now()),                       // sequence number
@@ -545,8 +545,8 @@ const Home: NextPage = () => {
     const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
     const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
 
-    console.log("destPaymentCred", destPaymentCred?.hash!);
-    console.log("destStakeCred", destStakeCred?.hash!);
+    console.log("destPaymentCred", destPaymentCred);
+    console.log("destStakeCred", destStakeCred);
 
     const newDatum = Data.to(new Constr(0, [
       BigInt(Date.now()),                       // sequence number
