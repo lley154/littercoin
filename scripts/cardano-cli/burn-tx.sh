@@ -11,8 +11,8 @@ set -x
 # check if command line argument is empty or not present
 if [ -z $3 ]; 
 then
-    echo "mint-tx.sh:  Invalid script arguments"
-    echo "Usage: mint-tx.sh [devnet|preview|preprod|mainnet] txHash txIndx"
+    echo "burn-tx.sh:  Invalid script arguments"
+    echo "Usage: burn-tx.sh [devnet|preview|preprod|mainnet] txHash txIndx"
     exit 1
 fi
 ENV=$1
@@ -50,8 +50,8 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 # load in local variable values
 validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
-redeemer_mint_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint.json"
-redeemer_val_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-val.json"
+redeemer_burn_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn.json"
+redeemer_val_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn-val.json"
 redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
@@ -95,12 +95,6 @@ dest_stake_key_encoded=$(jq -r '.fields[3].bytes' $WORK/action-datum-in.json)
 dest_stake_key=$(echo -n "$dest_stake_key_encoded=" | xxd -r -p)
 dest_addr=$($BECH32 $ADDR_PREFIX <<< $BECH32_NETWORK$dest_payment_key$dest_stake_key)
 
-return_payment_key_encoded=$(jq -r '.fields[4].bytes' $WORK/action-datum-in.json)
-return_payment_key=$(echo -n "$return_payment_key_encoded=" | xxd -r -p)
-return_stake_key_encoded=$(jq -r '.fields[5].bytes' $WORK/action-datum-in.json)
-return_stake_key=$(echo -n "$return_stake_key_encoded=" | xxd -r -p)
-return_addr=$($BECH32 $ADDR_PREFIX <<< $BECH32_NETWORK$return_payment_key$return_stake_key)
-
 
 # Pull the utxo with the thread token in it
 lc_validator_utxo_tx_in=$(jq -r 'to_entries[] 
@@ -120,26 +114,34 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 # get the current total Ada and Littercoin amount in the smart contract
 total_ada=$(jq -r '.fields[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.fields[1].int' $WORK/lc-datum-in.json)
-new_total_lc=$(($total_lc + $lc_amount))
+
+# Calculate the amount of Ada to withdraw
+withdraw_ada=$((($total_ada / $total_lc) * $lc_amount))
+
+new_total_ada=$(($total_ada - $withdraw_ada))
+new_total_lc=$(($total_lc - $lc_amount))
 
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
 jq -c '
-  .fields[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
+  .fields[0].int   |= '$new_total_ada'
+| .fields[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
 
 
 # Upate the redeemer for the validator with the action sequence number
 cat $redeemer_val_file_path | \
 jq -c '
-  .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-mint-val.json
+  .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-burn-val.json
 
 
-# Update the redeemer for minting policy to indicate the amount of ada locked at the smart contract
-cat $redeemer_mint_file_path | \
+# Update the redeemer for minting policy to indicate the amount of ada being spent
+# and the withdraw amount
+cat $redeemer_burn_file_path | \
 jq -c '
-  .fields[1].int          |= '$total_ada'' > $WORK/redeemer-mint.json
-  
+  .fields[1].int          |= '$new_total_ada'
+| .fields[2].int          |= '$withdraw_ada'' > $WORK/redeemer-burn.json
+
 
 
 # Step 3: Build and submit the transaction
@@ -154,42 +156,41 @@ $CARDANO_CLI transaction build \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-mint-val.json" \
-  --tx-out "$validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-burn-val.json" \
+  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-in "$action_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$redeemer_spend_action_file_path" \
-  --tx-out "$return_addr+$MIN_ADA_OUTPUT_TX + 1 $OWNER_TOKEN_MPH.$OWNER_TOKEN_NAME" \
-  --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
+  --mint "-$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
   --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
+  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-burn.json" \
   --policy-id "$lc_mint_mph" \
-  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
+  --tx-out "$dest_addr+$withdraw_ada + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
+  --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/mint-lc-tx-alonzo.body
-  
+  --out-file $WORK/burn-lc-tx-alonzo.body
+      
 
-#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"
+#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"
 
-    
+
 echo "tx has been built"
 
 $CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/mint-lc-tx-alonzo.body \
+  --tx-body-file $WORK/burn-lc-tx-alonzo.body \
   $network \
   --signing-key-file "${ADMIN_SKEY}" \
-  --out-file $WORK/mint-lc-tx-alonzo.tx
+  --out-file $WORK/burn-lc-tx-alonzo.tx
 
 echo "tx has been signed"
 
 echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
+$CARDANO_CLI transaction submit --tx-file $WORK/burn-lc-tx-alonzo.tx $network
 
 
 
