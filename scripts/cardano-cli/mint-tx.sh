@@ -135,7 +135,7 @@ jq -c '
   .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-mint-val.json
 
 
-# Update the redeemer for minting policy to indicate the amount of ada being spent
+# Update the redeemer for minting policy to indicate the amount of ada locked at the smart contract
 cat $redeemer_mint_file_path | \
 jq -c '
   .fields[1].int          |= '$total_ada'' > $WORK/redeemer-mint.json
@@ -172,10 +172,13 @@ $CARDANO_CLI transaction build \
   --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/mint-lc-tx-alonzo.body
+  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"
+
+  
+  
+#  --out-file $WORK/mint-lc-tx-alonzo.body
   
     
-#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"
 
 echo "tx has been built"
 

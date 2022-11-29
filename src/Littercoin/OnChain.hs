@@ -79,7 +79,7 @@ intToBBS y = consByteString (y + 48::Integer) emptyByteString -- 48 is ASCII cod
 -- | ActionDatum is used for actions to perform on the smart contract
 data ActionDatum = ActionDatum
     {   adSequence          :: Integer
-    ,   adAmount            :: Integer
+    ,   adAmount            :: Integer   -- either Ada or LC amount
     ,   adDestPaymentPkh    :: BuiltinByteString
     ,   adDestStakePkh      :: BuiltinByteString
     ,   adReturnPaymentPkh  :: BuiltinByteString
@@ -388,7 +388,6 @@ mkLCValidator params dat red ctx =
                 getActionDatum = getDatumInput (minAda <> lcvOwnerTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
 
 
-
         -- Check for Owner token required for minting
         checkOwnerToken :: Integer -> Bool
         checkOwnerToken seqNumber = 
@@ -407,7 +406,6 @@ mkLCValidator params dat red ctx =
                                                         Just (d') -> Just (adReturnPaymentPkh d')
                                                         Nothing  -> traceError "LCV23"     -- error decoding datum data
                 getReturnPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
-
 
 
         -- Check minting destination address
@@ -432,8 +430,7 @@ mkLCValidator params dat red ctx =
                 mintLCAmount = ContextsV2.txInfoMint info
 
 
-
-        -- | Check that the littercoin token name burned is equal to the amount in the redeemer
+        -- | Check that the littercoin token name burned is equal to the amount action Datum
         checkAmountBurn :: Integer -> Bool
         checkAmountBurn q = case Value.flattenValue (ContextsV2.txInfoMint info) of
             [(_, tn', amt)] -> tn' == tn && amt == (negate q)
@@ -453,7 +450,10 @@ mkLCValidator params dat red ctx =
 
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (minAda <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcTokenValue <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+
+                lcTokenValue :: Value.Value
+                lcTokenValue = negate (ContextsV2.txInfoMint info)
 
                 r :: Integer
                 r = divide (lcAdaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
@@ -468,7 +468,10 @@ mkLCValidator params dat red ctx =
                 Nothing -> False
             where
                 getActionDatum :: Maybe TxV2.OutputDatum
-                getActionDatum = getDatumInput (minAda <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+                getActionDatum = getDatumInput (minAda <> lcTokenValue <> lcvMerchantTokenValue params) seqNumber (ContextsV2.txInfoInputs info)
+
+                lcTokenValue :: Value.Value
+                lcTokenValue = negate (ContextsV2.txInfoMint info)
 
                 getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
