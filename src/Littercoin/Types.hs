@@ -32,8 +32,6 @@ data MintPolicyRedeemer = MintPolicyRedeemer
       mpPolarity                  :: Bool     -- True = Mint, False = Burn
     , mpTotalAdaAmount            :: Integer  -- The total amount of Ada locked in the littercoin smart
                                               -- contract.   
-    , mpWithdrawAmount            :: Integer  -- The amount of Ada to withdraw from the Littercoin contract
-                                              -- Only used during littercoin burning
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)] 

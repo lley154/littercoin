@@ -1,26 +1,26 @@
 [
     {
         "executionUnits": {
-            "memory": 2094748,
-            "steps": 593529198
+            "memory": 2091156,
+            "steps": 592459601
         },
-        "lovelaceCost": 163661,
-        "scriptHash": "d006b4d2595492cac0fdd53fe3403005bcc88d251494b135b6745a62"
+        "lovelaceCost": 163377,
+        "scriptHash": "9745e283a0f5eb9a78be5d523e88a05c316a19b750eca7055da768da"
     },
     {
         "executionUnits": {
-            "memory": 7875348,
-            "steps": 2411099060
+            "memory": 2386768,
+            "steps": 671676699
         },
-        "lovelaceCost": 628248,
-        "scriptHash": "b99d689ff1909b744730947355110690617fb61f705f349799d500d6"
+        "lovelaceCost": 186145,
+        "scriptHash": "39cc3b2850123c77cab26784aa6d3852fb181348a99fe59fc7e23980"
     },
     {
         "executionUnits": {
-            "memory": 2387068,
-            "steps": 671745699
+            "memory": 9812862,
+            "steps": 2873872913
         },
-        "lovelaceCost": 186167,
-        "scriptHash": "b99d689ff1909b744730947355110690617fb61f705f349799d500d6"
+        "lovelaceCost": 773409,
+        "scriptHash": "39cc3b2850123c77cab26784aa6d3852fb181348a99fe59fc7e23980"
     }
 ]

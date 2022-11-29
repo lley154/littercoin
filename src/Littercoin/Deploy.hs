@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "1e9246392aaa26defadd56ec143483ea4849f8e9ece809853dd9f5dc080faad3"
+txIdBS = "6e9d8c39f03291764a30823db42d72040bfb6cc8d295eadd1fa10ffd0ead276c"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -283,8 +283,7 @@ writeRedeemerMint =
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
                 mpPolarity = True    -- mint token
-             ,  mpTotalAdaAmount = 0 -- update with the amount of Ada locked at the littercoin contract
-             ,  mpWithdrawAmount = 0 -- ignored during minting   
+             ,  mpTotalAdaAmount = 0 -- update with the amount of Ada locked at the littercoin contract  
              }
     in
         LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
@@ -303,7 +302,6 @@ writeRedeemerBurn =
              {
                 mpPolarity = False    -- mint token
              ,  mpTotalAdaAmount = 0  -- update with the amount of Ada locked at the littercoin contract
-             ,  mpWithdrawAmount = 0  -- upate with amount of Ada to withdrawl from contract   
              }
     in
         LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)

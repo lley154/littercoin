@@ -55,9 +55,9 @@ import qualified Plutus.V2.Ledger.Tx                    as TxV2 (getTxId, Output
 import qualified PlutusTx                               (applyCode, compile, fromBuiltinData, liftCode, 
                                                         makeIsDataIndexed, makeLift)                       
 import           PlutusTx.Prelude                       (Bool(..), BuiltinData, BuiltinByteString, check, consByteString, 
-                                                        emptyByteString, divide, Integer, indexByteString, lengthOfByteString, 
+                                                        divide, emptyByteString, error, Integer, indexByteString, lengthOfByteString, 
                                                         Maybe(..), negate, otherwise, quotient, remainder, sha2_256,
-                                                        traceError, traceIfFalse, (*), (&&), ($), (<>), (==), (-), (+), (<))
+                                                        traceIfFalse, (*), (&&), ($), (<>), (==), (-), (+), (<))
 import           Prelude                                (Show (..))
 
 
@@ -167,8 +167,8 @@ getDatumOutput txVal (x:xs)
 getSequence :: TxV2.OutputDatum -> Maybe Integer
 getSequence (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                     Just (d') -> Just (adSequence d')
-                                    Nothing  -> traceError "LC1"     -- error decoding datum data
-getSequence _ = traceError "LC2" -- expecting inline datum not datum hash or no datum
+                                    Nothing  -> error ()    -- error decoding datum data
+getSequence _ = error () -- expecting inline datum not datum hash or no datum
 
 
 -- | Find a datum for a give value in the provided inputs and sequence number
@@ -188,7 +188,7 @@ getDatumInput txVal seqNum (x:xs) = case getDatumOutput txVal [ContextsV2.txInIn
 --   following conditions set out in the policy.     
 {-# INLINABLE mkLittercoinPolicy #-}
 mkLittercoinPolicy :: LCMintPolicyParams -> MintPolicyRedeemer -> ContextsV2.ScriptContext -> Bool
-mkLittercoinPolicy params (MintPolicyRedeemer polarity totalAdaAmount withdrawAmount) ctx = 
+mkLittercoinPolicy params (MintPolicyRedeemer polarity totalAdaAmount) ctx = 
     case polarity of
         True ->    traceIfFalse "LP1" signedByAdmin 
                 && traceIfFalse "LP2" checkThreadToken
@@ -315,20 +315,20 @@ mkLCValidator params dat red ctx =
         outputDat :: LCDatum
         (_, outputDat) = case ContextsV2.getContinuingOutputs ctx of
             [o] -> case TxV2.txOutDatum o of
-                TxV2.NoOutputDatum -> traceError "LCV15"       -- no datum present
-                TxV2.OutputDatumHash _ -> traceError "LCV16"     -- expecting inline datum and not hash
+                TxV2.NoOutputDatum -> error ()       -- no datum present
+                TxV2.OutputDatumHash _ -> error ()     -- expecting inline datum and not hash
                 TxV2.OutputDatum d -> case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                     Just d' -> (o, d')
-                    Nothing  -> traceError "LCV17"       -- error decoding datum data
+                    Nothing  -> error ()       -- error decoding datum data
                     
-            _   -> traceError "LCV18"                        -- expected exactly one continuing output
+            _   -> error ()                        -- expected exactly one continuing output
             
 
         getAmount :: TxV2.OutputDatum -> Maybe Integer
         getAmount (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                             Just (d') -> Just (adAmount d')
-                                            Nothing  -> traceError "LCV19"     -- error decoding datum data
-        getAmount _ = traceError "LCV20" -- expecting inline datum not datum hash or no datum
+                                            Nothing  -> error ()     -- error decoding datum data
+        getAmount _ = error () -- expecting inline datum not datum hash or no datum
 
 
         addAdaAmount :: Value.Value
@@ -382,8 +382,8 @@ mkLCValidator params dat red ctx =
                 getReturnPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getReturnPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adReturnPaymentPkh d')
-                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
-                getReturnPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> error ()     -- error decoding datum data
+                getReturnPkh _ = error () -- expecting inline datum not datum hash or no datum
 
 
         -- Check minting destination address
@@ -398,8 +398,8 @@ mkLCValidator params dat red ctx =
                 getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adDestPaymentPkh d')
-                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
-                getDestPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> error ()     -- error decoding datum data
+                getDestPkh _ = error () -- expecting inline datum not datum hash or no datum
 
 
 
@@ -443,8 +443,8 @@ mkLCValidator params dat red ctx =
                 getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adDestPaymentPkh d')
-                                                        Nothing  -> traceError "LCV23"     -- error decoding datum data
-                getDestPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> error ()     -- error decoding datum data
+                getDestPkh _ = error () -- expecting inline datum not datum hash or no datum
 
 
         -- | Check that the difference between Ada amount in the output and the input datum
