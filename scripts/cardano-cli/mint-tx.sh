@@ -174,7 +174,7 @@ $CARDANO_CLI transaction build \
   --protocol-params-file "$WORK/pparms.json" \
   --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"
 
-
+    
 
 #  --out-file $WORK/mint-lc-tx-alonzo.body
   

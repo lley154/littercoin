@@ -142,7 +142,7 @@ checkAddress' :: BuiltinByteString -> Address.Address -> Bool
 checkAddress' pkh outAddr = case Address.toPubKeyHash outAddr of
                                 Just (outPkh) -> (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
                                 Nothing -> False
-                    
+                   
 
 -- | Check that the value is locked at an address for the provided outputs
 {-# INLINABLE validOutput'' #-}

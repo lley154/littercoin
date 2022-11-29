@@ -173,7 +173,10 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/burn-lc-tx-alonzo.body
+  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"
+
+
+#  --out-file $WORK/burn-lc-tx-alonzo.body
       
 
 #  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"
