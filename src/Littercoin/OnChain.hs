@@ -52,8 +52,8 @@ import qualified Plutus.V2.Ledger.Tx                    as TxV2 (getTxId, Output
 import qualified PlutusTx                               (applyCode, compile, fromBuiltinData, liftCode, 
                                                         makeIsDataIndexed, makeLift)                       
 import           PlutusTx.Prelude                       (Bool(..), BuiltinData, BuiltinByteString, check, consByteString, 
-                                                        divide, emptyByteString, error, Integer, indexByteString, lengthOfByteString, 
-                                                        Maybe(..), otherwise, quotient, remainder, sha2_256, trace, decodeUtf8, 
+                                                        divide, emptyByteString, Integer, indexByteString, lengthOfByteString, 
+                                                        Maybe(..), otherwise, quotient, remainder, sha2_256, traceError, trace, 
                                                         traceIfFalse, (*), (&&), ($), (<>), (==), (-), (+), (<), (!!))
 import           Prelude                                (Show (..))
 
@@ -111,7 +111,7 @@ encodeHex input = go 0
     len = lengthOfByteString input
     go :: Integer -> BuiltinByteString
     go i
-      | i == len = emptyByteString
+      | trace "encodeHex" i == len = emptyByteString
       | otherwise =
         consByteString (toChar $ byte `quotient` 16) $
           consByteString (toChar $ byte `remainder` 16) (go $ i + 1)
@@ -139,7 +139,7 @@ checkTTValue ttValue addrValue  =
         inspectValues ((cs, tn', amt):xs)
             | (cs == buyCs) && (tn' == buyTn) && (amt == buyAmt) = True
             | otherwise = inspectValues xs
-    in inspectValues valuesAtAddr
+    in trace "checkTTValue" inspectValues valuesAtAddr
 
 -- | Find the thread token in the list of outputs, returning the scripts address 
 --   of that utxo
@@ -147,7 +147,7 @@ checkTTValue ttValue addrValue  =
 findTTOutput :: Value.Value -> [ContextsV2.TxOut] -> Maybe Address.Address
 findTTOutput _ [] = Nothing
 findTTOutput txVal (x:xs) 
-    | checkTTValue txVal (ContextsV2.txOutValue x) = Just (ContextsV2.txOutAddress x)
+    | checkTTValue txVal (ContextsV2.txOutValue x) = trace "findTTOutput" Just (ContextsV2.txOutAddress x)
     | otherwise = findTTOutput txVal xs
 
 
@@ -157,7 +157,7 @@ findTTOutput txVal (x:xs)
 findTTAddrInputs :: Value.Value -> [ContextsV2.TxInInfo] -> Maybe Address.Address
 findTTAddrInputs _ [] = Nothing
 findTTAddrInputs txVal (x:xs) = case findTTOutput txVal [ContextsV2.txInInfoResolved x] of
-                                    (Just scriptAddr) -> Just scriptAddr  
+                                    (Just scriptAddr) -> trace "findTTAddrInputs" Just scriptAddr  
                                     Nothing           ->  findTTAddrInputs txVal xs
 
  
@@ -165,7 +165,7 @@ findTTAddrInputs txVal (x:xs) = case findTTOutput txVal [ContextsV2.txInInfoReso
 {-# INLINABLE checkAddress' #-}
 checkAddress' :: BuiltinByteString -> Address.Address -> Bool
 checkAddress' pkh outAddr = case Address.toPubKeyHash outAddr of
-                                Just (outPkh) -> (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
+                                Just (outPkh) -> trace "checkAddress'" (encodeHex (PlutusV2.getPubKeyHash outPkh)) == pkh 
                                 Nothing -> False
 
 
@@ -174,7 +174,7 @@ checkAddress' pkh outAddr = case Address.toPubKeyHash outAddr of
 validOutput' :: Address.Address -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput' _ _ [] = False
 validOutput' scriptAddr txVal (x:xs)
-    | (ContextsV2.txOutAddress x == scriptAddr) && (ContextsV2.txOutValue x == txVal) = True
+    | trace "validOutput'" (ContextsV2.txOutAddress x == scriptAddr) && (ContextsV2.txOutValue x == txVal) = True
     | otherwise = validOutput' scriptAddr txVal xs
 
 
@@ -183,7 +183,7 @@ validOutput' scriptAddr txVal (x:xs)
 validOutput'' :: BuiltinByteString -> Value.Value -> [ContextsV2.TxOut] -> Bool
 validOutput'' _ _ [] = False
 validOutput'' pkh txVal (x:xs)
-    | (checkAddress' pkh (ContextsV2.txOutAddress x)) && (ContextsV2.txOutValue x == txVal) = True
+    | trace "ValidOutput''" (checkAddress' pkh (ContextsV2.txOutAddress x)) && (ContextsV2.txOutValue x == txVal) = True
     | otherwise = validOutput'' pkh txVal xs
 
 
@@ -192,7 +192,7 @@ validOutput'' pkh txVal (x:xs)
 getDatumOutput :: Value.Value -> [ContextsV2.TxOut] -> Maybe TxV2.OutputDatum
 getDatumOutput _ [] = Nothing
 getDatumOutput txVal (x:xs)
-    | (ContextsV2.txOutValue x == txVal) = Just (ContextsV2.txOutDatum x)
+    | trace "getDatumOutput" (ContextsV2.txOutValue x == txVal) = Just (ContextsV2.txOutDatum x)
     | otherwise = getDatumOutput txVal xs
 
 
@@ -200,9 +200,9 @@ getDatumOutput txVal (x:xs)
 {-# INLINABLE getSequence #-}
 getSequence :: TxV2.OutputDatum -> Maybe Integer
 getSequence (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                                    Just (d') -> Just (adSequence d')
-                                    Nothing  -> error ()    -- error decoding datum data
-getSequence _ = error () -- expecting inline datum not datum hash or no datum
+                                    Just (d') -> trace "getSequence" Just (adSequence d')
+                                    Nothing  -> traceError "LC1"     -- error decoding datum data
+getSequence _ = traceError "LC2" -- expecting inline datum not datum hash or no datum
 
 
 -- | Find a datum for a give value in the provided inputs and sequence number
@@ -242,11 +242,11 @@ mkLCValidator params dat red ctx =
                   &&   traceIfFalse "LCV10" checkThreadToken               
                     
         AddAda seq    ->  traceIfFalse "LCV12" signedByAdmin
-                  &&   (traceIfFalse "LCV13" $ checkLCDatumAdd seq)  
-                  &&   traceIfFalse "LCV14" checkThreadToken 
+                  -- &&   (trace "checkLCDatumAdd" $ checkLCDatumAdd seq)
+                  -- &&   trace "checkThreadToken"  checkThreadToken 
 
         SpendAction   -> traceIfFalse "LCV15" signedByAdmin
-                  &&   traceIfFalse "LCV16" checkThreadToken
+                  -- &&   traceIfFalse "LCV16" checkThreadToken
 
       where        
         lcTokenName :: PlutusV2.TokenName
@@ -259,13 +259,13 @@ mkLCValidator params dat red ctx =
         outputDat :: LCDatum
         (_, outputDat) = case ContextsV2.getContinuingOutputs ctx of
             [o] -> case TxV2.txOutDatum o of
-                TxV2.NoOutputDatum -> error ()       -- no datum present
-                TxV2.OutputDatumHash _ -> error ()     -- expecting inline datum and not hash
+                TxV2.NoOutputDatum -> traceError "LCV17"        -- no datum present
+                TxV2.OutputDatumHash _ -> traceError "LCV18"     -- expecting inline datum and not hash
                 TxV2.OutputDatum d -> case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                     Just d' -> (o, d')
-                    Nothing  -> error ()       -- error decoding datum data
+                    Nothing  -> traceError "LCV19"       -- error decoding datum data
                     
-            _   -> error ()                        -- expected exactly one continuing output
+            _   -> traceError "LCV20"                        -- expected exactly one continuing output
             
         scriptAddr :: Maybe Address.Address    
         scriptAddr = findTTAddrInputs (lcvThreadTokenValue params) (ContextsV2.txInfoInputs info)
@@ -273,8 +273,8 @@ mkLCValidator params dat red ctx =
         getAmount :: TxV2.OutputDatum -> Maybe Integer
         getAmount (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                             Just (d') -> Just (adAmount d')
-                                            Nothing  -> error ()     -- error decoding datum data
-        getAmount _ = error () -- expecting inline datum not datum hash or no datum
+                                            Nothing  -> traceError "LCV21"     -- error decoding datum data
+        getAmount _ = traceError "LCV22" -- expecting inline datum not datum hash or no datum
 
 
         addAdaAmount :: Value.Value
@@ -322,8 +322,8 @@ mkLCValidator params dat red ctx =
                 getReturnPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getReturnPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adReturnPaymentPkh d')
-                                                        Nothing  -> error ()     -- error decoding datum data
-                getReturnPkh _ = error () -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> traceError "LCV23"    -- error decoding datum data
+                getReturnPkh _ = traceError "LCV24" -- expecting inline datum not datum hash or no datum
 
 
         -- Check minting destination address
@@ -338,8 +338,8 @@ mkLCValidator params dat red ctx =
                 getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adDestPaymentPkh d')
-                                                        Nothing  -> error ()     -- error decoding datum data
-                getDestPkh _ = error () -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> traceError "LCV26"     -- error decoding datum data
+                getDestPkh _ = traceError "LCV27" -- expecting inline datum not datum hash or no datum
 
         -- | Check that the difference between LCAmount in the output and the input datum
         --   matches the quantity indicated in the redeemer
@@ -375,8 +375,8 @@ mkLCValidator params dat red ctx =
                 getDestPkh :: TxV2.OutputDatum -> Maybe BuiltinByteString
                 getDestPkh (TxV2.OutputDatum d) = case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
                                                         Just (d') -> Just (adDestPaymentPkh d')
-                                                        Nothing  -> error ()     -- error decoding datum data
-                getDestPkh _ = error () -- expecting inline datum not datum hash or no datum
+                                                        Nothing  -> traceError "LCV28"     -- error decoding datum data
+                getDestPkh _ = traceError "LCV29" -- expecting inline datum not datum hash or no datum
 
 
         -- | Check that the difference between Ada amount in the output and the input datum

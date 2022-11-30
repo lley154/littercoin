@@ -161,13 +161,12 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --tx-in "$littercoin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-burn-val.json" \
-  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
+  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $lc_mint_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-in "$action_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
@@ -197,8 +196,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/burn-lc-tx-alonzo.tx $network
+#echo "Submit the tx with plutus script and wait 5 seconds..."
+#$CARDANO_CLI transaction submit --tx-file $WORK/burn-lc-tx-alonzo.tx $network
 
 
 

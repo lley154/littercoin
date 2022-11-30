@@ -43,7 +43,7 @@ rm -f $WORK-backup/*
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
 # load in local variable values
-validator_script="$BASE/scripts/cardano-cli/$ENV/data/validator.plutus"
+validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
 
 

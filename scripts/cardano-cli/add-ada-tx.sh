@@ -54,6 +54,8 @@ redeemer_add_ada_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-add-ada
 redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
+lc_mint_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.hash | jq -r '.bytes')
+lc_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-token-name.json | jq -r '.bytes')
 admin_pkh=$(cat $ADMIN_PKH)
 
 
@@ -112,6 +114,7 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 # get the current total Ada and Littercoin amount in the smart contract
 total_ada=$(jq -r '.fields[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.fields[1].int' $WORK/lc-datum-in.json)
+reserve_lc=$(jq -r '.fields[2].int' $WORK/lc-datum-in.json)
 new_total_ada=$(($total_ada + $add_ada_amount))
 
 
@@ -127,7 +130,6 @@ jq -c '
   .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-add-ada.json
 
 
-
 # Step 3: Build and submit the transaction
 $CARDANO_CLI transaction build \
   --babbage-era \
@@ -141,7 +143,7 @@ $CARDANO_CLI transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-add-ada.json" \
-  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name + $reserve_lc $lc_mint_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-in "$add_ada_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
@@ -168,7 +170,7 @@ $CARDANO_CLI transaction sign \
 echo "tx has been signed"
 
 #echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
+#$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
 
 
 

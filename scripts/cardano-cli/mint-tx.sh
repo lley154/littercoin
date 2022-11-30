@@ -54,6 +54,8 @@ redeemer_val_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-val.js
 redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
+lc_mint_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.hash | jq -r '.bytes')
+lc_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-token-name.json | jq -r '.bytes')
 admin_pkh=$(cat $ADMIN_PKH)
 
 
@@ -84,9 +86,6 @@ action_datum_in=$(jq -r 'to_entries[]
 echo -n "$action_datum_in" > $WORK/action-datum-in.json
 
 
-
-
-
 # Get the minting info from the action datum
 action_sequence_num=$(jq -r '.fields[0].int' $WORK/action-datum-in.json)
 lc_amount=$(jq -r '.fields[1].int' $WORK/action-datum-in.json)
@@ -113,13 +112,6 @@ lc_validator_utxo_tx_in=$(jq -r 'to_entries[]
 lc_validator_datum_in=$(jq -r 'to_entries[] 
 | select(.value.value."'$thread_token_mph'"."'$thread_token_name'") 
 | .value.inlineDatum' $WORK/validator-utxo.json)
-
-
-# Pull the littercoin reserve utxo
-littercoin_utxo_in=$(jq -r 'to_entries[] 
-| select(.value.value."'$LITTERCOIN_TOKEN_MPH'"."'$LITTERCOIN_TOKEN_NAME'") 
-| .key' $WORK/validator-utxo.json)
-
 
 # Save the inline datum to disk
 echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
@@ -154,15 +146,14 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --tx-in "$littercoin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-mint-val.json" \
-  --tx-out "$validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
+  --tx-out "$validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $lc_mint_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
+  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --tx-in "$action_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
@@ -192,8 +183,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
+#echo "Submit the tx with plutus script and wait 5 seconds..."
+#$CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
 
 
 
