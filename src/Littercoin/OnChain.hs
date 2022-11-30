@@ -53,7 +53,7 @@ import qualified PlutusTx                               (applyCode, compile, fro
                                                         makeIsDataIndexed, makeLift)                       
 import           PlutusTx.Prelude                       (Bool(..), BuiltinData, BuiltinByteString, check, consByteString, 
                                                         divide, emptyByteString, error, Integer, indexByteString, lengthOfByteString, 
-                                                        Maybe(..), otherwise, quotient, remainder, sha2_256,
+                                                        Maybe(..), otherwise, quotient, remainder, sha2_256, trace, decodeUtf8, 
                                                         traceIfFalse, (*), (&&), ($), (<>), (==), (-), (+), (<), (!!))
 import           Prelude                                (Show (..))
 
@@ -452,13 +452,22 @@ mkThreadTokenPolicy (ThreadTokenRedeemer (TxV2.TxOutRef refHash refIdx)) ctx =
     
     txOutputSpent :: Bool
     txOutputSpent = ContextsV2.spendsOutput info refHash refIdx
-    
-    ownSymbol = ContextsV2.ownCurrencySymbol ctx
-    minted = ContextsV2.txInfoMint info
-    threadToken = sha2_256 $ TxV2.getTxId refHash <> intToBBS refIdx
+
+    tn :: Value.TokenName
+    tn = PlutusV2.TokenName $ sha2_256 $ TxV2.getTxId refHash <> intToBBS refIdx
 
     checkMintedAmount :: Bool
-    checkMintedAmount = minted == threadTokenValue ownSymbol (PlutusV2.TokenName threadToken) 
+    checkMintedAmount = inspectValues (Value.flattenValue (ContextsV2.txInfoMint info))
+        
+        where
+            inspectValues :: [(Value.CurrencySymbol, Value.TokenName, Integer)] -> Bool
+            inspectValues [] = False
+            inspectValues ((cs, tn', amt):xs)
+                | (cs == ContextsV2.ownCurrencySymbol ctx)
+                    && (tn' == tn) 
+                    && (amt == 1) = True
+                | otherwise = inspectValues xs
+
 
 
 -- | Wrap the minting policy using the boilerplate template haskell code
@@ -500,12 +509,18 @@ mkLittercoinPolicy params (MintPolicyRedeemer polarity) ctx =
         txOutputSpent :: Bool
         txOutputSpent = ContextsV2.spendsOutput info (TxV2.txOutRefId (lcTxOutRef params)) (TxV2.txOutRefIdx (lcTxOutRef params))
         
-        ownSymbol = ContextsV2.ownCurrencySymbol ctx
-        minted = ContextsV2.txInfoMint info
-
         checkMintedAmount :: Bool
-        checkMintedAmount = minted == Value.singleton ownSymbol (lcTokenName params) (lcReserveAmt params)
-
+        checkMintedAmount = inspectValues (Value.flattenValue (ContextsV2.txInfoMint info))
+        
+            where
+                inspectValues :: [(Value.CurrencySymbol, Value.TokenName, Integer)] -> Bool
+                inspectValues [] = False
+                inspectValues ((cs, tn', amt):xs)
+                    | (cs == ContextsV2.ownCurrencySymbol ctx)
+                        && (tn' == (lcTokenName params)) 
+                        && (amt == (lcReserveAmt params)) = True
+                    | otherwise = inspectValues xs
+            
 
 -- | Wrap the minting policy using the boilerplate template haskell code
 lcPolicy :: LCMintPolicyParams -> PlutusV2.MintingPolicy
