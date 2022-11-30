@@ -18,39 +18,12 @@ module Littercoin.Types
 import              Data.Aeson                          (FromJSON, ToJSON)  
 import              GHC.Generics                        (Generic)
 import qualified    Ledger.Address as Address           (PaymentPubKeyHash(..))
-import qualified    Ledger.Value as Value               (TokenName(..), Value)
+import qualified    Ledger.Value as Value               (CurrencySymbol(..), TokenName(..), Value)
 import qualified    Plutus.V2.Ledger.Tx as Tx           (TxOutRef(..))
 import              Playground.Contract as Playground   (ToSchema)
 import qualified    PlutusTx                            (makeIsDataIndexed, makeLift)
 import              PlutusTx.Prelude                    (Bool(..), Integer)
 import qualified    Prelude as Haskell                  (Show)
-
-
--- | The mint policy reeemder indicates if the token is to be minted or burned
-data MintPolicyRedeemer = MintPolicyRedeemer
-    { 
-      mpPolarity                  :: Bool     -- True = Mint, False = Burn
-    , mpTotalAdaAmount            :: Integer  -- The total amount of Ada locked in the littercoin smart
-                                              -- contract.   
-    } deriving Haskell.Show
-
-PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)] 
-PlutusTx.makeLift ''MintPolicyRedeemer
-
-
--- | The Littercoin mintint policy params passes the Littercoin token name, AdminPkh, ThreadToken and MerchantToken Token value 
---   as a parameter into the minting poicy which will make the Littercoin minting policy unique
-data LCMintPolicyParams = LCMintPolicyParams
-    { 
-      lcTokenName               :: Value.TokenName  -- littercoin token name
-    , lcAdminPkh                :: Address.PaymentPubKeyHash
-    , lcThreadTokenValue        :: Value.Value    -- LC validator thread token
-    , lcOwnerTokenValue         :: Value.Value
-    , lcMerchantTokenValue      :: Value.Value    
-    } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
-
-PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
-PlutusTx.makeLift ''LCMintPolicyParams
 
 
 -- | The thread token redeemer passes a utxo from the Littercoin admin's wallet 
@@ -64,15 +37,39 @@ data ThreadTokenRedeemer = ThreadTokenRedeemer
 PlutusTx.makeIsDataIndexed ''ThreadTokenRedeemer [('ThreadTokenRedeemer,0)] 
 
 
+-- | The mint policy reeemder indicates if the token is to be minted or burned
+data MintPolicyRedeemer = MintPolicyRedeemer
+    { 
+      mpPolarity                  :: Bool     -- True = Mint, False = Burn
+    } deriving Haskell.Show
+
+PlutusTx.makeIsDataIndexed ''MintPolicyRedeemer [('MintPolicyRedeemer,0)] 
+PlutusTx.makeLift ''MintPolicyRedeemer
+
+
+-- | The Littercoin mintint policy params passes token name, reserve amount and most
+--   importantly the utxo that will be spent to ensure this is a unique minting policy
+data LCMintPolicyParams = LCMintPolicyParams
+    { 
+      lcTokenName                   :: Value.TokenName
+    , lcReserveAmt                  :: Integer
+    , lcTxOutRef                    :: Tx.TxOutRef  
+    } deriving (Haskell.Show, Generic, FromJSON, ToJSON, Playground.ToSchema)
+
+PlutusTx.makeIsDataIndexed ''LCMintPolicyParams [('LCMintPolicyParams,0)] 
+PlutusTx.makeLift ''LCMintPolicyParams
+
+
 -- | LCValidatorParams is used to pass the admin pkh, MerchantToken & Littercoin token names as a parameter to the 
 --   littercoin validator script
 data LCValidatorParams = LCValidatorParams
     {   lcvAdminPkh                 :: Address.PaymentPubKeyHash
-    ,   lcvTokenName                :: Value.TokenName  
+    ,   lcvLCTokenName              :: Value.TokenName 
+    ,   lcvLCTokenCurSymbol         :: Value.CurrencySymbol 
     ,   lcvMerchantTokenValue       :: Value.Value     
     ,   lcvThreadTokenValue         :: Value.Value      
     ,   lcvOwnerTokenValue          :: Value.Value      
-    ,   lcvDonationTokenValue       :: Value.Value    
+    ,   lcvDonationTokenValue       :: Value.Value   
     } deriving Haskell.Show
 
 PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)] 

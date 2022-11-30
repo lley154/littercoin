@@ -14,7 +14,7 @@ const MintOwnerToken = ({ onMintOwnerToken } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Owner Wallet Address</b> 
+                <b>Mint Owner Token</b> 
                 <br></br>
                 <input name='address' type='text' id='address' placeholder='Enter Owner Wallet Address' 
                 value={address}

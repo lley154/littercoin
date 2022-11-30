@@ -3,6 +3,7 @@ import AddAda from '../components/AddAda';
 import BurnLC from '../components/BurnLC';
 import Head from 'next/head'
 import LittercoinInfo from '../components/LittercoinInfo';
+import LittercoinPool from '../components/LittercoinPool';
 import MintLC from '../components/MintLC';
 import MintMerchantToken from '../components/MintMerchantToken';
 import MintOwnerToken from '../components/MintOwnerToken';
@@ -567,6 +568,87 @@ const Home: NextPage = () => {
     return txHash;
   } 
 
+  const littercoinPool = async (lcQty : any) : Promise<TxHash> => {
+
+    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+    const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
+    var network;
+
+    switch(process.env.NEXT_PUBLIC_NETWORK) { 
+      case undefined: { 
+         network = "Mainnet" as Network; 
+         break; 
+      } 
+      case "Preprod": { 
+         network = "Preprod" as Network;
+         break; 
+      } 
+      default: { 
+         network = "Mainnet" as Network;
+         break; 
+      } 
+    } 
+
+    const lucid = await Lucid.new(
+      new Blockfrost(blockfrost_url, api_key),
+      network,
+    );
+
+    lucid.selectWallet(API);
+    
+    const ownerAddress = await lucid.wallet.address();
+    const ownerToken : string = process.env.NEXT_PUBLIC_OWNER_TOKEN as string;
+    const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
+
+    const { paymentCredential } = lucid.utils.getAddressDetails(
+      await lucid.wallet.address(),
+    );
+
+    const mintingPolicy: MintingPolicy = lucid.utils.nativeScriptFromJson(
+      {
+        type: "all",
+        scripts: [
+          { type: "sig", keyHash: paymentCredential?.hash! },
+          {
+            type: "before",
+            slot: lucid.utils.unixTimeToSlot(Date.now() + 1000000),
+          },
+        ],
+      },
+    );
+    
+    const policyId: PolicyId = lucid.utils.mintingPolicyToId(
+      mintingPolicy,
+    );
+
+    const unit: Unit = policyId + utf8ToHex("Littercoin");
+
+    const newDatum = Data.to(new Constr(0, [
+      BigInt(0),                  // sequence number
+      BigInt(0),                  // amount of littercoin to mint
+      utf8ToHex(""),              // destination payment pkh
+      utf8ToHex(""),              // desination stake pkh
+      utf8ToHex(""),              // return payment pkh
+      utf8ToHex("")]));           // return stake pkh
+
+    const tx = await lucid
+    .newTx()
+    .mintAssets({ [unit]: BigInt(lcQty) })
+    .validTo(Date.now() + 100000)
+    .attachMintingPolicy(mintingPolicy)
+    .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(minAda) , [unit] : BigInt(lcQty) })
+    .payToAddress(ownerAddress, { ["lovelace"] : BigInt(minAda), [ownerToken]: BigInt(1) })
+    .complete();  
+
+    const signedTx = await tx.sign().complete();
+    const txHash = await signedTx.submit();
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
+    return txHash;
+  } 
+
+
   return (
     <div className={styles.container}>
       <Head>
@@ -609,6 +691,7 @@ const Home: NextPage = () => {
           {walletIsEnabled && !tx.txId && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
           {walletIsEnabled && !tx.txId && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
           {walletIsEnabled && !tx.txId && <div className={styles.border}><MintMerchantToken onMintMerchantToken={mintMerchantToken}/></div>}
+          {walletIsEnabled && !tx.txId && <div className={styles.border}><LittercoinPool onLittercoinPool={littercoinPool}/></div>}
           {walletIsEnabled && !tx.txId && <div className={styles.border}><MintOwnerToken onMintOwnerToken={mintOwnerToken}/></div>}
 
       </main>

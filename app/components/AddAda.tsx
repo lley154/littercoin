@@ -16,7 +16,7 @@ const AddAda = ({ onAddAda } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Add Ada to the Littercoin Smart Contract</b>
+                <b>Add Ada</b>
                 <br></br>
                 <input name='qty' type='number' id='qty' placeholder='Enter Amount of Ada to add' 
                 value={qty}

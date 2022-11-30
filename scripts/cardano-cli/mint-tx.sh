@@ -50,13 +50,10 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 # load in local variable values
 validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
-redeemer_mint_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint.json"
 redeemer_val_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-val.json"
 redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
-lc_mint_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.hash | jq -r '.bytes')
-lc_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-token-name.json | jq -r '.bytes')
 admin_pkh=$(cat $ADMIN_PKH)
 
 
@@ -79,11 +76,15 @@ admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 # Step 2: Get the littercoin smart contract utxos
 $CARDANO_CLI query utxo --address $validator_script_addr $network --out-file $WORK/validator-utxo.json
 
+# Get the action datum utxo
 action_datum_in=$(jq -r 'to_entries[] 
 | select(.key == "'$action_utxo_in_txid'") 
 | .value.inlineDatum' $WORK/validator-utxo.json)
 
 echo -n "$action_datum_in" > $WORK/action-datum-in.json
+
+
+
 
 
 # Get the minting info from the action datum
@@ -113,6 +114,13 @@ lc_validator_datum_in=$(jq -r 'to_entries[]
 | select(.value.value."'$thread_token_mph'"."'$thread_token_name'") 
 | .value.inlineDatum' $WORK/validator-utxo.json)
 
+
+# Pull the littercoin reserve utxo
+littercoin_utxo_in=$(jq -r 'to_entries[] 
+| select(.value.value."'$LITTERCOIN_TOKEN_MPH'"."'$LITTERCOIN_TOKEN_NAME'") 
+| .key' $WORK/validator-utxo.json)
+
+
 # Save the inline datum to disk
 echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 
@@ -120,13 +128,15 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 # get the current total Ada and Littercoin amount in the smart contract
 total_ada=$(jq -r '.fields[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.fields[1].int' $WORK/lc-datum-in.json)
+reserve_lc=$(jq -r '.fields[2].int' $WORK/lc-datum-in.json)
 new_total_lc=$(($total_lc + $lc_amount))
-
+new_reserve_lc=$(($reserve_lc - $lc_amount))
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
 jq -c '
-  .fields[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
+  .fields[1].int   |= '$new_total_lc'
+| .fields[2].int   |= '$new_reserve_lc'' > $WORK/lc-datum-out.json
 
 
 # Upate the redeemer for the validator with the action sequence number
@@ -134,12 +144,6 @@ cat $redeemer_val_file_path | \
 jq -c '
   .fields[0].int          |= '$action_sequence_num'' > $WORK/redeemer-mint-val.json
 
-
-# Update the redeemer for minting policy to indicate the amount of ada locked at the smart contract
-cat $redeemer_mint_file_path | \
-jq -c '
-  .fields[1].int          |= '$total_ada'' > $WORK/redeemer-mint.json
-  
 
 
 # Step 3: Build and submit the transaction
@@ -150,13 +154,15 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
+  --tx-in "$littercoin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-mint-val.json" \
-  --tx-out "$validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
+  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
   --tx-in "$action_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
@@ -164,12 +170,6 @@ $CARDANO_CLI transaction build \
   --spending-reference-tx-in-redeemer-file "$redeemer_spend_action_file_path" \
   --tx-out "$return_addr+$MIN_ADA_OUTPUT_TX + 1 $OWNER_TOKEN_MPH.$OWNER_TOKEN_NAME" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
-  --policy-id "$lc_mint_mph" \
-  --tx-out "$dest_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
   --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/mint-tx.costs"

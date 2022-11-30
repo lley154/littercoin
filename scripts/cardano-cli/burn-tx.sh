@@ -111,22 +111,31 @@ lc_validator_datum_in=$(jq -r 'to_entries[]
 echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 
 
+# Pull the littercoin reserve utxo
+littercoin_utxo_in=$(jq -r 'to_entries[] 
+| select(.value.value."'$LITTERCOIN_TOKEN_MPH'"."'$LITTERCOIN_TOKEN_NAME'") 
+| .key' $WORK/validator-utxo.json)
+
+
 # get the current total Ada and Littercoin amount in the smart contract
 total_ada=$(jq -r '.fields[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.fields[1].int' $WORK/lc-datum-in.json)
+reserve_lc=$(jq -r '.fields[2].int' $WORK/lc-datum-in.json)
 
 # Calculate the amount of Ada to withdraw
 withdraw_ada=$((($total_ada / $total_lc) * $lc_amount))
 
 new_total_ada=$(($total_ada - $withdraw_ada))
 new_total_lc=$(($total_lc - $lc_amount))
+new_reserve_lc=$(($reserve_lc + $lc_amount))
 
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
 jq -c '
   .fields[0].int   |= '$new_total_ada'
-| .fields[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
+| .fields[1].int   |= '$new_total_lc'
+| .fields[2].int   |= '$new_reserve_lc'' > $WORK/lc-datum-out.json
 
 
 # Upate the redeemer for the validator with the action sequence number
@@ -152,23 +161,19 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
+  --tx-in "$littercoin_utxo_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-burn-val.json" \
-  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name + $new_reserve_lc $LITTERCOIN_TOKEN_MPH.$LITTERCOIN_TOKEN_NAME" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-in "$action_utxo_in_txid" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$redeemer_spend_action_file_path" \
-  --mint "-$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-burn.json" \
-  --policy-id "$lc_mint_mph" \
   --tx-out "$dest_addr+$withdraw_ada + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --required-signer-hash "$admin_pkh" \

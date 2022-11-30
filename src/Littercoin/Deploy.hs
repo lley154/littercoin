@@ -48,19 +48,23 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "1d9fe526802ea8ad0c8670c511cedc3f4dbe3264b1407234286a7c8fb3f8c347"
+txIdBS = "60ace0b0ca80c73feb588e96336dacc89da8b7a222547a47ecf3aebc9f37b153"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
 txIdIdxInt = 0
 
--- Admin public key payment hash
-adminPubKeyHashBS :: B.ByteString
-adminPubKeyHashBS = "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
-                     
 lcTokName :: PlutusV2.TokenName
 lcTokName = "Littercoin"
 
+-- Littercoin Total Reserve Amount
+lcReserveAmount :: Integer
+lcReserveAmount = 1000000000  -- 1 Billion
+
+-- Admin public key payment hash
+adminPubKeyHashBS :: B.ByteString
+adminPubKeyHashBS = "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
+                    
 merchantTokName :: PlutusV2.TokenName
 merchantTokName = "Merchant Token Littercoin"
 
@@ -136,22 +140,18 @@ donationTokValue = Value.singleton donationTokCurSymbol donationTokName 1
     donationTokCurSymbol :: CurrencySymbol
     donationTokCurSymbol = Value.mpsSymbol donationTokMPH
 
-
-
-
 mintParams :: LCMintPolicyParams
 mintParams = LCMintPolicyParams 
     {
         lcTokenName = lcTokName -- the name of the littercoin
-    ,   lcAdminPkh = adminPaymentPkh  -- the admin pkh who can only mint littercoins
-    ,   lcThreadTokenValue = ttTokValue
-    ,   lcMerchantTokenValue = merchantTokValue  -- this contains the MerchantToken that merchants used for burning
-    ,   lcOwnerTokenValue = ownerTokValue
+    ,   lcReserveAmt = lcReserveAmount  
+    ,   lcTxOutRef = txOutRef'
     }
 
 lcvParams :: LCValidatorParams
 lcvParams = LCValidatorParams
-    {   lcvTokenName = lcTokName
+    {   lcvLCTokenName = lcTokName
+    ,   lcvLCTokenCurSymbol = lcCurSymbol mintParams
     ,   lcvAdminPkh = adminPaymentPkh
     ,   lcvMerchantTokenValue = merchantTokValue
     ,   lcvThreadTokenValue = ttTokValue
@@ -174,6 +174,7 @@ main = do
     writeOwnerTokenName
     writeOwnerTokenValue    
     writeLCTokenName
+    --writeLCTokenValue
     writeMerchantTokenName
     writeMerchantTokenValue
     writeDonationTokenName
@@ -185,9 +186,9 @@ main = do
     -- Generate redeemers
     writeRedeemerInit
     writeRedeemerAdd
-    writeRedeemerMint
+    writeRedeemerMintLC
     writeRedeemerMintVal
-    writeRedeemerBurn
+    --writeRedeemerBurn
     writeRedeemerBurnVal
     writeRedeemerSpendAction
     writeRedeemerSpendAction
@@ -251,6 +252,7 @@ writeDatumInit =
     let lcDatum = LCDatum 
             {   lcAdaAmount = 0                                         
             ,   lcAmount = 0
+            ,   lcReserve = lcReserveAmount
             }
         dat = PlutusTx.toBuiltinData lcDatum
     in
@@ -278,16 +280,14 @@ writeRedeemerMintVal =
     in
         LBS.writeFile "deploy/redeemer-mint-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
-writeRedeemerMint :: IO ()
-writeRedeemerMint = 
+writeRedeemerMintLC :: IO ()
+writeRedeemerMintLC = 
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
              {
-                mpPolarity = True    -- mint token
-             ,  mpTotalAdaAmount = 0 -- update with the amount of Ada locked at the littercoin contract  
+                mpPolarity = True    -- mint token  
              }
     in
-        LBS.writeFile "deploy/redeemer-mint.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
+        LBS.writeFile "deploy/redeemer-mint-lc.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
 
 writeRedeemerBurnVal :: IO ()
@@ -295,17 +295,6 @@ writeRedeemerBurnVal =
     let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ BurnLC 123
     in
         LBS.writeFile "deploy/redeemer-burn-val.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
-writeRedeemerBurn :: IO ()
-writeRedeemerBurn = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ MintPolicyRedeemer 
-             {
-                mpPolarity = False    -- mint token
-             ,  mpTotalAdaAmount = 0  -- update with the amount of Ada locked at the littercoin contract
-             }
-    in
-        LBS.writeFile "deploy/redeemer-burn.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
-
 
 
 writeRedeemerSpendAction :: IO ()
@@ -336,6 +325,7 @@ writeTTMintingPolicyHash =
     mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash threadTokenPolicy
 
 
+
 writeLCMintingPolicy :: IO ()
 writeLCMintingPolicy = void $ writeFileTextEnvelope "deploy/lc-minting-policy.plutus" Nothing serialisedScript
   where
@@ -353,6 +343,7 @@ writeLCMintingPolicyHash =
     LBS.writeFile "deploy/lc-minting-policy.hash" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData mph)
   where
     mph = PlutusTx.toBuiltinData $ PSU.V2.mintingPolicyHash $ lcPolicy mintParams
+
 
 
 writeLCValidator :: IO ()

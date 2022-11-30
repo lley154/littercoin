@@ -16,7 +16,7 @@ const MintLC = ({ onMintLC } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>User Wallet Address</b> 
+                <b>Mint Littercoin</b> 
                 <br></br>
                 <input name='address' type='text' id='address' placeholder='Enter User Wallet Address' 
                 value={address}
@@ -25,7 +25,7 @@ const MintLC = ({ onMintLC } : any) => {
                 <p></p>                 
             </div>
             <div>
-                <b>Littercoin Amount To Mint</b> 
+                <b>Amount</b> 
                 <br></br>
                 <input name='qty' type='number' id='qty' placeholder='Enter Amount of Littercoin To Mint' 
                 value={qty}

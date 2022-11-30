@@ -58,16 +58,17 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
+lc_mint_script="$BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.plutus"
+lc_mint_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.hash | jq -r '.bytes')
+lc_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/lc-token-name.json | jq -r '.bytes')
 lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
-redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
-lc_mint_script="$BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.plutus"
-lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
+redeemer_tt_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
+redeemer_lc_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-mint-lc.json"
 
 echo "starting littercoin init-tx.sh"
 
 echo $lc_validator_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-validator.addr
-echo $lc_mint_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.addr
 
 
 ################################################################
@@ -89,6 +90,7 @@ cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace =
 readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
 admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
+reserve_lc=$(jq -r '.fields[2].int' "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json")
 
 
 # Step 2: Build and submit the transaction
@@ -99,15 +101,15 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $thread_token_mph.$thread_token_name" \
   --mint-script-file "$thread_token_script" \
-  --mint-redeemer-file "$redeemer_file_path" \
-  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
+  --mint-redeemer-file "$redeemer_tt_file_path" \
+  --mint-script-file "$lc_mint_script" \
+  --mint-redeemer-file "$redeemer_lc_file_path" \
+  --mint "1 $thread_token_mph.$thread_token_name + $reserve_lc $lc_mint_mph.$lc_token_name" \
+  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name + $reserve_lc $lc_mint_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
-  --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
-  --tx-out-reference-script-file "$lc_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/init-tx-alonzo.body
 
@@ -122,8 +124,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/init-tx-alonzo.tx $network
+#echo "Submit the tx with plutus script and wait 5 seconds..."
+#$CARDANO_CLI transaction submit --tx-file $WORK/init-tx-alonzo.tx $network
 
 
 
