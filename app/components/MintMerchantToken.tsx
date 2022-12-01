@@ -14,7 +14,7 @@ const MintMerchantToken = ({ onMintMerchantToken } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Merchant Wallet Address</b> 
+                <b>Mint Merchant Token</b> 
                 <br></br>
                 <input name='address' type='text' id='address' placeholder='Enter Merchant Wallet Address' 
                 value={address}

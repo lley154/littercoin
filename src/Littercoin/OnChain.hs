@@ -132,32 +132,6 @@ encodeHex input = go 0
           -- x - 10 + 97 = x + 87
           | otherwise = x + 87
 
-{-
-
--- | Check to see if the thread token belongs to a value
-{-# INLINABLE checkTTValue #-}
-checkTTValue :: Value.Value -> Value.Value -> Bool
-checkTTValue ttValue addrValue  = 
-    let (buyCs, buyTn, buyAmt) = (Value.flattenValue ttValue)!!0
-        valuesAtAddr = Value.flattenValue addrValue
-
-        inspectValues :: [(Value.CurrencySymbol, Value.TokenName, Integer)] -> Bool
-        inspectValues [] = False
-        inspectValues ((cs, tn', amt):xs)
-            | (cs == buyCs) && (tn' == buyTn) && (amt == buyAmt) = True
-            | otherwise = inspectValues xs
-    in inspectValues valuesAtAddr
-
--- | Find the thread token in the list of outputs, returning the scripts address 
---   of that utxo
-{-# INLINABLE findTTOutput #-}
-findTTOutput :: Value.Value -> [ContextsV2.TxOut] -> Bool
-findTTOutput _ [] = False
-findTTOutput txVal (x:xs) 
-    | checkTTValue txVal (ContextsV2.txOutValue x) = True
-    | otherwise = findTTOutput txVal xs
-
--}
 
 -- | Check that the specified value is in the provided outputs
 {-# INLINABLE validOutput #-}
@@ -331,10 +305,7 @@ mkLCValidator params dat red ctx =
         AddAda seq    ->  traceIfFalse "LCV10" signedByAdmin
                   &&   (traceIfFalse "LCV11" $ checkLCDatumAdd seq)  
                   &&   traceIfFalse "LCV12" checkThreadToken 
-{-
-        SpendAction   -> traceIfFalse "LCV13" signedByAdmin
-                  &&   traceIfFalse "LCV14" checkThreadToken
--}
+
       where        
         tn :: PlutusV2.TokenName
         tn = lcvTokenName params

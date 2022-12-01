@@ -43,32 +43,32 @@ rm -f $WORK-backup/*
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
 # load in local variable values
-validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
-validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
+action_validator_script="$BASE/scripts/cardano-cli/$ENV/data/action-validator.plutus"
+action_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$action_validator_script" $network)
 
 
 # Get the littercoin smart contract with all utxos
-$CARDANO_CLI query utxo --address $validator_script_addr $network --out-file $WORK/lc-validator-utxo.json
+$CARDANO_CLI query utxo --address $action_validator_script_addr $network --out-file $WORK/action-validator-utxo.json
 
 
 jq -r 'to_entries[] 
 | select(.value.value."'$DONOR_TOKEN_MPH'"."'$DONOR_TOKEN_NAME'") 
 | .value.inlineDatum.fields[0].int, ",", .key, ",", "add-ada-tx.sh",">>>EOL" 
-' /home/lawrence/src/littercoin/work/lc-validator-utxo.json \
+' /home/lawrence/src/littercoin/work/action-validator-utxo.json \
 | tr -d '\n' | tr -s '>>>EOL' '\n' | tr -s ',' ' ' | tr -s '#' ' ' | sort -k 1 >> $WORK/action-utxo.txt
 
 
 jq -r 'to_entries[] 
 | select(.value.value."'$OWNER_TOKEN_MPH'"."'$OWNER_TOKEN_NAME'") 
 | .value.inlineDatum.fields[0].int, ",", .key, ",", "mint-tx.sh",">>>EOL" 
-' /home/lawrence/src/littercoin/work/lc-validator-utxo.json \
+' /home/lawrence/src/littercoin/work/action-validator-utxo.json \
 | tr -d '\n' | tr -s '>>>EOL' '\n' | tr -s ',' ' ' | tr -s '#' ' ' | sort -k 1 >> $WORK/action-utxo.txt
 
 
 jq -r 'to_entries[] 
 | select(.value.value."'$MERCHANT_TOKEN_MPH'"."'$MERCHANT_TOKEN_NAME'") 
 | .value.inlineDatum.fields[0].int, ",", .key, ",", "burn-tx.sh",">>>EOL" 
-' /home/lawrence/src/littercoin/work/lc-validator-utxo.json \
+' /home/lawrence/src/littercoin/work/action-validator-utxo.json \
 | tr -d '\n' | tr -s '>>>EOL' '\n' | tr -s ',' ' ' | tr -s '#' ' ' | sort -k 1 >> $WORK/action-utxo.txt
 
 

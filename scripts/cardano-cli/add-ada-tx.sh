@@ -138,8 +138,6 @@ jq -c '
   .fields[0].int          |= '$new_total_ada'' > $WORK/redeemer-action.json
 
 
-
-
 # Step 3: Build and submit the transaction
 $CARDANO_CLI transaction build \
   --babbage-era \
