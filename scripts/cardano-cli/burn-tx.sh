@@ -48,8 +48,10 @@ action_utxo_in_txid=$action_utxo_in#$3
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
 # load in local variable values
-validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
-validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$validator_script" $network)
+action_validator_script="$BASE/scripts/cardano-cli/$ENV/data/action-validator.plutus"
+action_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$action_validator_script" $network)
+lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
+lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_burn_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn.json"
 redeemer_val_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-burn-val.json"
 redeemer_spend_action_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-spend-action.json"
@@ -76,12 +78,12 @@ readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
 admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
 
-# Step 2: Get the littercoin smart contract utxos
-$CARDANO_CLI query utxo --address $validator_script_addr $network --out-file $WORK/validator-utxo.json
+# Step 2: Get the action utxos
+$CARDANO_CLI query utxo --address $action_validator_script_addr $network --out-file $WORK/action-utxo.json
 
 action_datum_in=$(jq -r 'to_entries[] 
 | select(.key == "'$action_utxo_in_txid'") 
-| .value.inlineDatum' $WORK/validator-utxo.json)
+| .value.inlineDatum' $WORK/action-utxo.json)
 
 echo -n "$action_datum_in" > $WORK/action-datum-in.json
 
@@ -96,16 +98,20 @@ dest_stake_key=$(echo -n "$dest_stake_key_encoded=" | xxd -r -p)
 dest_addr=$($BECH32 $ADDR_PREFIX <<< $BECH32_NETWORK$dest_payment_key$dest_stake_key)
 
 
+# Step 2: Get the littercoin smart contract utxos
+$CARDANO_CLI query utxo --address $lc_validator_script_addr $network --out-file $WORK/lc-validator-utxo.json
+
+
 # Pull the utxo with the thread token in it
 lc_validator_utxo_tx_in=$(jq -r 'to_entries[] 
 | select(.value.value."'$thread_token_mph'"."'$thread_token_name'") 
-| .key' $WORK/validator-utxo.json)
+| .key' $WORK/lc-validator-utxo.json)
 
 
 # Pull the datum with the thread token attached to the utxo
 lc_validator_datum_in=$(jq -r 'to_entries[] 
 | select(.value.value."'$thread_token_mph'"."'$thread_token_name'") 
-| .value.inlineDatum' $WORK/validator-utxo.json)
+| .value.inlineDatum' $WORK/lc-validator-utxo.json)
 
 # Save the inline datum to disk
 echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
@@ -143,6 +149,12 @@ jq -c '
 | .fields[2].int          |= '$withdraw_ada'' > $WORK/redeemer-burn.json
 
 
+# Upate the redeemer for the action validator and include the total ada locked at the lc smart contract
+cat $redeemer_spend_action_file_path | \
+jq -c '
+  .fields[0].int          |= '$new_total_ada'' > $WORK/redeemer-action.json
+
+
 
 # Step 3: Build and submit the transaction
 $CARDANO_CLI transaction build \
@@ -157,13 +169,13 @@ $CARDANO_CLI transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$WORK/redeemer-burn-val.json" \
-  --tx-out "$validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-in "$action_utxo_in_txid" \
-  --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
+  --spending-tx-in-reference "$ACTION_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$redeemer_spend_action_file_path" \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-action.json" \
   --mint "-$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
   --mint-plutus-script-v2 \
@@ -173,10 +185,7 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --required-signer-hash "$admin_pkh" \
   --protocol-params-file "$WORK/pparms.json" \
-  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"
-
-
-#  --out-file $WORK/burn-lc-tx-alonzo.body
+  --out-file $WORK/burn-lc-tx-alonzo.body
       
 
 #  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"

@@ -7,7 +7,9 @@
 
 module Littercoin.Types 
 (
-     MintPolicyRedeemer(..)
+     ActionRedeemer(..)
+   , ActionValidatorParams(..)
+   , MintPolicyRedeemer(..)
    , LCMintPolicyParams(..)
    , LCRedeemer(..)
    , LCValidatorParams(..)
@@ -79,6 +81,17 @@ PlutusTx.makeIsDataIndexed ''LCValidatorParams [('LCValidatorParams,0)]
 PlutusTx.makeLift ''LCValidatorParams
 
 
+-- | ActionValidatorParams is used to pass the admin pkh, MerchantToken & Littercoin token names as a parameter to the 
+--   action validator script
+data ActionValidatorParams = ActionValidatorParams
+    {   acThreadTokenValue         :: Value.Value      
+    } deriving Haskell.Show
+
+PlutusTx.makeIsDataIndexed ''ActionValidatorParams [('ActionValidatorParams,0)] 
+PlutusTx.makeLift ''ActionValidatorParams
+
+
+
 -- | The LCRedemeer used to indicate if the action is to mint or burn littercoin or
 --   to add and remove Ada from the littercoin contract.   Also specify the amount 
 --   as well in the redeemer.
@@ -86,7 +99,7 @@ data LCRedeemer =
        MintLC Integer    -- mint littercoin & sequence number
      | BurnLC Integer    -- burn littercoin and retreive Ada & sequence number
      | AddAda Integer    -- add Ada to the smart contract & sequence number
-     | SpendAction       -- spend the action utxo at the script address
+--     | SpendAction       -- spend the action utxo at the script address
      
     deriving Haskell.Show
 
@@ -94,9 +107,26 @@ PlutusTx.makeIsDataIndexed
   ''LCRedeemer
   [ ('MintLC, 0),
     ('BurnLC, 1),
-    ('AddAda, 2),
-    ('SpendAction, 3)
+    ('AddAda, 2)
+--    ('SpendAction, 3)
   ]
 PlutusTx.makeLift ''LCRedeemer
+
+
+
+
+-- | The action redeemer is used to pass the amount of Ada at the littercoin
+--   smart contract
+data ActionRedeemer = 
+      Spend Integer      -- spend the action utxo at the script address
+     
+    deriving Haskell.Show
+
+PlutusTx.makeIsDataIndexed
+  ''ActionRedeemer
+  [ ('Spend, 0)
+  ]
+PlutusTx.makeLift ''ActionRedeemer
+
 
 

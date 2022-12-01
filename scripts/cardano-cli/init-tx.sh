@@ -58,6 +58,8 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-minting-policy.hash | jq -r '.bytes')
 thread_token_name=$(cat $BASE/scripts/cardano-cli/$ENV/data/thread-token-name.json | jq -r '.bytes')
+action_validator_script="$BASE/scripts/cardano-cli/$ENV/data/action-validator.plutus"
+action_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$action_validator_script" $network)
 lc_validator_script="$BASE/scripts/cardano-cli/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/cardano-cli/$ENV/data/redeemer-thread-token-mint.json"
@@ -68,7 +70,7 @@ echo "starting littercoin init-tx.sh"
 
 echo $lc_validator_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-validator.addr
 echo $lc_mint_script_addr > $BASE/scripts/cardano-cli/$ENV/data/lc-minting-policy.addr
-
+echo $action_validator_script_addr > $BASE/scripts/cardano-cli/$ENV/data/action-validator.addr
 
 ################################################################
 # Mint the threadtoken and attach it to the littercoin contract
@@ -106,6 +108,8 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$BASE/scripts/cardano-cli/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
+  --tx-out "$action_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$action_validator_script" \
   --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \

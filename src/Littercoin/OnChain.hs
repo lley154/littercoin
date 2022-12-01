@@ -10,7 +10,10 @@
 {-# LANGUAGE TypeApplications       #-}
 
 module Littercoin.OnChain 
-    ( intToBBS
+    ( 
+      actionHash
+    , actionValidator   
+    , intToBBS
     , lcCurSymbol
     , lcHash
     , lcPolicy
@@ -20,6 +23,7 @@ module Littercoin.OnChain
     , threadTokenCurSymbol
     , threadTokenPolicy 
     , threadTokenValue
+    , typedActionValidator
     , typedLCValidator
     )
 where
@@ -30,7 +34,8 @@ import qualified Ledger.Ada                             as Ada (lovelaceValueOf)
 import qualified Ledger.Address                         as Address (Address(..), PaymentPubKeyHash(..), toPubKeyHash)
 import qualified Ledger.Value                           as Value (CurrencySymbol, flattenValue, singleton, 
                                                         Value)
-import           Littercoin.Types                       (MintPolicyRedeemer(..), 
+import           Littercoin.Types                       (ActionRedeemer(..),
+                                                        ActionValidatorParams(..), MintPolicyRedeemer(..), 
                                                         LCMintPolicyParams(..),
                                                         LCRedeemer(..),
                                                         LCValidatorParams(..),
@@ -127,6 +132,32 @@ encodeHex input = go 0
           -- x - 10 + 97 = x + 87
           | otherwise = x + 87
 
+{-
+
+-- | Check to see if the thread token belongs to a value
+{-# INLINABLE checkTTValue #-}
+checkTTValue :: Value.Value -> Value.Value -> Bool
+checkTTValue ttValue addrValue  = 
+    let (buyCs, buyTn, buyAmt) = (Value.flattenValue ttValue)!!0
+        valuesAtAddr = Value.flattenValue addrValue
+
+        inspectValues :: [(Value.CurrencySymbol, Value.TokenName, Integer)] -> Bool
+        inspectValues [] = False
+        inspectValues ((cs, tn', amt):xs)
+            | (cs == buyCs) && (tn' == buyTn) && (amt == buyAmt) = True
+            | otherwise = inspectValues xs
+    in inspectValues valuesAtAddr
+
+-- | Find the thread token in the list of outputs, returning the scripts address 
+--   of that utxo
+{-# INLINABLE findTTOutput #-}
+findTTOutput :: Value.Value -> [ContextsV2.TxOut] -> Bool
+findTTOutput _ [] = False
+findTTOutput txVal (x:xs) 
+    | checkTTValue txVal (ContextsV2.txOutValue x) = True
+    | otherwise = findTTOutput txVal xs
+
+-}
 
 -- | Check that the specified value is in the provided outputs
 {-# INLINABLE validOutput #-}
@@ -300,10 +331,10 @@ mkLCValidator params dat red ctx =
         AddAda seq    ->  traceIfFalse "LCV10" signedByAdmin
                   &&   (traceIfFalse "LCV11" $ checkLCDatumAdd seq)  
                   &&   traceIfFalse "LCV12" checkThreadToken 
-
+{-
         SpendAction   -> traceIfFalse "LCV13" signedByAdmin
                   &&   traceIfFalse "LCV14" checkThreadToken
-
+-}
       where        
         tn :: PlutusV2.TokenName
         tn = lcvTokenName params
@@ -497,4 +528,52 @@ lcValidator params = Typed.validatorScript $ typedLCValidator params
 
 lcHash :: BuiltinData -> PSU.V2.ValidatorHash
 lcHash params = ValidatorsV2.validatorHash $ typedLCValidator params
+
+
+
+{-# INLINABLE mkActionValidator #-}
+mkActionValidator :: ActionValidatorParams -> ActionDatum -> ActionRedeemer -> ContextsV2.ScriptContext -> Bool
+mkActionValidator params _ (Spend adaAmount) ctx = traceIfFalse "AV1" checkThreadToken
+    
+    where
+
+        info :: ContextsV2.TxInfo
+        info = PlutusV2.scriptContextTxInfo ctx 
+
+        -- | Check that the Ada added matches increase in the datum
+        checkThreadToken :: Bool
+        checkThreadToken = validOutput (newAdaBalance <> (acThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
+            where
+                newAdaBalance :: Value.Value
+                newAdaBalance = Ada.lovelaceValueOf adaAmount
+
+
+-- | Creating a wrapper around littercoin validator for 
+--   performance improvements by not using a typed validator
+{-# INLINABLE wrapActionValidator #-}
+wrapActionValidator :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+wrapActionValidator params dat red ctx =
+   check $ mkActionValidator (PlutusV2.unsafeFromBuiltinData params) (PlutusV2.unsafeFromBuiltinData dat) (PlutusV2.unsafeFromBuiltinData red) (PlutusV2.unsafeFromBuiltinData ctx)
+
+
+untypedActionValidator :: BuiltinData -> PSU.V2.Validator
+untypedActionValidator params = PlutusV2.mkValidatorScript $
+    $$(PlutusTx.compile [|| wrapActionValidator ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode params
+    
+    
+-- | We need a typedValidator for offchain mkTxConstraints, so 
+-- created it using the untyped validator
+typedActionValidator :: BuiltinData -> PSU.V2.TypedValidator Typed.Any
+typedActionValidator params =
+  ValidatorsV2.unsafeMkTypedValidator $ untypedActionValidator params
+
+
+actionValidator :: BuiltinData -> PSU.V2.Validator
+actionValidator params = Typed.validatorScript $ typedActionValidator params
+
+
+actionHash :: BuiltinData -> PSU.V2.ValidatorHash
+actionHash params = ValidatorsV2.validatorHash $ typedActionValidator params
 

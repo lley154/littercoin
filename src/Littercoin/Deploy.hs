@@ -48,7 +48,7 @@ import           Prelude                              (IO, Semigroup (..), Strin
 
 -- Admin spending UTXO
 txIdBS :: B.ByteString
-txIdBS = "34053fb425bda5740a653af511993db1ed59563075ec114d20cf5c126595550f"
+txIdBS = "c92076e5d26f53571f30533d3388e533f996b671e98c9a33117ae0181a5d76f3"
 
 -- Admin spending UTXO index
 txIdIdxInt :: Integer
@@ -159,6 +159,12 @@ lcvParams = LCValidatorParams
     ,   lcvDonationTokenValue = donationTokValue
     }
 
+acParams :: ActionValidatorParams
+acParams = ActionValidatorParams
+    {   
+        acThreadTokenValue = ttTokValue
+    }
+
 
 -------------------------------------------------------------------------------------
 -- END - Derived values 
@@ -190,9 +196,10 @@ main = do
     writeRedeemerBurn
     writeRedeemerBurnVal
     writeRedeemerSpendAction
-    writeRedeemerSpendAction
 
     -- Generate plutus scripts and hashes
+    writeActionValidator
+    writeActionValidatorHash
     writeTTMintingPolicy
     writeTTMintingPolicyHash
     writeLCMintingPolicy
@@ -310,7 +317,7 @@ writeRedeemerBurn =
 
 writeRedeemerSpendAction :: IO ()
 writeRedeemerSpendAction = 
-    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData SpendAction
+    let red = PlutusV2.Redeemer $ PlutusTx.toBuiltinData $ Spend 123
     in
         LBS.writeFile "deploy/redeemer-spend-action.json" $ encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData $ PlutusV2.toData red)
 
@@ -370,6 +377,23 @@ writeLCValidator = void $ writeFileTextEnvelope "deploy/lc-validator.plutus" Not
 writeLCValidatorHash :: IO ()
 writeLCValidatorHash = 
     LBS.writeFile "deploy/lc-validator.hash" $ encode $ PlutusTx.toBuiltinData $ PTSU.V2.validatorHash $ typedLCValidator $ PlutusTx.toBuiltinData lcvParams
+
+
+writeActionValidator :: IO ()
+writeActionValidator = void $ writeFileTextEnvelope "deploy/action-validator.plutus" Nothing serialisedScript
+  where
+    script :: BuiltinData -> PSU.V2.Validator
+    script = actionValidator
+
+    scriptSBS :: SBS.ShortByteString
+    scriptSBS = SBS.toShort . LBS.toStrict $ serialise $ script $ PlutusTx.toBuiltinData acParams
+
+    serialisedScript :: PlutusScript PlutusScriptV2
+    serialisedScript = PlutusScriptSerialised scriptSBS
+
+writeActionValidatorHash :: IO ()
+writeActionValidatorHash = 
+    LBS.writeFile "deploy/action-validator.hash" $ encode $ PlutusTx.toBuiltinData $ PTSU.V2.validatorHash $ typedActionValidator $ PlutusTx.toBuiltinData acParams
 
 
 -- | Decode from hex base 16 to a base 10 bytestring because

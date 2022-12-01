@@ -258,7 +258,8 @@ const Home: NextPage = () => {
       network,
     );
 
-    const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    //const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    const actionValScriptAddress = process.env.NEXT_PUBLIC_ACTION_VAL_ADDR as string;
     const ownerToken = process.env.NEXT_PUBLIC_OWNER_TOKEN as string;
     const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
 
@@ -284,7 +285,7 @@ const Home: NextPage = () => {
 
     const tx = await lucid
     .newTx()
-    .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(minAda) , [ownerToken] : BigInt(1) })
+    .payToContract(actionValScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(minAda) , [ownerToken] : BigInt(1) })
     .complete();  
 
     const signedTx = await tx.sign().complete();
@@ -320,7 +321,8 @@ const Home: NextPage = () => {
       network,
     );
 
-    const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    //const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    const actionValScriptAddress = process.env.NEXT_PUBLIC_ACTION_VAL_ADDR as string;
     const merchantToken = process.env.NEXT_PUBLIC_MERCHANT_TOKEN as string;
     const littercoinToken = process.env.NEXT_PUBLIC_LITTERCOIN_TOKEN as string;
     const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
@@ -344,7 +346,7 @@ const Home: NextPage = () => {
 
     const tx = await lucid
     .newTx()
-    .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(minAda) , [littercoinToken] : BigInt(lcQty) , [merchantToken] : BigInt(1) })
+    .payToContract(actionValScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(minAda) , [littercoinToken] : BigInt(lcQty) , [merchantToken] : BigInt(1) })
     .complete();  
 
 
@@ -536,7 +538,8 @@ const Home: NextPage = () => {
     );
   
     const unit: Unit = policyId + utf8ToHex("Donation Littercoin");
-    const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    //const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
+    const actionValScriptAddress = process.env.NEXT_PUBLIC_ACTION_VAL_ADDR as string;
     const lovelaceQty = adaQty * 1000000;
     const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
     const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
@@ -556,7 +559,7 @@ const Home: NextPage = () => {
     .newTx()
     .mintAssets({ [unit]: BigInt(1) })
     .attachMintingPolicy(mintingPolicy)
-    .payToContract(lcValidatorScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(lovelaceQty), [unit]: BigInt(1) })
+    .payToContract(actionValScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(lovelaceQty), [unit]: BigInt(1) })
     .validFrom(Date.now() - 1000000)
     .complete();  
 
