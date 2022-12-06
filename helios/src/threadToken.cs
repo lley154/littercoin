@@ -1,6 +1,8 @@
 minting utxo_nft
 
-const txId : TxId = TxId::new(#1e7e37baaa6c0d66e3f90634fc3ba71080156a894a22271af16b7be634e39ceb)
+enum Redeemer { Init }
+
+const txId : TxId = TxId::new(#f185994952f937981fe590028ad2580442042584396e6119639b65949215c0c8)
 const OUTPUT_ID: TxOutputId = TxOutputId::new(txId, 0)
 
 func main(ctx: ScriptContext) -> Bool {
@@ -28,3 +30,5 @@ func main(ctx: ScriptContext) -> Bool {
         )
 
 }
+
+const INIT_REDEEMER = Redeemer::Init

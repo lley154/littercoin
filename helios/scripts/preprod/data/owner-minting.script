@@ -1,6 +1,0 @@
-{
-    type: "all",
-    scripts: [
-                { type: "sig", keyHash: paymentCredential?.hash! },
-             ],
-},
