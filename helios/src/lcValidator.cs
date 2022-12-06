@@ -11,50 +11,78 @@ struct Datum {
 
 enum Redeemer {
     AddAda
-    Mint 
+    Mint {
+        pkh: PubKeyHash 
+    }
     Burn
 }
 
-// define thread token value
-//const TT_MPH : ByteArray = #1a2b3c
-//const TT_MPH : String = "8c20cf00f7f840384a8130718c6d7d0057fc24713e5b09df528f66c0"
-//const ttMphBA : ByteArray = TT_MPH.serialize()
+const minAda : Value = Value::lovelace(2000000)
 
-const ttMph: MintingPolicyHash = MintingPolicyHash::new(#f6d42cc159ac849b444b761e5e7a673a0b24ba813c358a552521e007)
+
+// Define thread token value
+const ttMphBA: ByteArray = #e500a7ebc9257a5ae64b915a65ccca8312dde842d8b6707cca9e50abc6c177d0
+const ttMph: MintingPolicyHash = MintingPolicyHash::new(ttMphBA)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
         "thread-token".encode_utf8()
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
+// Define the owner token
+const ownerMph: MintingPolicyHash = MintingPolicyHash::new(#e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b)
+const ownerAssetclass: AssetClass = AssetClass::new(
+        ownerMph, 
+        "Owner Token Littercoin".encode_utf8()
+    )
+const ownerVal: Value = Value::new(ownerAssetclass, 1)
 
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    
+    // Get hash of this validator
+    vHash : ValidatorHash = ctx.get_current_validator_hash();
+    tx : Tx = ctx.tx;
+    txOutput : []TxOutput = tx.outputs_locked_by(vHash);
+
     redeemer.switch {
         AddAda => {
-            // Get hash of this validator
-            vHash : ValidatorHash = ctx.get_current_validator_hash();
-            tx : Tx = ctx.tx;
-            txOutput : []TxOutput = tx.outputs_locked_by(vHash);
             txOutput.get(0).datum.switch {
                 d: Inline => { 
                     outDat : Datum = Datum::from_data(d.data);
                     addAdaDatumAmt : Int = outDat.adaAmount - datum.adaAmount;
-                    adaVal : Value = Value::lovelace(addAdaDatumAmt);
-                    outVal : Value = adaVal + ttVal; 
+                    adaVal : Value = ttVal+ Value::lovelace(addAdaDatumAmt);
 
-                    // Verify that the derived value from the datum and
+                    // Verify that the total Ada amount from the datum and
                     // the thread token is the same as the output value
-                    // locked at the this validator address                   
+                    // locked at the validator address                   
                     print("AddAda: Inline");
-                    tx.value_locked_by(vHash) == outVal
+                    tx.value_locked_by(vHash) == adaVal
                 },
                 else => print("AddAda: else"); false
             }
 
         },
-        Mint => {
-            print("Mint: false"); false
+        m: Mint => {
+            txOutput.get(0).datum.switch {
+                d: Inline => { 
+                    outDat : Datum = Datum::from_data(d.data);
+                    adaDatumAmt : Int = outDat.adaAmount - datum.adaAmount;
+                    //lcDatumAmt : Int = outDat.lcAmount - datum.lcAmount;
+                    adaVal : Value = ttVal + Value::lovelace(outDat.adaAmount);
+                    //lcVal : Value = minAda + Value::new(lcAssetclass, lcDatumAmt); 
+
+                    // Verify that the total Ada amount from the datum and
+                    // the thread token is the same as the output value
+                    // locked at the validator address.  Also check the the owner
+                    // token is present and returned to back to the owner.                   
+                    print("Mint: Inline");
+                    adaDatumAmt == 0 &&  
+                    tx.value_locked_by(vHash) == adaVal &&
+                    tx.value_sent_to(m.pkh) == ownerVal
+                },
+                else => print("Mint: else"); false
+            }
         },
         Burn => {
             print("Burn: false"); false
@@ -69,4 +97,9 @@ const LC_DATUM = Datum {
     adaAmount : 0
 }
 
-const LC_REDEEMER = Redeemer::AddAda
+// Define the pkh of the owner
+const OWNER_PKH_BA: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
+const OWNER_PKH: PubKeyHash = PubKeyHash::new(OWNER_PKH_BA)
+
+const LC_ADD_ADA_REDEEMER = Redeemer::AddAda
+const LC_MINT_REDEEMER = Redeemer::Mint{ OWNER_PKH }
