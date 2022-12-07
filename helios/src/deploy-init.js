@@ -17,3 +17,6 @@ await Deno.writeTextFile("./deploy/redeemer-init.json", initRedeemerData.toSchem
 await Deno.writeTextFile("./deploy/tt-token-name.json", tn.toSchemaJson());
 await Deno.writeTextFile("./deploy/tt-minting-policy.plutus", myUplcProgramTT.serialize());
 await Deno.writeTextFile("./deploy/tt-minting-policy.hash", mph.hex);
+
+const lcMetatdataSrc = await Deno.readTextFile("./src/lc-token-metadata.json");
+await Deno.writeTextFile("./deploy/lc-token-metadata.json", lcMetatdataSrc);

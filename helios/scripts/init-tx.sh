@@ -61,13 +61,13 @@ thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.byt
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/$ENV/data/redeemer-init.json"
-#lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
-#lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
+lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
+lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
 
 echo "starting littercoin init-tx.sh"
 
 echo $lc_validator_script_addr > $BASE/scripts/$ENV/data/lc-validator.addr
-#echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
+echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
 
 
 ################################################################
@@ -106,6 +106,8 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$BASE/scripts/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
+  --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
+  --tx-out-reference-script-file "$lc_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/init-tx-alonzo.body
 
