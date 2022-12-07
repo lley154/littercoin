@@ -2,7 +2,7 @@ minting littercoin
 
 enum Redeemer { 
     Mint {
-        adaAmount: Int
+        vHashBA: ByteArray
     }
     Burn
  }
@@ -11,7 +11,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #1260cf2650e19e8353e21383fa466b83b8a7cf10e3a56aeb4904eb60
+const TT_MPH: ByteArray = #71d164974ddf71f49a95d022d2a94329d3afa1a8a5ab1b1f7b96c05c
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -21,8 +21,8 @@ const ttVal : Value = Value::new(ttAssetclass, 1)
 
 
 // Define the littercoin validator hash
-const VAL_HASH: ByteArray = #60548f3cd4b08189593c426ff4bbac772f2df69e0880c1bf9d374bf5
-const vHash : ValidatorHash = ValidatorHash::new(VAL_HASH) 
+//const VAL_HASH: ByteArray = #5431bf940cfb0d6346457d42ae920dcc69011463ec94c0fa9bff74e6
+//const vHash : ValidatorHash = ValidatorHash::new(VAL_HASH) 
 
 
 func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
@@ -32,9 +32,11 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     redeemer.switch {
         m: Mint => {
                 // Check that thread token is part of this transaction
-                adaVal : Value = ttVal + Value::lovelace(m.adaAmount);
-                print("mintLC: Mint");
-                tx.value_locked_by(vHash) == adaVal
+                //adaVal : Value = ttVal + Value::lovelace(m.adaAmount);
+                vHash: ValidatorHash = ValidatorHash::new(m.vHashBA); 
+                
+                //tx.value_locked_by(vHash).contains(tx.minted)
+                print("mintLC: Mint: value_locked_by: " + vHash.show()); tx.value_locked_by(vHash).contains(ttVal)
         },
         Burn => {
             print("mintLC: Burn: false"); false
@@ -44,5 +46,5 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
 
 }
 
-const MINT_REDEEMER = Redeemer::Mint{0}
+const MINT_REDEEMER = Redeemer::Mint{#1a2b3c}
 const BURN_REDEEMER = Redeemer::Burn

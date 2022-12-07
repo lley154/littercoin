@@ -48,6 +48,7 @@ thread_token_mph=$(cat $BASE/scripts/$ENV/data/tt-minting-policy.hash)
 thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.bytes')
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
+lc_validator_hash=$(cat $BASE/scripts/$ENV/data/lc-validator.hash)
 lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
 lc_mint_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
 lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
@@ -127,13 +128,13 @@ jq -c '
 # Update the redeemer for minting policy to indicate the amount of ada being spent
 cat $redeemer_mint_file_path | \
 jq -c '
-  .fields[0].int          |= '$total_ada'' > $WORK/redeemer-mint.json
+  .fields[0].bytes         |= "'$lc_validator_hash'"' > $WORK/redeemer-mint.json
 
 
 # Upate the redeemer for the validator with pkh of the owner
-cat $redeemer_val_file_path | \
-jq -c '
-  .fields[0].bytes          |= "'$admin_pkh'"' > $WORK/redeemer-val-mint.json
+#cat $redeemer_val_file_path | \
+#jq -c '
+#  .fields[0].bytes          |= "'$admin_pkh'"' > $WORK/redeemer-val-mint.json
 
 
 # Step 3: Build and submit the transaction
@@ -149,7 +150,7 @@ $CARDANO_CLI transaction build \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-val-mint.json" \
+  --spending-reference-tx-in-redeemer-file "$redeemer_val_file_path" \
   --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
   --mint-plutus-script-v2 \
@@ -159,6 +160,7 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $OWNER_TOKEN_MPH.$OWNER_TOKEN_NAME" \
+  --required-signer-hash $admin_pkh \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/add-ada-tx-alonzo.body
 
@@ -175,8 +177,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-#echo "Submit the tx with plutus script and wait 5 seconds..."
-#$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
+echo "Submit the tx with plutus script and wait 5 seconds..."
+$CARDANO_CLI transaction submit --tx-file $WORK/add-ada-tx-alonzo.tx $network
 
 
 
