@@ -29,10 +29,10 @@ lawrence@lawrence-MacBookAir:~/src/littercoin/scripts$ ./mint-tx.sh preprod
 ++ MIN_ADA_OUTPUT_TX_REF=30000000
 ++ export COLLATERAL_ADA=5000000
 ++ COLLATERAL_ADA=5000000
-++ export LC_VAL_REF_SCRIPT=c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#2
-++ LC_VAL_REF_SCRIPT=c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#2
-++ export LC_MINT_REF_SCRIPT=c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#3
-++ LC_MINT_REF_SCRIPT=c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#3
+++ export LC_VAL_REF_SCRIPT=9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#2
+++ LC_VAL_REF_SCRIPT=9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#2
+++ export LC_MINT_REF_SCRIPT=9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#3
+++ LC_MINT_REF_SCRIPT=9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#3
 ++ export MERCHANT_TOKEN_MPH=e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
 ++ MERCHANT_TOKEN_MPH=e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
 ++ export MERCHANT_TOKEN_NAME=4d65726368616e7420546f6b656e204c6974746572636f696e
@@ -51,23 +51,23 @@ Socket path: /home/lawrence/preprod/node.socket
 srw------- 1 lawrence lawrence 0 Dec  8 08:00 /home/lawrence/preprod/node.socket
 + mkdir -p /home/lawrence/src/littercoin/work
 + mkdir -p /home/lawrence/src/littercoin/work-backup
-+ rm -f /home/lawrence/src/littercoin/work/admin-utxo-collateral-valid.json /home/lawrence/src/littercoin/work/admin-utxo-valid.json /home/lawrence/src/littercoin/work/admin-utxo.json /home/lawrence/src/littercoin/work/lc-datum-in.json /home/lawrence/src/littercoin/work/lc-datum-out.json /home/lawrence/src/littercoin/work/lc-validator-utxo.json /home/lawrence/src/littercoin/work/pparms.json /home/lawrence/src/littercoin/work/redeemer-mint.json
++ rm -f /home/lawrence/src/littercoin/work/add-ada-tx-alonzo.body /home/lawrence/src/littercoin/work/add-ada-tx-alonzo.tx /home/lawrence/src/littercoin/work/admin-utxo-collateral-valid.json /home/lawrence/src/littercoin/work/admin-utxo-valid.json /home/lawrence/src/littercoin/work/admin-utxo.json /home/lawrence/src/littercoin/work/lc-datum-in.json /home/lawrence/src/littercoin/work/lc-datum-out.json /home/lawrence/src/littercoin/work/lc-validator-utxo.json /home/lawrence/src/littercoin/work/pparms.json
 + rm -f '/home/lawrence/src/littercoin/work-backup/*'
 + /usr/local/bin/cardano-cli query protocol-parameters --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/pparms.json
 + thread_token_script=/home/lawrence/src/littercoin/scripts/preprod/data/tt-minting-policy.plutus
 ++ cat /home/lawrence/src/littercoin/scripts/preprod/data/tt-minting-policy.hash
-+ thread_token_mph=81120e7758f696deabdddc71ed250e5de11240cb92e5ef1e75e25a44
++ thread_token_mph=e60f99382dc335765cd2207c5611b21880e726d3f875ed0efe312f89
 ++ cat /home/lawrence/src/littercoin/scripts/preprod/data/tt-token-name.json
 ++ jq -r .bytes
 + thread_token_name=54687265616420546f6b656e204c6974746572636f696e
 + lc_validator_script=/home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.plutus
 ++ /usr/local/bin/cardano-cli address build --payment-script-file /home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.plutus --testnet-magic 1
-+ lc_validator_script_addr=addr_test1wz9e9a6vxwusjruhkt57f8ey26y46gh23gh50jsht3hrxgcwzyepp
++ lc_validator_script_addr=addr_test1wpa55cr2x70dynuv5sk4ta5z65la9ldq3arkl2zjqrzzwqc70pl0v
 ++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.hash
-+ lc_validator_hash=8b92f74c33b9090f97b2e9e49f2456895d22ea8a2f47ca175c6e3323
++ lc_validator_hash=7b4a606a379ed24f8ca42d55f682d53fd2fda08f476fa85200c42703
 + lc_mint_script=/home/lawrence/src/littercoin/scripts/preprod/data/lc-minting-policy.plutus
 ++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-minting-policy.hash
-+ lc_mint_mph=e28e2d7cc7ec3db5e8568ec76cce0955650ad88dd97987a08986d119
++ lc_mint_mph=a9a5bb0d4f0e56dcdabdff4e8d9d990bab6bfea60ccf3058a42bffe2
 ++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-token-name.json
 ++ jq -r .bytes
 + lc_token_name=4c6974746572636f696e
@@ -85,22 +85,22 @@ starting littercoin mint-tx.sh
 + cat /home/lawrence/src/littercoin/work/admin-utxo.json
 + jq -r 'to_entries[] | select(.value.value.lovelace > 5000000 ) | .key'
 + readarray admin_utxo_valid_array
-++ echo bce30824952462e5494db481961e4c1acd6a1b7020a5850c9d4fa92cc1d94cc8#0
 ++ tr -d '\n'
-+ admin_utxo_in=bce30824952462e5494db481961e4c1acd6a1b7020a5850c9d4fa92cc1d94cc8#0
-+ cat /home/lawrence/src/littercoin/work/admin-utxo.json
+++ echo aba14174908c5390961190934bfba80fad99be95c6e52639567b60c52b3e1565#0
++ admin_utxo_in=aba14174908c5390961190934bfba80fad99be95c6e52639567b60c52b3e1565#0
 + jq -r 'to_entries[] | select(.value.value.lovelace == 5000000 ) | .key'
++ cat /home/lawrence/src/littercoin/work/admin-utxo.json
 + readarray admin_utxo_valid_array
-++ echo b4e326f019a9fa98d97a87c03cb86434f215ad6f7a4e5cbce6e06c306ee780d2#0
 ++ tr -d '\n'
+++ echo b4e326f019a9fa98d97a87c03cb86434f215ad6f7a4e5cbce6e06c306ee780d2#0
 + admin_utxo_collateral_in=b4e326f019a9fa98d97a87c03cb86434f215ad6f7a4e5cbce6e06c306ee780d2#0
-+ /usr/local/bin/cardano-cli query utxo --address addr_test1wz9e9a6vxwusjruhkt57f8ey26y46gh23gh50jsht3hrxgcwzyepp --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/lc-validator-utxo.json
++ /usr/local/bin/cardano-cli query utxo --address addr_test1wpa55cr2x70dynuv5sk4ta5z65la9ldq3arkl2zjqrzzwqc70pl0v --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/lc-validator-utxo.json
 ++ jq -r 'to_entries[] 
-| select(.value.value."81120e7758f696deabdddc71ed250e5de11240cb92e5ef1e75e25a44"."54687265616420546f6b656e204c6974746572636f696e") 
+| select(.value.value."e60f99382dc335765cd2207c5611b21880e726d3f875ed0efe312f89"."54687265616420546f6b656e204c6974746572636f696e") 
 | .key' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
-+ lc_validator_utxo_tx_in=bce30824952462e5494db481961e4c1acd6a1b7020a5850c9d4fa92cc1d94cc8#1
++ lc_validator_utxo_tx_in=aba14174908c5390961190934bfba80fad99be95c6e52639567b60c52b3e1565#1
 ++ jq -r 'to_entries[] 
-| select(.value.value."81120e7758f696deabdddc71ed250e5de11240cb92e5ef1e75e25a44"."54687265616420546f6b656e204c6974746572636f696e") 
+| select(.value.value."e60f99382dc335765cd2207c5611b21880e726d3f875ed0efe312f89"."54687265616420546f6b656e204c6974746572636f696e") 
 | .value.inlineDatum' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
 + lc_validator_datum_in='{
   "list": [
@@ -132,50 +132,49 @@ starting littercoin mint-tx.sh
   .list[1].int   |= 25'
 + cat /home/lawrence/src/littercoin/scripts/preprod/data/redeemer-mint.json
 + jq -c '
-  .fields[0].bytes         |= "8b92f74c33b9090f97b2e9e49f2456895d22ea8a2f47ca175c6e3323"'
-+ /usr/local/bin/cardano-cli transaction build --babbage-era --cardano-mode --testnet-magic 1 --change-address addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7 --tx-in-collateral b4e326f019a9fa98d97a87c03cb86434f215ad6f7a4e5cbce6e06c306ee780d2#0 --tx-in bce30824952462e5494db481961e4c1acd6a1b7020a5850c9d4fa92cc1d94cc8#0 --tx-in bce30824952462e5494db481961e4c1acd6a1b7020a5850c9d4fa92cc1d94cc8#1 --spending-tx-in-reference c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#2 --spending-plutus-script-v2 --spending-reference-tx-in-inline-datum-present --spending-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/scripts/preprod/data/redeemer-val-mint.json --mint '25 e28e2d7cc7ec3db5e8568ec76cce0955650ad88dd97987a08986d119.4c6974746572636f696e' --mint-tx-in-reference c89c8d8d9188a66f7f207288b588335f45c3f6b2ed001c475591cefaa7434f40#3 --mint-plutus-script-v2 --mint-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/work/redeemer-mint.json --policy-id e28e2d7cc7ec3db5e8568ec76cce0955650ad88dd97987a08986d119 --tx-out 'addr_test1wz9e9a6vxwusjruhkt57f8ey26y46gh23gh50jsht3hrxgcwzyepp+10000000 + 1 81120e7758f696deabdddc71ed250e5de11240cb92e5ef1e75e25a44.54687265616420546f6b656e204c6974746572636f696e' --tx-out-inline-datum-file /home/lawrence/src/littercoin/work/lc-datum-out.json --tx-out 'addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7+2000000 + 25 e28e2d7cc7ec3db5e8568ec76cce0955650ad88dd97987a08986d119.4c6974746572636f696e' --required-signer-hash b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 --protocol-params-file /home/lawrence/src/littercoin/work/pparms.json --calculate-plutus-script-cost /home/lawrence/src/littercoin/scripts/preprod/data/mint-tx.costs
-Estimated transaction fee: Lovelace 404453
+  .fields[0].bytes         |= "7b4a606a379ed24f8ca42d55f682d53fd2fda08f476fa85200c42703"'
++ /usr/local/bin/cardano-cli transaction build --babbage-era --cardano-mode --testnet-magic 1 --change-address addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7 --tx-in-collateral b4e326f019a9fa98d97a87c03cb86434f215ad6f7a4e5cbce6e06c306ee780d2#0 --tx-in aba14174908c5390961190934bfba80fad99be95c6e52639567b60c52b3e1565#0 --tx-in aba14174908c5390961190934bfba80fad99be95c6e52639567b60c52b3e1565#1 --spending-tx-in-reference 9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#2 --spending-plutus-script-v2 --spending-reference-tx-in-inline-datum-present --spending-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/scripts/preprod/data/redeemer-val-mint.json --mint '25 a9a5bb0d4f0e56dcdabdff4e8d9d990bab6bfea60ccf3058a42bffe2.4c6974746572636f696e' --mint-tx-in-reference 9a630fc1090b7382885aa153aab377cd8b1874faf23198992930ac093f5ce36a#3 --mint-plutus-script-v2 --mint-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/work/redeemer-mint.json --policy-id a9a5bb0d4f0e56dcdabdff4e8d9d990bab6bfea60ccf3058a42bffe2 --tx-out 'addr_test1wpa55cr2x70dynuv5sk4ta5z65la9ldq3arkl2zjqrzzwqc70pl0v+10000000 + 1 e60f99382dc335765cd2207c5611b21880e726d3f875ed0efe312f89.54687265616420546f6b656e204c6974746572636f696e' --tx-out-inline-datum-file /home/lawrence/src/littercoin/work/lc-datum-out.json --tx-out 'addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7+2000000 + 25 a9a5bb0d4f0e56dcdabdff4e8d9d990bab6bfea60ccf3058a42bffe2.4c6974746572636f696e' --required-signer-hash b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 --protocol-params-file /home/lawrence/src/littercoin/work/pparms.json --calculate-plutus-script-cost /home/lawrence/src/littercoin/scripts/preprod/data/mint-tx.costs
+Estimated transaction fee: Lovelace 292394
 + echo 'tx has been built'
 tx has been built
 lawrence@lawrence-MacBookAir:~/src/littercoin/scripts$ more /home/lawrence/src/littercoin/scripts/preprod/data/mint-tx.costs
 [
     {
         "executionUnits": {
-            "memory": 786864,
-            "steps": 277877754
+            "memory": 339209,
+            "steps": 123189210
         },
-        "lovelaceCost": 65438,
-        "scriptHash": "e28e2d7cc7ec3db5e8568ec76cce0955650ad88dd97987a08986d119"
+        "lovelaceCost": 28455,
+        "scriptHash": "a9a5bb0d4f0e56dcdabdff4e8d9d990bab6bfea60ccf3058a42bffe2"
     },
     {
         "executionUnits": {
-            "memory": 1700793,
-            "steps": 622562993
+            "memory": 805465,
+            "steps": 297796866
         },
-        "lovelaceCost": 143023,
-        "scriptHash": "8b92f74c33b9090f97b2e9e49f2456895d22ea8a2f47ca175c6e3323"
+        "lovelaceCost": 67947,
+        "scriptHash": "7b4a606a379ed24f8ca42d55f682d53fd2fda08f476fa85200c42703"
     }
 ]
 lawrence@lawrence-MacBookAir:~/src/littercoin/scripts$ ls -l preprod/data/
 total 80
--rw-rw-r-- 1 lawrence lawrence   33 Dec  8 14:57 lc-datum-init.json
--rw-rw-r-- 1 lawrence lawrence   64 Dec  8 14:59 lc-minting-policy.addr
--rw-rw-r-- 1 lawrence lawrence   56 Dec  8 14:57 lc-minting-policy.hash
--rw-rw-r-- 1 lawrence lawrence 2858 Dec  8 14:57 lc-minting-policy.plutus
--rw-rw-r-- 1 lawrence lawrence  621 Dec  8 14:57 lc-token-metadata.json
--rw-rw-r-- 1 lawrence lawrence   33 Dec  8 14:57 lc-token-name.json
--rw-rw-r-- 1 lawrence lawrence   64 Dec  8 15:00 lc-validator.addr
--rw-rw-r-- 1 lawrence lawrence   56 Dec  8 14:57 lc-validator.hash
--rw-rw-r-- 1 lawrence lawrence 6244 Dec  8 14:57 lc-validator.plutus
--rw------- 1 lawrence lawrence  454 Dec  8 15:02 mint-tx.costs
--rw-rw-r-- 1 lawrence lawrence   32 Dec  8 14:57 redeemer-add-ada.json
--rw-rw-r-- 1 lawrence lawrence   51 Dec  8 14:57 redeemer-burn.json
--rw-rw-r-- 1 lawrence lawrence   32 Dec  8 14:57 redeemer-init.json
--rw-rw-r-- 1 lawrence lawrence   51 Dec  8 14:57 redeemer-mint.json
--rw-rw-r-- 1 lawrence lawrence   51 Dec  8 14:57 redeemer-val-burn.json
--rw-rw-r-- 1 lawrence lawrence   32 Dec  8 14:57 redeemer-val-mint.json
--rw-rw-r-- 1 lawrence lawrence   56 Dec  8 14:57 tt-minting-policy.hash
--rw-rw-r-- 1 lawrence lawrence 1948 Dec  8 14:57 tt-minting-policy.plutus
--rw-rw-r-- 1 lawrence lawrence   59 Dec  8 14:57 tt-token-name.json
-lawrence@lawrence-MacBookAir:~/src/littercoin/scripts$ 
+-rw-rw-r-- 1 lawrence lawrence   33 Dec  8 15:31 lc-datum-init.json
+-rw-rw-r-- 1 lawrence lawrence   64 Dec  8 15:31 lc-minting-policy.addr
+-rw-rw-r-- 1 lawrence lawrence   56 Dec  8 15:31 lc-minting-policy.hash
+-rw-rw-r-- 1 lawrence lawrence 1886 Dec  8 15:31 lc-minting-policy.plutus
+-rw-rw-r-- 1 lawrence lawrence  621 Dec  8 15:31 lc-token-metadata.json
+-rw-rw-r-- 1 lawrence lawrence   33 Dec  8 15:31 lc-token-name.json
+-rw-rw-r-- 1 lawrence lawrence   64 Dec  8 15:32 lc-validator.addr
+-rw-rw-r-- 1 lawrence lawrence   56 Dec  8 15:31 lc-validator.hash
+-rw-rw-r-- 1 lawrence lawrence 4106 Dec  8 15:31 lc-validator.plutus
+-rw------- 1 lawrence lawrence  452 Dec  8 15:35 mint-tx.costs
+-rw-rw-r-- 1 lawrence lawrence   32 Dec  8 15:31 redeemer-add-ada.json
+-rw-rw-r-- 1 lawrence lawrence   51 Dec  8 15:31 redeemer-burn.json
+-rw-rw-r-- 1 lawrence lawrence   32 Dec  8 15:31 redeemer-init.json
+-rw-rw-r-- 1 lawrence lawrence   51 Dec  8 15:31 redeemer-mint.json
+-rw-rw-r-- 1 lawrence lawrence   51 Dec  8 15:31 redeemer-val-burn.json
+-rw-rw-r-- 1 lawrence lawrence   32 Dec  8 15:31 redeemer-val-mint.json
+-rw-rw-r-- 1 lawrence lawrence   56 Dec  8 15:31 tt-minting-policy.hash
+-rw-rw-r-- 1 lawrence lawrence 1948 Dec  8 15:31 tt-minting-policy.plutus
+-rw-rw-r-- 1 lawrence lawrence   59 Dec  8 15:31 tt-token-name.json
 
