@@ -71,10 +71,10 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // Verify that the total Ada amount from the datum and
                     // the thread token is the same as the output value
                     // locked at the validator address                   
-                    print("lcValidator: AddAda: tx.value_locked_by" + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show());
+                    print("LCV1" + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show());
                         tx.value_locked_by(vHash) == (ttVal + adaVal)
                 },
-                else => print("lcValidator: AddAda: invalid Datum"); false
+                else => print("LCV2: invalid datum"); false
             }
 
         },
@@ -91,16 +91,16 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // the thread token is the same as the output value
                     // locked at the validator address.  Also check the the owner
                     // token is present and returned to back to the owner.                   
-                    print("lcValidator: Mint: adaDatumAmt: " + (adaDatumAmt == 0).show()); 
+                    print("LCV3: " + (adaDatumAmt == 0).show()); 
                         adaDatumAmt == 0 && 
-                    (print("lcValidator: Mint: tx.value_locked_by: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
+                    (print("LCV4: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("lcValidator: Mint: tx.minted.contains: " + (tx.minted.contains(lcMintVal)).show()); 
+                    (print("LCV5: " + (tx.minted.contains(lcMintVal)).show()); 
                         tx.minted.contains(lcMintVal)) && 
-                    (print("lcValidator: Mint: tx.signed_by: " + (tx.is_signed_by(ownerPkh)).show()); 
+                    (print("LCV6: " + (tx.is_signed_by(ownerPkh)).show()); 
                         tx.is_signed_by(ownerPkh))
                 },
-                else => print("lcValidator: Mint: invalid datum"); false
+                else => print("LCV7: invalid datum"); false
             }
         },
         red: Burn => {    
@@ -123,15 +123,15 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // is equal to the amount of Ada remanining in the datum output.
                     // Also confirm that thread token is sent to back to the validator
                     // with correct Ada amount                   
-                    (print("lcValidator: Burn: adaDatumAmt == adaWithdraw: " + (adaDatumAmt == adaWithdraw).show()); 
+                    (print("LCV8: " + (adaDatumAmt == adaWithdraw).show()); 
                         adaDatumAmt == adaWithdraw) &&
-                    (print("lcValidator: Burn: tx.value_locked_by: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
+                    (print("LCV9: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("lcValidator: Burn: tx.minted.contains: " + (tx.minted.contains(lcBurnVal)).show()); 
+                    (print("LCV10: " + (tx.minted.contains(lcBurnVal)).show()); 
                         tx.minted.contains(lcBurnVal)) &&
-                    (print("lcValidator: Burn: merchVal: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
+                    (print("LCV11: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
                         merchOutTxs.get(2).value.contains(minAda + merchVal)) &&
-                    (print("lcValidator: Burn: withdrawAda: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
+                    (print("LCV12: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
                         merchOutTxs.get(1).value.contains(adaWithdrawVal))
 
 
@@ -140,7 +140,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
                     //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
-                else => print("lcValidator: Burn: invalid datum"); false
+                else => print("LCV13: invalid datum"); false
             }
         }
     }

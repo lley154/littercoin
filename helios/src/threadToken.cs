@@ -20,7 +20,7 @@ func main(ctx: ScriptContext) -> Bool {
     value_minted: Value = tx.minted;
     value_minted == Value::new(tt_assetclass, 1) &&
     tx.inputs.any((input: TxInput) -> Bool {
-                                    print("threadToken: input.output_id: " + (input.output_id == outputId).show());
+                                    print("TT1: " + (input.output_id == outputId).show());
                                         input.output_id == outputId
                                     }
     )

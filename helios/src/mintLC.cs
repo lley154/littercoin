@@ -30,13 +30,13 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         red: Mint => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                print("mintLC: Mint: value_locked_by: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
+                print("MLC1: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
                     tx.value_locked_by(vHash).contains(ttVal)
         },
         red: Burn => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                print("mintLC: Burn: value_locked_by: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
+                print("MLC2: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
                     tx.value_locked_by(vHash).contains(ttVal)
         }
     }
