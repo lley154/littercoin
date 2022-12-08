@@ -12,8 +12,8 @@ set -x
 # check if command line argument is empty or not present
 if [ -z $1 ]; 
 then
-    echo "mint-owner-token.sh:  Invalid script arguments"
-    echo "Usage: mint-owner-token.sh [devnet|testnet|mainnet]"
+    echo "mint-merchant-token.sh:  Invalid script arguments"
+    echo "Usage: mint-merchant-token.sh [devnet|testnet|mainnet]"
     exit 1
 fi
 ENV=$1
@@ -42,16 +42,16 @@ rm -f $WORK-backup/*
 # generate values from cardano-cli tool
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
-echo "{" > $BASE/scripts/$ENV/data/owner-token-minting-policy.script 
-echo "  \"keyHash\": \"$(cardano-cli address key-hash --payment-verification-key-file $ADMIN_VKEY)\"," >> $BASE/scripts/$ENV/data/owner-token-minting-policy.script  
-echo "  \"type\": \"sig\"" >> $BASE/scripts/$ENV/data/owner-token-minting-policy.script 
-echo "}" >> $BASE/scripts/$ENV/data/owner-token-minting-policy.script 
+echo "{" > $BASE/scripts/$ENV/data/merchant-token-minting-policy.script 
+echo "  \"keyHash\": \"$(cardano-cli address key-hash --payment-verification-key-file $ADMIN_VKEY)\"," >> $BASE/scripts/$ENV/data/merchant-token-minting-policy.script  
+echo "  \"type\": \"sig\"" >> $BASE/scripts/$ENV/data/merchant-token-minting-policy.script 
+echo "}" >> $BASE/scripts/$ENV/data/merchant-token-minting-policy.script 
 
-owner_token_mint_script="$BASE/scripts/$ENV/data/owner-token-minting-policy.script"
-owner_token_mph=$($CARDANO_CLI transaction policyid --script-file $owner_token_mint_script)
-owner_token_name=$(echo -n "Owner Token Littercoin" | xxd -ps | tr -d '\n')
+merchant_token_mint_script="$BASE/scripts/$ENV/data/merchant-token-minting-policy.script"
+merchant_token_mph=$($CARDANO_CLI transaction policyid --script-file $merchant_token_mint_script)
+merchant_token_name=$(echo -n "Merchant Token Littercoin" | xxd -ps | tr -d '\n')
 
-echo "starting littercoin mint-owner-token.sh"
+echo "starting littercoin mint-merchant-token.sh"
 
 ################################################################
 # Mint the threadtoken and attach it to the littercoin contract
@@ -82,25 +82,25 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $owner_token_mph.$owner_token_name" \
-  --mint-script-file "$owner_token_mint_script" \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $owner_token_mph.$owner_token_name" \
+  --mint "1 $merchant_token_mph.$merchant_token_name" \
+  --mint-script-file "$merchant_token_mint_script" \
+  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $merchant_token_mph.$merchant_token_name" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/owner-token-alonzo.body
+  --out-file $WORK/merchant-token-alonzo.body
 
 
 echo "tx has been built"
 
 $CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/owner-token-alonzo.body \
+  --tx-body-file $WORK/merchant-token-alonzo.body \
   $network \
   --signing-key-file "${ADMIN_SKEY}" \
-  --out-file $WORK/owner-token-alonzo.tx
+  --out-file $WORK/merchant-token-alonzo.tx
 
 echo "tx has been signed"
 
 echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/owner-token-alonzo.tx $network
+$CARDANO_CLI transaction submit --tx-file $WORK/merchant-token-alonzo.tx $network
 
 
 

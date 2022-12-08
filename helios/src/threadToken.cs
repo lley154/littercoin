@@ -4,7 +4,7 @@ enum Redeemer {
     Init 
 }
 
-const TX_ID: ByteArray = #fbfe5a81cdc84d032bfa3c4e219c0a69a2b12d6e1246341121473c0e94efa0c9
+const TX_ID: ByteArray = #033cf4b3a26a3fd49291b2bb618a6fc96b0ea5a9306904641d72f3e41a8e3189
 const txId: TxId = TxId::new(TX_ID)
 const outputId: TxOutputId = TxOutputId::new(txId, 0)
 
@@ -14,13 +14,14 @@ func main(ctx: ScriptContext) -> Bool {
 
     tt_assetclass: AssetClass = AssetClass::new(
         mph, 
-        "thread-token".encode_utf8()
+        "Thread Token Littercoin".encode_utf8()
     );
 
     value_minted: Value = tx.minted;
     value_minted == Value::new(tt_assetclass, 1) &&
     tx.inputs.any((input: TxInput) -> Bool {
-                                    input.output_id == outputId
+                                    print("threadToken: input.output_id: " + (input.output_id == outputId).show());
+                                        input.output_id == outputId
                                     }
     )
 

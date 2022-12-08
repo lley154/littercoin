@@ -12,8 +12,8 @@ set -x
 # check if command line argument is empty or not present
 if [ -z $1 ]; 
 then
-    echo "mint-tx.sh:  Invalid script arguments"
-    echo "Usage: mint-tx.sh [devnet|testnet|mainnet]"
+    echo "burn-tx.sh:  Invalid script arguments"
+    echo "Usage: burn-tx.sh [devnet|testnet|mainnet]"
     exit 1
 fi
 ENV=$1
@@ -53,18 +53,18 @@ lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
 lc_mint_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
 lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
 
-redeemer_mint_file_path="$BASE/scripts/$ENV/data/redeemer-mint.json"
-redeemer_val_file_path="$BASE/scripts/$ENV/data/redeemer-val-mint.json"
+redeemer_burn_file_path="$BASE/scripts/$ENV/data/redeemer-burn.json"
+redeemer_val_file_path="$BASE/scripts/$ENV/data/redeemer-val-burn.json"
 metadata_file_path="$BASE/scripts/$ENV/data/lc-token-metadata.json"
 
 admin_pkh=$(cat $ADMIN_PKH)
 
 echo "starting littercoin mint-tx.sh"
 
-lc_amount=25
-
+lc_amount=5
+lc_remaining=20
 ################################################################
-# Mint littercoin 
+# Burn littercoin 
 ################################################################
 
 # Step 1: Get UTXOs from admin
@@ -80,6 +80,19 @@ admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace == '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-collateral-valid.json
 readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
 admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
+
+
+# Pull the utxo with the merchant token
+merch_utxo_tx_in=$(jq -r 'to_entries[] 
+| select(.value.value."'$MERCHANT_TOKEN_MPH'"."'$MERCHANT_TOKEN_NAME'") 
+| .key' $WORK/admin-utxo.json )
+
+
+# Pull the utxo with the littercoin token(s)
+lc_utxo_tx_in=$(jq -r 'to_entries[] 
+| select(.value.value."'$lc_mint_mph'"."'$lc_token_name'") 
+| .key' $WORK/admin-utxo.json )
+
 
 
 # Step 2: Get the littercoin smart contract which has the thread token
@@ -105,18 +118,31 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 # get the current total Ada and Littercoin amount in the smart contract
 total_ada=$(jq -r '.list[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.list[1].int' $WORK/lc-datum-in.json)
-new_total_lc=$(($total_lc + $lc_amount))
+
+
+# Calculate the amount of Ada to withdraw
+withdraw_ada=$((($total_ada / $total_lc) * $lc_amount))
+new_total_ada=$(($total_ada - $withdraw_ada))
+new_total_lc=$(($total_lc - $lc_amount))
+
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
 jq -c '
-  .list[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
+  .list[0].int   |= '$new_total_ada'
+| .list[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
 
 
 # Update the redeemer for minting policy to indicate the amount of ada being spent
-cat $redeemer_mint_file_path | \
+cat $redeemer_burn_file_path | \
 jq -c '
-  .fields[0].bytes         |= "'$lc_validator_hash'"' > $WORK/redeemer-mint.json
+  .fields[0].bytes         |= "'$lc_validator_hash'"' > $WORK/redeemer-burn.json
+
+
+# Upate the redeemer for the validator with pkh of the owner
+cat $redeemer_val_file_path | \
+jq -c '
+  .fields[0].bytes          |= "'$admin_pkh'"' > $WORK/redeemer-val-burn.json
 
 
 # Step 3: Build and submit the transaction
@@ -127,38 +153,39 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
+  --tx-in "$lc_utxo_tx_in" \
+  --tx-in "$merch_utxo_tx_in" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$redeemer_val_file_path" \
-  --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-val-burn.json" \
+  --mint "-$lc_amount $lc_mint_mph.$lc_token_name" \
   --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
   --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
+  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-burn.json" \
   --policy-id "$lc_mint_mph" \
-  --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
-  --required-signer-hash $admin_pkh \
+  --tx-out "$admin_utxo_addr+$withdraw_ada + $lc_remaining $lc_mint_mph.$lc_token_name + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
   --protocol-params-file "$WORK/pparms.json" \
-  --out-file $WORK/mint-tx-alonzo.body
+  --out-file $WORK/burn-tx-alonzo.body
 
-#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/add-ada.costs"
+#  --calculate-plutus-script-cost "$BASE/scripts/cardano-cli/$ENV/data/burn-tx.costs"
   
 
 echo "tx has been built"
 
 $CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/mint-tx-alonzo.body \
+  --tx-body-file $WORK/burn-tx-alonzo.body \
   $network \
   --signing-key-file "${ADMIN_SKEY}" \
-  --out-file $WORK/mint-tx-alonzo.tx
+  --out-file $WORK/burn-tx-alonzo.tx
 
 echo "tx has been signed"
 
 echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
+$CARDANO_CLI transaction submit --tx-file $WORK/burn-tx-alonzo.tx $network
 
 
 
