@@ -21,7 +21,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #6a289c6588326e53f6e51df30690f7b5f85a638c3a8c1fde61dbc662
+const TT_MPH: ByteArray = #886edd7ef55968778d61702c7e7c9729a42242170f35ae4032035be0
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -31,7 +31,7 @@ const ttVal : Value = Value::new(ttAssetclass, 1)
 
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #b9720695e054242364666e9898dbb5631a9133795e18a3b987900c22
+const LC_MPH: ByteArray = #dfe17adea7152117fe56040c506afcdd433b23c75fef0c906b615b0f
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -66,15 +66,17 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                 dat: Inline => { 
                     outDat: Datum = Datum::from_data(dat.data);
                     addAdaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
-                    adaVal: Value = Value::lovelace(addAdaDatumAmt);
+                    adaVal: Value = Value::lovelace(outDat.adaAmount);
 
                     // Verify that the total Ada amount from the datum and
                     // the thread token is the same as the output value
                     // locked at the validator address                   
                     print("LCV1" + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show());
-                        tx.value_locked_by(vHash) == (ttVal + adaVal)
+                        tx.value_locked_by(vHash) == (ttVal + adaVal) &&
+                    (print("LCV2" + (addAdaDatumAmt > 2000000).show()); 
+                        addAdaDatumAmt > 2000000)
                 },
-                else => print("LCV2: invalid datum"); false
+                else => print("LCV3: invalid datum"); false
             }
 
         },
@@ -91,16 +93,18 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // the thread token is the same as the output value
                     // locked at the validator address.  Also check the the owner
                     // token is present and returned to back to the owner.                   
-                    print("LCV3: " + (adaDatumAmt == 0).show()); 
+                    print("LCV4: " + (adaDatumAmt == 0).show()); 
                         adaDatumAmt == 0 && 
-                    (print("LCV4: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
+                    (print("LCV5: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("LCV5: " + (tx.minted.contains(lcMintVal)).show()); 
+                    (print("LCV6: " + (tx.minted.contains(lcMintVal)).show()); 
                         tx.minted.contains(lcMintVal)) && 
-                    (print("LCV6: " + (tx.is_signed_by(ownerPkh)).show()); 
-                        tx.is_signed_by(ownerPkh))
+                    (print("LCV7: " + (tx.is_signed_by(ownerPkh)).show()); 
+                        tx.is_signed_by(ownerPkh)) && 
+                    (print("LCV8: " + (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).show()); 
+                        0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount) 
                 },
-                else => print("LCV7: invalid datum"); false
+                else => print("LCV9: invalid datum"); false
             }
         },
         red: Burn => {    
@@ -123,15 +127,15 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // is equal to the amount of Ada remanining in the datum output.
                     // Also confirm that thread token is sent to back to the validator
                     // with correct Ada amount                   
-                    (print("LCV8: " + (adaDatumAmt == adaWithdraw).show()); 
+                    (print("LCV10: " + (adaDatumAmt == adaWithdraw).show()); 
                         adaDatumAmt == adaWithdraw) &&
-                    (print("LCV9: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
+                    (print("LCV11: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("LCV10: " + (tx.minted.contains(lcBurnVal)).show()); 
+                    (print("LCV12: " + (tx.minted.contains(lcBurnVal)).show()); 
                         tx.minted.contains(lcBurnVal)) &&
-                    (print("LCV11: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
+                    (print("LCV13: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
                         merchOutTxs.get(2).value.contains(minAda + merchVal)) &&
-                    (print("LCV12: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
+                    (print("LCV14: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
                         merchOutTxs.get(1).value.contains(adaWithdrawVal))
 
 
@@ -140,7 +144,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
                     //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
-                else => print("LCV13: invalid datum"); false
+                else => print("LCV15: invalid datum"); false
             }
         }
     }
