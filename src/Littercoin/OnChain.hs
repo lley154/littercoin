@@ -97,6 +97,127 @@ validOutputs txVal (x:xs)
     | otherwise = validOutputs txVal xs
     
 
+-- | The Littercoin validator allows for minting and burning of Littercoin
+--  and adding Ada to the smart contract.   Both minting and burning increment or 
+--  decrement the amount of Littercoin recorded in the datum respectively.   When
+--  burning Littercoin, the amount of Ada is calculated based on the ratio of 
+--  Ada : Littercoin, and the correpsponding amount of Ada is sent to the merchant
+--  wallet who would call this smart contract.
+{-# INLINABLE mkLCValidator #-}
+mkLCValidator :: LCValidatorParams -> LCDatum -> LCRedeemer -> ContextsV2.ScriptContext -> Bool
+mkLCValidator params dat red ctx = 
+    case red of
+        MintLC qty -> checkAmountMint qty        
+                  &&  checkLCDatumMint qty
+                  &&  signedByAdmin  
+        BurnLC qty -> checkAmountBurn qty      
+                  &&  checkLCDatumBurn qty
+                  &&  checkValueAmountBurn                 
+                    
+        AddAda qty -> checkLCDatumAdd qty
+                 &&   checkValueAmountAdd 
+      where        
+        tn :: PlutusV2.TokenName
+        tn = lcvLCTokenName params
+        
+        info :: ContextsV2.TxInfo
+        info = PlutusV2.scriptContextTxInfo ctx  
+        
+        -- | Find the output datum
+        outputDat :: LCDatum
+        (_, outputDat) = case ContextsV2.getContinuingOutputs ctx of
+            [o] -> case TxV2.txOutDatum o of
+                TxV2.NoOutputDatum -> error()         -- no datum present
+                TxV2.OutputDatumHash _ -> error()     -- expecting inline datum and not hash
+                TxV2.OutputDatum d -> case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
+                    Just d' -> (o, d')
+                    Nothing  -> error()               -- error decoding datum data
+                    
+            _   -> error()                            -- expected exactly one continuing output
+            
+                            
+        -- | Check that the Littercoin token name minted is equal to the amount in the redeemer
+        checkAmountMint :: Integer -> Bool
+        checkAmountMint q = case Value.flattenValue (ContextsV2.txInfoMint info) of
+            [(_, tn', amt)] -> tn' == tn && amt == q
+            _               -> False
+            
+        -- | Check that the difference between LCAmount in the output and the input datum
+        --   matches the quantity indicated in the redeemer
+        checkLCDatumMint :: Integer -> Bool
+        checkLCDatumMint q = ((lcAmount outputDat) - (lcAmount dat)) == q
+        
+        -- | Check that the tx is signed by the admin 
+        signedByAdmin :: Bool
+        signedByAdmin =  ContextsV2.txSignedBy info $ Address.unPaymentPubKeyHash (lcvAdminPkh params)
+          
+        -- | Check that the littercoin token name burned is equal to the amount in the redeemer
+        checkAmountBurn :: Integer -> Bool
+        checkAmountBurn q = case Value.flattenValue (ContextsV2.txInfoMint info) of
+            [(_, tn', amt)] -> tn' == tn && amt == (negate q)
+            _               -> False
+            
+        -- | Check that the difference between LCAmount in the output and the input datum
+        --   matches the quantity indicated in the redeemer
+        checkLCDatumBurn :: Integer -> Bool
+        checkLCDatumBurn q = ((lcAmount dat) - (lcAmount outputDat)) == q &&
+                             ((adaAmount dat) - (adaAmount outputDat) == q * r)
+            where
+                r :: Integer
+                r = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
+                
+        -- | Check that the Ada spent matches Littercoin burned and that the
+        -- | merch NFT token is also present
+        checkValueAmountBurn :: Bool
+        checkValueAmountBurn = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
+            where     
+                newAdaBalance = Ada.lovelaceValueOf (adaAmount outputDat)
+                
+        -- | Check that the difference between Ada amount in the output and the input datum
+        --   matches the quantity indicated in the redeemer
+        checkLCDatumAdd :: Integer -> Bool
+        checkLCDatumAdd q = (adaAmount outputDat) - (adaAmount dat) == q
+        
+        -- | Check that the Ada added matches increase in the datum
+        checkValueAmountAdd :: Bool
+        checkValueAmountAdd = validOutputs (addAda <> tt) (ContextsV2.txInfoOutputs info)
+            where
+                addAda :: Value.Value
+                addAda = Ada.lovelaceValueOf (adaAmount outputDat)
+                tt :: Value.Value 
+                tt = lcvThreadTokenValue params
+                
+                
+-- | Creating a wrapper around littercoin validator for 
+--   performance improvements by not using a typed validator
+{-# INLINABLE wrapLCValidator #-}
+wrapLCValidator :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+wrapLCValidator params dat red ctx =
+   check $ mkLCValidator (PlutusV2.unsafeFromBuiltinData params) (PlutusV2.unsafeFromBuiltinData dat) (PlutusV2.unsafeFromBuiltinData red) (PlutusV2.unsafeFromBuiltinData ctx)
+
+untypedLCValidator :: BuiltinData -> PSU.V2.Validator
+untypedLCValidator params = PlutusV2.mkValidatorScript $
+    $$(PlutusTx.compile [|| wrapLCValidator ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode params
+    
+    
+-- | We need a typedValidator for offchain mkTxConstraints, so 
+-- created it using the untyped validator
+typedLCValidator :: BuiltinData -> PSU.V2.TypedValidator Typed.Any
+typedLCValidator params =
+  ValidatorsV2.unsafeMkTypedValidator $ untypedLCValidator params
+
+
+lcValidator :: BuiltinData -> PSU.V2.Validator
+lcValidator params = Typed.validatorScript $ typedLCValidator params
+
+
+lcHash :: BuiltinData -> PSU.V2.ValidatorHash
+lcHash params = ValidatorsV2.validatorHash $ typedLCValidator params
+
+
+
 -- | The Littercoin minting policy is used to mint and burn littercoins according to the
 --   following conditions set out in the policy.     
 {-# INLINABLE mkLittercoinPolicy #-}
@@ -281,123 +402,4 @@ threadTokenCurSymbol = PSU.V2.scriptCurrencySymbol threadTokenPolicy
 threadTokenValue :: Value.CurrencySymbol -> PlutusV2.TokenName -> Value.Value
 threadTokenValue cs' tn' = Value.singleton cs' tn' 1
 
-
--- | The Littercoin validator allows for minting and burning of Littercoin
---  and adding Ada to the smart contract.   Both minting and burning increment or 
---  decrement the amount of Littercoin recorded in the datum respectively.   When
---  burning Littercoin, the amount of Ada is calculated based on the ratio of 
---  Ada : Littercoin, and the correpsponding amount of Ada is sent to the merchant
---  wallet who would call this smart contract.
-{-# INLINABLE mkLCValidator #-}
-mkLCValidator :: LCValidatorParams -> LCDatum -> LCRedeemer -> ContextsV2.ScriptContext -> Bool
-mkLCValidator params dat red ctx = 
-    case red of
-        MintLC qty -> (traceIfFalse "LCV1" $ checkAmountMint qty)        
-                  &&  (traceIfFalse "LCV2" $ checkLCDatumMint qty)
-                  &&   traceIfFalse "LCV3" signedByAdmin  
-        BurnLC qty -> (traceIfFalse "LCV4" $ checkAmountBurn qty)           
-                  &&  (traceIfFalse "LCV5" $ checkLCDatumBurn qty)
-                  &&   traceIfFalse "LCV7" checkValueAmountBurn                 
-                    
-        AddAda qty -> (traceIfFalse "LCV8" $ checkLCDatumAdd qty)  
-                 &&    traceIfFalse "LCV9" checkValueAmountAdd 
-      where        
-        tn :: PlutusV2.TokenName
-        tn = lcvLCTokenName params
-        
-        info :: ContextsV2.TxInfo
-        info = PlutusV2.scriptContextTxInfo ctx  
-        
-        -- | Find the output datum
-        outputDat :: LCDatum
-        (_, outputDat) = case ContextsV2.getContinuingOutputs ctx of
-            [o] -> case TxV2.txOutDatum o of
-                TxV2.NoOutputDatum -> traceError "LCV10"       -- no datum present
-                TxV2.OutputDatumHash _ -> traceError "LCV11"     -- expecting inline datum and not hash
-                TxV2.OutputDatum d -> case PlutusTx.fromBuiltinData $ PlutusV2.getDatum d of
-                    Just d' -> (o, d')
-                    Nothing  -> traceError "LCV12"       -- error decoding datum data
-                    
-            _   -> traceError "LCV13"                        -- expected exactly one continuing output
-            
-                            
-        -- | Check that the Littercoin token name minted is equal to the amount in the redeemer
-        checkAmountMint :: Integer -> Bool
-        checkAmountMint q = case Value.flattenValue (ContextsV2.txInfoMint info) of
-            [(_, tn', amt)] -> tn' == tn && amt == q
-            _               -> False
-            
-        -- | Check that the difference between LCAmount in the output and the input datum
-        --   matches the quantity indicated in the redeemer
-        checkLCDatumMint :: Integer -> Bool
-        checkLCDatumMint q = ((lcAmount outputDat) - (lcAmount dat)) == q
-        
-        -- | Check that the tx is signed by the admin 
-        signedByAdmin :: Bool
-        signedByAdmin =  ContextsV2.txSignedBy info $ Address.unPaymentPubKeyHash (lcvAdminPkh params)
-          
-        -- | Check that the littercoin token name burned is equal to the amount in the redeemer
-        checkAmountBurn :: Integer -> Bool
-        checkAmountBurn q = case Value.flattenValue (ContextsV2.txInfoMint info) of
-            [(_, tn', amt)] -> tn' == tn && amt == (negate q)
-            _               -> False
-            
-        -- | Check that the difference between LCAmount in the output and the input datum
-        --   matches the quantity indicated in the redeemer
-        checkLCDatumBurn :: Integer -> Bool
-        checkLCDatumBurn q = ((lcAmount dat) - (lcAmount outputDat)) == q &&
-                             ((adaAmount dat) - (adaAmount outputDat) == q * r)
-            where
-                r :: Integer
-                r = divide (adaAmount dat) (lcAmount dat) -- TODO handle 0 lc amount condition
-                
-        -- | Check that the Ada spent matches Littercoin burned and that the
-        -- | merch NFT token is also present
-        checkValueAmountBurn :: Bool
-        checkValueAmountBurn = validOutputs (newAdaBalance <> (lcvThreadTokenValue params)) (ContextsV2.txInfoOutputs info)
-            where     
-                newAdaBalance = Ada.lovelaceValueOf (adaAmount outputDat)
-                
-        -- | Check that the difference between Ada amount in the output and the input datum
-        --   matches the quantity indicated in the redeemer
-        checkLCDatumAdd :: Integer -> Bool
-        checkLCDatumAdd q = (adaAmount outputDat) - (adaAmount dat) == q
-        
-        -- | Check that the Ada added matches increase in the datum
-        checkValueAmountAdd :: Bool
-        checkValueAmountAdd = validOutputs (addAda <> tt) (ContextsV2.txInfoOutputs info)
-            where
-                addAda :: Value.Value
-                addAda = Ada.lovelaceValueOf (adaAmount outputDat)
-                tt :: Value.Value 
-                tt = lcvThreadTokenValue params
-                
-                
--- | Creating a wrapper around littercoin validator for 
---   performance improvements by not using a typed validator
-{-# INLINABLE wrapLCValidator #-}
-wrapLCValidator :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
-wrapLCValidator params dat red ctx =
-   check $ mkLCValidator (PlutusV2.unsafeFromBuiltinData params) (PlutusV2.unsafeFromBuiltinData dat) (PlutusV2.unsafeFromBuiltinData red) (PlutusV2.unsafeFromBuiltinData ctx)
-
-untypedLCValidator :: BuiltinData -> PSU.V2.Validator
-untypedLCValidator params = PlutusV2.mkValidatorScript $
-    $$(PlutusTx.compile [|| wrapLCValidator ||])
-    `PlutusTx.applyCode`
-    PlutusTx.liftCode params
-    
-    
--- | We need a typedValidator for offchain mkTxConstraints, so 
--- created it using the untyped validator
-typedLCValidator :: BuiltinData -> PSU.V2.TypedValidator Typed.Any
-typedLCValidator params =
-  ValidatorsV2.unsafeMkTypedValidator $ untypedLCValidator params
-
-
-lcValidator :: BuiltinData -> PSU.V2.Validator
-lcValidator params = Typed.validatorScript $ typedLCValidator params
-
-
-lcHash :: BuiltinData -> PSU.V2.ValidatorHash
-lcHash params = ValidatorsV2.validatorHash $ typedLCValidator params
 

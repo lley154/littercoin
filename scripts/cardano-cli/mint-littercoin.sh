@@ -150,7 +150,8 @@ done
 printf '%s'  "--required-signer-hash $admin_pkh " >> $WORK/cli-build.out
 printf '%s'  "--protocol-params-file $WORK/pparms.json " >> $WORK/cli-build.out
 printf '%s'  "--metadata-json-file $token_metadata_file_path " >> $WORK/cli-build.out
-printf '%s'  "--out-file $WORK/mint-lc-tx-alonzo.body " >> $WORK/cli-build.out
+printf '%s'  "--calculate-plutus-script-cost $BASE/scripts/cardano-cli/$ENV/data/mint-littercoin.costs " >> $WORK/cli-build.out
+#printf '%s'  "--out-file $WORK/mint-lc-tx-alonzo.body " >> $WORK/cli-build.out
 
 bash $WORK/cli-build.out
 
@@ -158,13 +159,13 @@ bash $WORK/cli-build.out
 
 echo "tx has been built"
 
-$CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/mint-lc-tx-alonzo.body \
-  $network \
-  --signing-key-file "${ADMIN_SKEY}" \
-  --out-file $WORK/mint-lc-tx-alonzo.tx
+#$CARDANO_CLI transaction sign \
+#  --tx-body-file $WORK/mint-lc-tx-alonzo.body \
+#  $network \
+#  --signing-key-file "${ADMIN_SKEY}" \
+#  --out-file $WORK/mint-lc-tx-alonzo.tx
 
-echo "tx has been signed"
+#echo "tx has been signed"
 
-echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
+#echo "Submit the tx with plutus script and wait 5 seconds..."
+#$CARDANO_CLI transaction submit --tx-file $WORK/mint-lc-tx-alonzo.tx $network
