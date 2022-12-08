@@ -2,7 +2,7 @@ import * as helios from "./helios.js"
 
 const lcValidatorSrc = await Deno.readTextFile("./src/lcValidator.cs");
 const programLC = helios.Program.new(lcValidatorSrc);
-const simplifyLC = true;
+const simplifyLC = false;
 const lcUplcProgramLC = programLC.compile(simplifyLC);
 const lcDatum = programLC.evalParam("LC_DATUM");
 const lcDatumData = lcDatum.data;
@@ -12,6 +12,9 @@ const valMintRedeemer = programLC.evalParam("VAL_MINT_REDEEMER");
 const valMintRedeemerData = valMintRedeemer.data;
 const valBurnRedeemer = programLC.evalParam("VAL_BURN_REDEEMER");
 const valBurnRedeemerData = valBurnRedeemer.data;
+const tn = helios.ByteArrayData.fromString("Merchant Token Littercoin");
+console.log("merchant token name: ", tn.toSchemaJson());
+
 
 const vHash = lcUplcProgramLC.validatorHash;
 console.log("littercoin validator hash: ", vHash.hex);

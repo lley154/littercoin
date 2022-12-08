@@ -2,7 +2,7 @@ import * as helios from "./helios.js"
 
 const threadTokenSrc = await Deno.readTextFile("./src/threadToken.cs");
 const programTT = helios.Program.new(threadTokenSrc);
-const simplifyTT = true;
+const simplifyTT = false;
 const myUplcProgramTT = programTT.compile(simplifyTT);
 const mph = myUplcProgramTT.mintingPolicyHash;
 const tn = helios.ByteArrayData.fromString("Thread Token Littercoin");

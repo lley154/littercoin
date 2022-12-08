@@ -13,7 +13,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #f4d3da48eb4823914c03ff147660aa35c0eb91b117bcb5d3f8e2d465
+const TT_MPH: ByteArray = #6a289c6588326e53f6e51df30690f7b5f85a638c3a8c1fde61dbc662
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 

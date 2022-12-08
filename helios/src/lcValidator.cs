@@ -21,7 +21,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #f4d3da48eb4823914c03ff147660aa35c0eb91b117bcb5d3f8e2d465
+const TT_MPH: ByteArray = #6a289c6588326e53f6e51df30690f7b5f85a638c3a8c1fde61dbc662
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -31,7 +31,7 @@ const ttVal : Value = Value::new(ttAssetclass, 1)
 
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #85af83b4f0726f418fa23301b3475aa7c5de22f1e3c5c0296b69b7c3
+const LC_MPH: ByteArray = #b9720695e054242364666e9898dbb5631a9133795e18a3b987900c22
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -46,11 +46,11 @@ const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
 // Define the merchant token
 const MERCHANT_MPH: ByteArray = #e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
 const merchMph: MintingPolicyHash = MintingPolicyHash::new(MERCHANT_MPH)
-const ownerAssetclass: AssetClass = AssetClass::new(
+const merchAssetclass: AssetClass = AssetClass::new(
         merchMph, 
         "Merchant Token Littercoin".encode_utf8()
     )
-const merchVal: Value = Value::new(ownerAssetclass, 1)
+const merchVal: Value = Value::new(merchAssetclass, 1)
 
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
@@ -113,11 +113,12 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     lcBurnVal: Value = Value::new(lcAssetClass, lcDatumAmt) * (-1);
                     ratio: Int = datum.get_ratio();
                     adaWithdraw : Int = lcDatumAmt * ratio;
-                    //adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
+                    adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
                     merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
-                    print(merchPkh.show());
+                    merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
+                    
 
-                    // Verify that the amount of littercoin burned is the amount
+                    // Verify that the amount of littercoin burned is the actual amount
                     // reduced by in the datum and also check that the Ada withdraw
                     // is equal to the amount of Ada remanining in the datum output.
                     // Also confirm that thread token is sent to back to the validator
@@ -127,7 +128,15 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     (print("lcValidator: Burn: tx.value_locked_by: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
                     (print("lcValidator: Burn: tx.minted.contains: " + (tx.minted.contains(lcBurnVal)).show()); 
-                        tx.minted.contains(lcBurnVal)) // && 
+                        tx.minted.contains(lcBurnVal)) &&
+                    (print("lcValidator: Burn: merchVal: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
+                        merchOutTxs.get(2).value.contains(minAda + merchVal)) &&
+                    (print("lcValidator: Burn: withdrawAda: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
+                        merchOutTxs.get(1).value.contains(adaWithdrawVal))
+
+
+                    //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(minAda + merchVal)).show()); 
+                    //    tx.value_sent_to(merchPkh).contains(minAda + merchVal))
                     //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
                     //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
