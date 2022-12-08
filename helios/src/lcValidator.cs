@@ -121,7 +121,6 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
                     merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
                     
-
                     // Verify that the amount of littercoin burned is the actual amount
                     // reduced by in the datum and also check that the Ada withdraw
                     // is equal to the amount of Ada remanining in the datum output.
@@ -139,9 +138,9 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         merchOutTxs.get(1).value.contains(adaWithdrawVal))
 
 
-                    //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(minAda + merchVal)).show()); 
+                    //(print("LCV13: " + (tx.value_sent_to(merchPkh).contains(minAda + merchVal)).show()); 
                     //    tx.value_sent_to(merchPkh).contains(minAda + merchVal))
-                    //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
+                    //(print("LCV14: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
                     //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
                 else => print("LCV15: invalid datum"); false
