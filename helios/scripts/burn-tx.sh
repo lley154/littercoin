@@ -167,7 +167,9 @@ $CARDANO_CLI transaction build \
   --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$withdraw_ada + $lc_remaining $lc_mint_mph.$lc_token_name + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
+  --tx-out "$admin_utxo_addr+$withdraw_ada + $lc_remaining $lc_mint_mph.$lc_token_name" \
+  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
+  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 20 $LC_TOKEN_MPH.$LC_TOKEN_NAME" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/burn-tx-alonzo.body
 

@@ -21,7 +21,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #dde101d642a1bc02a2f5ca1625d930fdca28e3f7a731b0d45b98a3f2
+const TT_MPH: ByteArray = #f4d3da48eb4823914c03ff147660aa35c0eb91b117bcb5d3f8e2d465
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -31,7 +31,7 @@ const ttVal : Value = Value::new(ttAssetclass, 1)
 
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #0362baa6bc72a6c68822e631af8b68bd778d9215dfe4f2f912cf32f5
+const LC_MPH: ByteArray = #85af83b4f0726f418fa23301b3475aa7c5de22f1e3c5c0296b69b7c3
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -113,8 +113,9 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     lcBurnVal: Value = Value::new(lcAssetClass, lcDatumAmt) * (-1);
                     ratio: Int = datum.get_ratio();
                     adaWithdraw : Int = lcDatumAmt * ratio;
-                    adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
+                    //adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
                     merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
+                    print(merchPkh.show());
 
                     // Verify that the amount of littercoin burned is the amount
                     // reduced by in the datum and also check that the Ada withdraw
@@ -126,9 +127,9 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     (print("lcValidator: Burn: tx.value_locked_by: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
                         tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
                     (print("lcValidator: Burn: tx.minted.contains: " + (tx.minted.contains(lcBurnVal)).show()); 
-                        tx.minted.contains(lcBurnVal)) && 
-                    (print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal + merchVal)).show()); 
-                        tx.value_sent_to(merchPkh).contains(adaWithdrawVal + merchVal))
+                        tx.minted.contains(lcBurnVal)) // && 
+                    //(print("lcValidator: Burn: tx.value_sent_to: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
+                    //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
                 else => print("lcValidator: Burn: invalid datum"); false
             }
