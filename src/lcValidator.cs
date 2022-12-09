@@ -91,8 +91,8 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         
                     // Verify that the total Ada amount from the datum and
                     // the thread token is the same as the output value
-                    // locked at the validator address.  Also check the the owner
-                    // token is present and returned to back to the owner.                   
+                    // locked at the validator address.  Also check the tx 
+                    // is signed by the owner pkh                   
                     print("LCV4: " + (adaDatumAmt == 0).show()); 
                         adaDatumAmt == 0 && 
                     (print("LCV5: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
