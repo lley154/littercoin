@@ -10,6 +10,8 @@
 The Littercoin smart contract can be tested directly on the hosted site [here](https://littercoin-smart-contract.vercel.app/)
 or it can be downloaded and follow setup steps below.
 
+A demo is also available [here](https://youtu.be/d_HImBdK7Ps) on youtube
+
 
 ## Clone the repository
 ```
