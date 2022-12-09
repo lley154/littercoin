@@ -61,8 +61,8 @@ admin_pkh=$(cat $ADMIN_PKH)
 
 echo "starting littercoin mint-tx.sh"
 
-lc_amount=5
-lc_remaining=20
+lc_amount=25
+#lc_remaining=20
 ################################################################
 # Burn littercoin 
 ################################################################
@@ -169,7 +169,6 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --tx-out "$admin_utxo_addr+$withdraw_ada" \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + 1 $MERCHANT_TOKEN_MPH.$MERCHANT_TOKEN_NAME" \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_remaining $lc_mint_mph.$lc_token_name" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/burn-tx-alonzo.body
 

@@ -3,7 +3,7 @@ import * as helios from "./helios.js"
 
 const mintLCSrc = await Deno.readTextFile("./src/mintLC.cs");
 const programMintLC = helios.Program.new(mintLCSrc);
-const simplifyMintLC = true;
+const simplifyMintLC = false;
 const uplcProgramMintLC = programMintLC.compile(simplifyMintLC);
 const mph = uplcProgramMintLC.mintingPolicyHash;
 const tn = helios.ByteArrayData.fromString("Littercoin");

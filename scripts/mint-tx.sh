@@ -142,26 +142,23 @@ $CARDANO_CLI transaction build \
   --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash $admin_pkh \
   --protocol-params-file "$WORK/pparms.json" \
-  --calculate-plutus-script-cost "$BASE/scripts/$ENV/data/mint-tx.costs"
- 
+  --out-file $WORK/mint-tx-alonzo.body
 
-#  --out-file $WORK/mint-tx-alonzo.body
 
 #  --calculate-plutus-script-cost "$BASE/scripts/$ENV/data/add-ada.costs"
   
-
 echo "tx has been built"
 
-#$CARDANO_CLI transaction sign \
-#  --tx-body-file $WORK/mint-tx-alonzo.body \
-#  $network \
-#  --signing-key-file "${ADMIN_SKEY}" \
-#  --out-file $WORK/mint-tx-alonzo.tx
+$CARDANO_CLI transaction sign \
+  --tx-body-file $WORK/mint-tx-alonzo.body \
+  $network \
+  --signing-key-file "${ADMIN_SKEY}" \
+  --out-file $WORK/mint-tx-alonzo.tx
 
-#echo "tx has been signed"
+echo "tx has been signed"
 
-#echo "Submit the tx with plutus script and wait 5 seconds..."
-#$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
+echo "Submit the tx with plutus script and wait 5 seconds..."
+$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
 
 
 

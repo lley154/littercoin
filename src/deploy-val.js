@@ -2,7 +2,7 @@ import * as helios from "./helios.js"
 
 const lcValidatorSrc = await Deno.readTextFile("./src/lcValidator.cs");
 const programLC = helios.Program.new(lcValidatorSrc);
-const simplifyLC = true;
+const simplifyLC = false;
 const lcUplcProgramLC = programLC.compile(simplifyLC);
 const lcDatum = programLC.evalParam("LC_DATUM");
 const lcDatumData = lcDatum.data;
