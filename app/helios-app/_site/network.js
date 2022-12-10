@@ -83,7 +83,8 @@ export default class PreprodNetwork {
     async hasUtxo(utxo) {
         const txId = utxo.txId;
 
-        const url = `https://cardano-${this.name}.blockfrost.io/api/v0/txs/${txId.hex}/utxos`;
+        //const url = `https://cardano-${this.name}.blockfrost.io/api/v0/txs/${txId.hex}/utxos`;
+        const url = "/api/has-utxo?txid=" + txId;
 
         const response = await fetch(url, this.fetchConfig);
 
@@ -95,7 +96,9 @@ export default class PreprodNetwork {
      * @returns {Promise<UTxO[]>}
      */
     async getUtxos(addr) {
-        const url = `https://cardano-${this.name}.blockfrost.io/api/v0/addresses/${addr.toBech32()}/utxos?order=asc`;
+
+        //const url = `https://cardano-${this.name}.blockfrost.io/api/v0/addresses/${addr.toBech32()}/utxos?order=asc`;
+        const url = "/api/get-utxo?addr=" + addr.toBech32();
 
         /** @type {{}[]} */
         let all = await fetch(url, this.fetchConfig).then(response => {

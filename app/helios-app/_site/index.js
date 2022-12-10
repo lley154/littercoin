@@ -94,7 +94,7 @@ function App(props) {
 
     async function connect() {
         setWaitMessage(WALLET_WAIT_MSG);
-
+   
         await wait();
 
         try {
