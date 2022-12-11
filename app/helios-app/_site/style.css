@@ -152,7 +152,7 @@ html, body {
 }
 
 body {
-    background: linear-gradient(45deg, #fcb37e, #5421b3);
+    background:  #f4efeb;
     display: grid;
     grid-template-rows: 60px 1fr 30px;
 }
