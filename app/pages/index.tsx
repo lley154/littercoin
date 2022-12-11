@@ -9,7 +9,27 @@ import MintOwnerToken from '../components/MintOwnerToken';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
-import {Assets, ConstrData, Datum, IntData, TxId, ListData, MintingPolicyHash, NetworkParams, Value, TxOutput, UplcData, UTxO, hexToBytes} from "@hyperionbt/helios";
+import Wallet from '../lib/wallet';
+
+import {
+  Address, 
+  Assets, 
+  bytesToHex, 
+  ConstrData, 
+  Datum, 
+  hexToBytes, 
+  IntData, 
+  TxId, 
+  ListData, 
+  MapData,
+  MintingPolicyHash, 
+  NetworkParams, 
+  Value, 
+  TxOutput, 
+  UplcData, 
+  Tx, 
+  UTxO} from "@hyperionbt/helios";
+
 
 import WalletInfo from '../components/WalletInfo';
 import {  
@@ -38,6 +58,7 @@ const Home: NextPage = () => {
   const threadToken = process.env.NEXT_PUBLIC_THREAD_TOKEN as string;
 
   
+  
   const [lcInfo, setLCInfo] = useState(
     {
         address : '',
@@ -46,6 +67,9 @@ const Home: NextPage = () => {
         ratio: 0,
     }
   );
+
+  const [wallet, setWallet] = useState(null);
+  const [walletState, setWalletState] = useState(null);
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [API, setAPI] = useState<undefined | any>(undefined);
@@ -132,7 +156,7 @@ const Home: NextPage = () => {
 
 
   // Get the utxo with the thread token for a specific address
-  const getUtxo = async (addr : string) => {
+  const getUtxoBlockfrost = async (addr : string) => {
 
     const blockfrostUrl : string = blockfrostAPI + "/addresses/" + addr + "/utxos/" + threadToken;
 
@@ -152,7 +176,7 @@ const Home: NextPage = () => {
 
     console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
     console.log("threadToken", threadToken);
-    const utxo = await getUtxo(lcValidatorScriptAddress);
+    const utxo = await getUtxoBlockfrost(lcValidatorScriptAddress);
     console.log("utxo at script address", utxo);    
 
     if (utxo != undefined && utxo.length == 1) {
@@ -215,6 +239,25 @@ const Home: NextPage = () => {
         console.log('getBalance error: ', err);
     }
   }
+
+  const getHeliosUtxo = (txIdHex : string, 
+                         txIdx: number, 
+                         addr: Address, 
+                         val: Value, 
+                         dat: ListData) => {
+
+    return new UTxO(
+      TxId.fromHex(txIdHex),
+      BigInt(txIdx),
+      new TxOutput(
+          addr,
+          val,
+          Datum.inline(dat)
+      )
+  );
+
+  }
+
 
   const mintLC = async (params : any) : Promise<TxHash> => {
 
@@ -481,79 +524,60 @@ const Home: NextPage = () => {
 
   const addAda = async (adaQty : any) : Promise<TxHash> => {
 
-    const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
-    const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
-    var network;
+    const _info = await fetchLittercoinInfo();
+    const _datumObj = _info?.datum;
+    const _ada : number = Object.values(_datumObj?.list[0]) as unknown as number;
+    const _lc : number = Object.values(_datumObj?.list[1]) as unknown as number;
+   
+    const newAdaAmount : number = _ada + Number(adaQty);
 
-    switch(process.env.NEXT_PUBLIC_NETWORK) { 
-      case undefined: { 
-         network = "Mainnet" as Network; 
-         break; 
-      } 
-      case "Preprod": { 
-         network = "Preprod" as Network;
-         break; 
-      } 
-      default: { 
-         network = "Mainnet" as Network;
-         break; 
-      } 
-    } 
+    const newDatAda = new IntData(BigInt(newAdaAmount));
+    const newDatLC = new IntData(BigInt(_lc));
+    const newDatum = new ListData([newDatAda, newDatLC]);
 
-    const lucid = await Lucid.new(
-      new Blockfrost(blockfrost_url, api_key),
-      network,
-    );
+    //const newDatum = Data.to(new Constr(0, [BigInt(newAdaAmount), BigInt(oldLCAmount)]));
+    
+    const validatorRedeemer = new ConstrData(
+      0,
+      []
+    )
 
-    lucid.selectWallet(API);
+    //const validatorRedeemer = Data.to(new Constr(2, [BigInt(adaQty)]));
+    
+    const adaAmountVal = new Value(BigInt(adaQty));
+    //const utxos = await API.getUtxos(bytesToHex(adaAmountVal.toCbor()));
+    console.log("AddAda: utxos", utxos);
+    console.log("utxos[0]", utxos[0]);
 
-    const mintingPolicy: MintingPolicy = lucid.utils.nativeScriptFromJson(
-      {
-        type: "all",
-        scripts: [
-          {
-            type: "after",
-            slot: 1001,
-          },
-        ],
-      },
-    );
+    const txList = MapData.fromCbor(hexToBytes(utxos[0]));
+   
+    const txListJson = txList.toSchemaJson();
+    const txListObj = JSON.parse(txListJson);
+    const _txId = Object.values(txListObj.list[0]) as unknown as string;
+    const _txIdx = Object.values(txListObj.list[1]) as unknown as number;  
+    console.log("txId", _txId);
+    console.log("txIdx", _txIdx);
 
-    const policyId: PolicyId = lucid.utils.mintingPolicyToId(
-      mintingPolicy,
-    );
-  
-    const unit: Unit = policyId + utf8ToHex("Donation Littercoin");
-    //const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
-    const actionValScriptAddress = process.env.NEXT_PUBLIC_ACTION_VAL_ADDR as string;
-    const lovelaceQty = adaQty * 1000000;
-    const destPaymentCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).paymentCredential;
-    const destStakeCred = lucid.utils.getAddressDetails(await lucid.wallet.address()).stakeCredential;
 
-    console.log("destPaymentCred", destPaymentCred);
-    console.log("destStakeCred", destStakeCred);
+    /*
+    const getHeliosUtxo = (txIdHex : string, 
+      txIdx: number, 
+      addr: Address, 
+      val: Value, 
+      dat: ListData) => {
+  */
+    
+    //const tx = new Tx();
 
-    const newDatum = Data.to(new Constr(0, [
-      BigInt(Date.now()),                       // sequence number
-      BigInt(lovelaceQty ),                     // amount of Ada to add
-      utf8ToHex(destPaymentCred?.hash!),        // destination payment pkh
-      utf8ToHex(destStakeCred?.hash!),          // desination stake pkh
-      utf8ToHex(""),                            // return payment pkh
-      utf8ToHex("")]));                         // return stake pkh 
 
-    const tx = await lucid
-    .newTx()
-    .mintAssets({ [unit]: BigInt(1) })
-    .attachMintingPolicy(mintingPolicy)
-    .payToContract(actionValScriptAddress, { inline: newDatum }, { ["lovelace"] : BigInt(lovelaceQty), [unit]: BigInt(1) })
-    .validFrom(Date.now() - 1000000)
-    .complete();  
+    //tx.addInput(utxo);
+ 
 
-    const signedTx = await tx.sign().complete();
-    const txHash = await signedTx.submit();
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
-    return txHash;
+
+    //console.log("txHash", txHash);
+    //setTx({ txId: txHash });
+    //return txHash;
+    return "tmp";
   } 
 
   return (
