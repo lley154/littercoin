@@ -9,7 +9,7 @@ import MintOwnerToken from '../components/MintOwnerToken';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
-import {Assets, ConstrData, Datum, TxId, ListData, MintingPolicyHash, NetworkParams, Value, TxOutput, UplcData, UTxO, hexToBytes} from "@hyperionbt/helios";
+import {Assets, ConstrData, Datum, IntData, TxId, ListData, MintingPolicyHash, NetworkParams, Value, TxOutput, UplcData, UTxO, hexToBytes} from "@hyperionbt/helios";
 
 import WalletInfo from '../components/WalletInfo';
 import {  
@@ -135,9 +135,8 @@ const Home: NextPage = () => {
   const getUtxo = async (addr : string) => {
 
     const blockfrostUrl : string = blockfrostAPI + "/addresses/" + addr + "/utxos/" + threadToken;
-    console.log("blockfrostUrl", blockfrostUrl);
 
-    let resp = await fetch(blockfrostUrl, {
+    let _res = await fetch(blockfrostUrl, {
       method: "GET",
       headers: {
         accept: "application/json",
@@ -145,33 +144,15 @@ const Home: NextPage = () => {
       },
     });
 
-    const payload = await resp.json();
+    const payload = await _res.json();
     return payload;
   }
 
   const fetchLittercoinInfo = async () => {
 
-    //const api_key : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
-    //const blockfrost_url = process.env.NEXT_PUBLIC_BLOCKFROST_URL as string;
-    //const network = process.env.NEXT_PUBLIC_NETWORK as string;
-
-    //const networkParams = new NetworkParams(await fetch(netParamsUrl).then(response => response.json()));
-
-  
-    /*
-    const lucid = await Lucid.new(
-      
-      new Blockfrost(blockfrost_url, api_key),
-      "Preprod",
-    );
-    */
-
-
     console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
     console.log("threadToken", threadToken);
-    
     const utxo = await getUtxo(lcValidatorScriptAddress);
-    //const utxo = await lucid.utxosAt(lcValidatorScriptAddress);
     console.log("utxo at script address", utxo);    
 
     if (utxo != undefined && utxo.length == 1) {
@@ -179,34 +160,12 @@ const Home: NextPage = () => {
       const _datumData = ListData.fromCbor(hexToBytes(utxo[0].inline_datum));
       const _datumJson = _datumData.toSchemaJson();
       const _datumObj = JSON.parse(_datumJson);
-      console.log("datum", _datumObj.list);
-      console.log("datum", _datumObj.list[0]);
-      console.log("datum", _datumObj.list[1]);
 
-      console.log("ada", )
       return {datum: _datumObj, address: lcValidatorScriptAddress};
 
     } else {
-      console.log("fetchlittercoin: invalid utxos");
+      console.log("fetchLittercoin: invalid number of utxos");
     }
-
-    /*
-    // Iterate through the list of utxos
-    for(let i=0; i<utxo.length; i++){
-
-      // Find the utxo that has the thread token
-      if (Object.keys(utxo[i].assets).includes(threadToken)) {
-
-        // If found, then convert the CBOR represntation to PlutusData type
-        if (utxo[i].datum != undefined) {
-          const _datum : PlutusData = Data.from(utxo[i].datum as string);
-          //console.log("datum found", _datum);
-          return {datum: _datum, address: lcValidatorScriptAddress};
-        }
-      }
-    }
-
-    */
   }
 
   // user selects what wallet to connect to
@@ -228,25 +187,6 @@ const Home: NextPage = () => {
     return walletFound;
   }
 
-  const checkIfWalletEnabled = async () => {
-
-    let walletIsEnabled = false;
-    try {
-        const walletChoice = whichWalletSelected;
-        if (walletChoice === "nami") {
-            walletIsEnabled = await window.cardano.nami.isEnabled();
-
-        } else if (walletChoice === "eternl") {
-            walletIsEnabled = await window.cardano.eternl.isEnabled();
-    
-        } 
-    } catch (err) {
-        console.log('checkIfWalletEnabled error', err);
-    }
-    return walletIsEnabled;
-  }
-
-
   const enableWallet = async () => {
 
     let walletAPI = undefined;
@@ -267,11 +207,12 @@ const Home: NextPage = () => {
   const getBalance = async () => {
     try {
         const balanceCBORHex = await API.getBalance();
-        const balanceAmount = C.Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin();
-        const walletBalance : BigInt = BigInt(balanceAmount.to_str());
+        const balanceAmountValue =  Value.fromCbor(hexToBytes(balanceCBORHex));
+        const balanceAmount = balanceAmountValue.lovelace;
+        const walletBalance : BigInt = BigInt(balanceAmount);
         return walletBalance.toLocaleString();
     } catch (err) {
-        console.log('getBalance error', err);
+        console.log('getBalance error: ', err);
     }
   }
 
