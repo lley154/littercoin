@@ -9,15 +9,16 @@ import MintOwnerToken from '../components/MintOwnerToken';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
-import Wallet from '../lib/wallet';
 
 import {
   Address, 
   Assets, 
   bytesToHex, 
+  ByteArrayData,
   ConstrData, 
   Datum, 
   hexToBytes, 
+  highlight,
   IntData, 
   TxId, 
   ListData, 
@@ -49,6 +50,8 @@ import {
   } from "lucid-cardano"; // NPM
 import { syncBuiltinESMExports } from 'module';
 
+let Buffer = require('buffer/').Buffer
+
 const Home: NextPage = () => {
 
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
@@ -68,8 +71,6 @@ const Home: NextPage = () => {
     }
   );
 
-  const [wallet, setWallet] = useState(null);
-  const [walletState, setWalletState] = useState(null);
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [API, setAPI] = useState<undefined | any>(undefined);
@@ -154,12 +155,12 @@ const Home: NextPage = () => {
   }, [tx]);
 
 
-
   // Get the utxo with the thread token for a specific address
-  const getUtxoBlockfrost = async (addr : string) => {
+  const getUtxosBlockfrost = async (addr : string) => {
 
     const blockfrostUrl : string = blockfrostAPI + "/addresses/" + addr + "/utxos/" + threadToken;
 
+    var payload;
     let _res = await fetch(blockfrostUrl, {
       method: "GET",
       headers: {
@@ -168,22 +169,55 @@ const Home: NextPage = () => {
       },
     });
 
-    const payload = await _res.json();
-    return payload;
+    if (_res?.status > 299) {
+      payload = "[]";
+    }
+
+    payload = await _res.json();
+    console.log("payload", payload);
+
+    const lovelaceAmount = payload[0].amount[0].quantity;
+    const policyID = payload[0].amount[1].unit.substring(0, 56);
+    const mph = MintingPolicyHash.fromHex(policyID);
+    const token = hexToBytes(payload[0].amount[1].unit.substring(56));
+
+    const value = new Value(lovelaceAmount, new Assets([
+        [mph, [
+            [token, BigInt(1)]
+        ]]
+    ]));
+
+    console.log("inlineDatum", payload[0].inline_datum);
+
+    return [new UTxO(
+      TxId.fromHex(payload[0].tx_hash),
+      BigInt(payload[0].output_index),
+      new TxOutput(
+        Address.fromBech32(addr),
+        value,
+        Datum.inline(ListData.fromCbor(hexToBytes(payload[0].inline_datum)))
+      )
+    )];
+
   }
 
   const fetchLittercoinInfo = async () => {
 
     console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
     console.log("threadToken", threadToken);
-    const utxo = await getUtxoBlockfrost(lcValidatorScriptAddress);
+    const utxo = await getUtxosBlockfrost(lcValidatorScriptAddress);
     console.log("utxo at script address", utxo);    
 
     if (utxo != undefined && utxo.length == 1) {
-      console.log("utxo", utxo[0].inline_datum);
-      const _datumData = ListData.fromCbor(hexToBytes(utxo[0].inline_datum));
+
+      if (!utxo[0].origOutput.datum.isInline()) {
+          throw console.error("inline datum not found")
+      }
+      const _datumData = utxo[0].origOutput.datum.data;
+      console.log("_datumData", _datumData);
       const _datumJson = _datumData.toSchemaJson();
       const _datumObj = JSON.parse(_datumJson);
+      console.log("_datumObj", _datumObj);
 
       return {datum: _datumObj, address: lcValidatorScriptAddress};
 
@@ -221,6 +255,7 @@ const Home: NextPage = () => {
             walletAPI = await window.cardano.nami.enable();
         } else if (walletChoice === "eternl") {
             walletAPI = await window.cardano.eternl.enable();
+            
         } 
         return walletAPI 
     } catch (err) {
@@ -239,25 +274,6 @@ const Home: NextPage = () => {
         console.log('getBalance error: ', err);
     }
   }
-
-  const getHeliosUtxo = (txIdHex : string, 
-                         txIdx: number, 
-                         addr: Address, 
-                         val: Value, 
-                         dat: ListData) => {
-
-    return new UTxO(
-      TxId.fromHex(txIdHex),
-      BigInt(txIdx),
-      new TxOutput(
-          addr,
-          val,
-          Datum.inline(dat)
-      )
-  );
-
-  }
-
 
   const mintLC = async (params : any) : Promise<TxHash> => {
 
@@ -545,32 +561,27 @@ const Home: NextPage = () => {
     //const validatorRedeemer = Data.to(new Constr(2, [BigInt(adaQty)]));
     
     const adaAmountVal = new Value(BigInt(adaQty));
-    //const utxos = await API.getUtxos(bytesToHex(adaAmountVal.toCbor()));
-    console.log("AddAda: utxos", utxos);
-    console.log("utxos[0]", utxos[0]);
+    const rawUtxos = await API.getUtxos(bytesToHex(adaAmountVal.toCbor()));
+    //const utxos = await API.getUtxos();
 
-    const txList = MapData.fromCbor(hexToBytes(utxos[0]));
-   
-    const txListJson = txList.toSchemaJson();
-    const txListObj = JSON.parse(txListJson);
-    const _txId = Object.values(txListObj.list[0]) as unknown as string;
-    const _txIdx = Object.values(txListObj.list[1]) as unknown as number;  
-    console.log("txId", _txId);
-    console.log("txIdx", _txIdx);
+    let Utxos = [];
 
-
-    /*
-    const getHeliosUtxo = (txIdHex : string, 
-      txIdx: number, 
-      addr: Address, 
-      val: Value, 
-      dat: ListData) => {
-  */
+    for (const rawUtxo of rawUtxos) {
     
+      //const data = Buffer.from(rawUtxo, 'hex');
+      //var arrByte = Uint8Array.from(data);
+      //var array = Array.from(arrByte);
+      //const utxo = UTxO.fromCbor(array);
+      const utxo = UTxO.fromCbor(hexToBytes(rawUtxo));
+
+      Utxos.push(utxo);
+    }
+
+    console.log("Utxos", Utxos);
+
     //const tx = new Tx();
 
-
-    //tx.addInput(utxo);
+    //tx.addInputs(Utxos);
  
 
 
