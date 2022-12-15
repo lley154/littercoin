@@ -24,9 +24,13 @@ import {
   ListData, 
   MapData,
   MintingPolicyHash, 
-  NetworkParams, 
+  NetworkParams,
+  Program, 
+  PubKeyHash,
   Value, 
-  TxOutput, 
+  TxOutput,
+  TxRefInput, 
+  TxWitnesses,
   UplcData, 
   Tx, 
   UTxO} from "@hyperionbt/helios";
@@ -54,13 +58,17 @@ let Buffer = require('buffer/').Buffer
 
 const Home: NextPage = () => {
 
+  const optimize = false;
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
-  const netParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
+  //const netParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const lcValidatorScriptAddress = process.env.NEXT_PUBLIC_LC_VAL_ADDR as string;
-  const threadToken = process.env.NEXT_PUBLIC_THREAD_TOKEN as string;
+  const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
+  const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
+  //const lcValRefTxId = process.env.NEXT_PUBLIC_THREAD_TOKEN as string;
+  //const lcValRefTxIdx = process.env.NEXT_PUBLIC_THREAD_TOKEN as string;
+  const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
 
-  
   
   const [lcInfo, setLCInfo] = useState(
     {
@@ -155,6 +163,80 @@ const Home: NextPage = () => {
   }, [tx]);
 
 
+
+  // Get the reference script utxo and the utxo with the thread token
+  const getUtxosBlockfrost = async (addr : string) => {
+
+    //const blockfrostUrl : string = blockfrostAPI + "/addresses/" + addr + "/utxos/" + threadToken;
+    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + addr + "/utxos/?order=asc";
+
+    var payload;
+    let _res = await fetch(blockfrostUrl, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        project_id: apiKey,
+      },
+    });
+
+    if (_res?.status > 299) {
+      payload = "[]";
+    }
+
+    payload = await _res.json();
+    console.log("payload", payload);
+    const threadToken = threadTokenMPH + threadTokenName;
+    console.log("threadToken", threadToken);
+
+    if (payload[1].amount[1].unit != threadToken) {
+      throw console.error("thread token not found: ", payload[1].amount[1].unit);
+    }
+
+    const lovelaceAmount = payload[1].amount[0].quantity;
+    const policyID = payload[1].amount[1].unit.substring(0, 56);
+    const mph = MintingPolicyHash.fromHex(policyID);
+    const token = hexToBytes(payload[1].amount[1].unit.substring(56));
+
+    const value = new Value(BigInt(lovelaceAmount), new Assets([
+        [mph, [
+            [token, BigInt(1)]
+        ]]
+    ]));
+
+    console.log("inlineDatum", payload[1].inline_datum);
+
+    const response = await fetch('/api/lcValidator'); 
+    const contractScript = await response.text();
+
+    //console.log("data", contractScript);
+
+    const compiledScript = Program.new(contractScript).compile(optimize);
+
+    // Reference script utxo is the oldest so it is first,
+    // next one is the utxo with the threadtoken
+    return [new UTxO(
+      TxId.fromHex(payload[0].tx_hash),
+      BigInt(payload[0].output_index),
+      new TxOutput(
+        Address.fromBech32(addr),
+        new Value(BigInt(payload[0].amount[0].quantity)),
+        null,
+        compiledScript
+      )
+    ), new UTxO(
+      TxId.fromHex(payload[1].tx_hash),
+      BigInt(payload[1].output_index),
+      new TxOutput(
+        Address.fromBech32(addr),
+        value,
+        Datum.inline(ListData.fromCbor(hexToBytes(payload[1].inline_datum)))
+      )
+    )];
+  }
+
+
+/*
+
   // Get the utxo with the thread token for a specific address
   const getUtxosBlockfrost = async (addr : string) => {
 
@@ -201,19 +283,22 @@ const Home: NextPage = () => {
 
   }
 
+
+  */
+
   const fetchLittercoinInfo = async () => {
 
-    console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
-    console.log("threadToken", threadToken);
+    //console.log("lcValidatorScriptAddress", lcValidatorScriptAddress);
+    //console.log("threadToken", threadToken);
     const utxo = await getUtxosBlockfrost(lcValidatorScriptAddress);
     console.log("utxo at script address", utxo);    
 
-    if (utxo != undefined && utxo.length == 1) {
+    if (utxo != undefined && utxo.length == 2) {
 
-      if (!utxo[0].origOutput.datum.isInline()) {
+      if (!utxo[1].origOutput.datum.isInline()) {
           throw console.error("inline datum not found")
       }
-      const _datumData = utxo[0].origOutput.datum.data;
+      const _datumData = utxo[1].origOutput.datum.data;
       console.log("_datumData", _datumData);
       const _datumJson = _datumData.toSchemaJson();
       const _datumObj = JSON.parse(_datumJson);
@@ -545,50 +630,129 @@ const Home: NextPage = () => {
     const _ada : number = Object.values(_datumObj?.list[0]) as unknown as number;
     const _lc : number = Object.values(_datumObj?.list[1]) as unknown as number;
    
-    const newAdaAmount : number = _ada + Number(adaQty);
+    const newAdaAmount : BigInt = BigInt(_ada) + BigInt(adaQty*1000000);
 
-    const newDatAda = new IntData(BigInt(newAdaAmount));
+    const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(_lc));
     const newDatum = new ListData([newDatAda, newDatLC]);
 
     //const newDatum = Data.to(new Constr(0, [BigInt(newAdaAmount), BigInt(oldLCAmount)]));
     
-    const validatorRedeemer = new ConstrData(
+    const valRedeemer = new ConstrData(
       0,
       []
     )
 
     //const validatorRedeemer = Data.to(new Constr(2, [BigInt(adaQty)]));
     
-    const adaAmountVal = new Value(BigInt(adaQty));
-    const rawUtxos = await API.getUtxos(bytesToHex(adaAmountVal.toCbor()));
+    const adaAmountVal = new Value(BigInt(adaQty*1000000));
+    const cborUtxos = await API.getUtxos(bytesToHex(adaAmountVal.toCbor()));
     //const utxos = await API.getUtxos();
 
     let Utxos = [];
 
-    for (const rawUtxo of rawUtxos) {
-    
-      //const data = Buffer.from(rawUtxo, 'hex');
-      //var arrByte = Uint8Array.from(data);
-      //var array = Array.from(arrByte);
-      //const utxo = UTxO.fromCbor(array);
-      const utxo = UTxO.fromCbor(hexToBytes(rawUtxo));
-
-      Utxos.push(utxo);
+    for (const cborUtxo of cborUtxos) {
+      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
+      Utxos.push(_utxo);
     }
 
     console.log("Utxos", Utxos);
 
-    //const tx = new Tx();
 
-    //tx.addInputs(Utxos);
- 
+    const cborColatUtxo = await API.getCollateral();
+    console.log("cborColatUtxo", cborColatUtxo[0] );
+    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
+
+    const response = await fetch('/api/lcValidator'); 
+    const contractScript = await response.text();
+
+    //console.log("data", contractScript);
+
+    const compiledScript = Program.new(contractScript).compile(optimize);
+    const valAddr = Address.fromValidatorHash(true, compiledScript.validatorHash);
+
+    console.log("valAddr", valAddr.toBech32());
+    console.log("valHash", bytesToHex(compiledScript.hash()));
 
 
-    //console.log("txHash", txHash);
-    //setTx({ txId: txHash });
-    //return txHash;
-    return "tmp";
+    const tx = new Tx();
+
+    //const cborChangeAddr = await API.getChangeAddress();
+    //console.log("cborChangeAddr", cborChangeAddr);
+    //const changeAddr = Address.fromCbor(hexToBytes(cborChangeAddr));
+    //console.log("changeAddr", cborChangeAddr);
+    const changeAddr = Address.fromBech32("addr_test1vq7k907l7e59t52skm8e0ezsnmmc7h4xy30kg2klwc5n8rx5wscj60kfrsr64u3lf3sxnd7a375cscwe4t4jp39euxmqqchlvw");
+    
+    //const pkh = changeAddr.pubKeyHash;
+    //console.log("change address pkh", pkh);
+
+    for (const utxo of Utxos) {
+        tx.addInput(utxo);
+    }
+
+    const valUtxos = await getUtxosBlockfrost(valAddr.toBech32());
+    tx.addInput(valUtxos[1], valRedeemer);
+
+    tx.addRefInput(
+        valUtxos[0],
+        compiledScript
+    );
+
+    // balance the tx and send back change
+    //tx.addOutput(new TxOutput(changeAddr, changeVal));
+
+    const newInlineDatum = Datum.inline(newDatum);
+    const value = new Value(newAdaAmount.valueOf(), new Assets([
+      [MintingPolicyHash.fromHex(threadTokenMPH), [
+          [hexToBytes(threadTokenName), BigInt(1)]
+      ]]
+  ]));
+
+    // send Ada, updated dautm and thread token back to script address
+    tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+
+    //const changePkh : string = "003d62bfdff66855d150b6cf97e4509ef78f5ea6245f642adf7629338cd474312d3ec91c07aaf23f4c6069b7dd8fa98861d9aaeb20c4b9e1b6";
+    //const pkh = PubKeyHash.fromHex(changePkh);
+    //const pkh = changeAddr.pubKeyHash;
+    //console.log("pkh", ownerPkh);
+    //tx.addSigner(pkh);
+
+    tx.addCollateral(colatUtxo);
+
+    console.log("tx before final", tx.dump());
+
+    const networkParams = new NetworkParams(
+      await fetch("https://d1t0d7c2nekuk0.cloudfront.net/preprod.json")
+          .then(response => response.json())
+    )
+
+    // send any change back to the buyer
+    await tx.finalize(networkParams, changeAddr);
+
+    console.log("tx after final", tx.dump());
+
+    console.log("Waiting for wallet signature...");
+
+    //const pkws = await wallet.signTx(tx);
+    const walletResp = await API.signTx(bytesToHex(tx.toCbor()), true)
+
+    console.log("Verifying signature...");
+
+    const signatures = TxWitnesses.fromCbor(hexToBytes(walletResp)).signatures
+
+    tx.addSignatures(signatures)
+    //tx.addSignatures(pkws);
+
+    console.log("Submitting transaction...");
+
+    //console.log(`submitted tx ${await network.submitTx(tx)}`);
+    //const txHash = await network.submitTx(tx);
+    
+    const txHash = await API.submitTx(bytesToHex(tx.toCbor()));
+
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
+    return txHash;
   } 
 
   return (
