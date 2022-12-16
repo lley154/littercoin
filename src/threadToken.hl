@@ -4,7 +4,7 @@ enum Redeemer {
     Init 
 }
 
-const TX_ID: ByteArray = #57cd9395c30985c4f5850b97fd42ab72750fe37700256549f4476626ef9338b2
+const TX_ID: ByteArray = #86d0bd2ddf7167828ca5323f3224b3487dcb544323cd67316cebd6746a50e21e
 const txId: TxId = TxId::new(TX_ID)
 const outputId: TxOutputId = TxOutputId::new(txId, 0)
 
@@ -20,8 +20,7 @@ func main(ctx: ScriptContext) -> Bool {
     value_minted: Value = tx.minted;
     value_minted == Value::new(tt_assetclass, 1) &&
     tx.inputs.any((input: TxInput) -> Bool {
-                                    print("TT1: " + (input.output_id == outputId).show());
-                                        input.output_id == outputId
+                                    (input.output_id == outputId).trace("TT1: ")
                                     }
     )
 

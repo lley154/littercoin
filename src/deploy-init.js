@@ -1,6 +1,6 @@
 import * as helios from "./helios.js"
 
-const threadTokenSrc = await Deno.readTextFile("./src/threadToken.cs");
+const threadTokenSrc = await Deno.readTextFile("./src/threadToken.hl");
 const programTT = helios.Program.new(threadTokenSrc);
 const simplifyTT = false;
 const myUplcProgramTT = programTT.compile(simplifyTT);

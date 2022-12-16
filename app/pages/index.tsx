@@ -30,7 +30,7 @@ import {
   TxRefInput, 
   TxWitnesses,
   Tx, 
-  UTxO} from "@hyperionbt/helios";
+  UTxO} from "@lley/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -46,7 +46,7 @@ import {
     try {
       //Find the absolute path of the json directory
       const contractDirectory = path.join(process.cwd(), 'contracts/src');
-      const fileContents = await fs.readFile(contractDirectory + '/lcValidator.cs', 'utf8');
+      const fileContents = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
     
       const contractScript = fileContents.toString();
       const compiledScript = Program.new(contractScript).compile(optimize);
@@ -362,6 +362,7 @@ const Home: NextPage = (props) => {
     const contractScript = await response.text();
 
     const compiledScript = Program.new(contractScript).compile(optimize);
+    //console.log("prettyIR", Program.new(contractScript).prettyIR());
     const valAddr = Address.fromValidatorHash(true, compiledScript.validatorHash);
 
     // Currently not working in tx builder using changeAddr from wallet

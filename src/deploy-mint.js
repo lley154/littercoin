@@ -1,7 +1,7 @@
 import * as helios from "./helios.js"
 
 
-const mintLCSrc = await Deno.readTextFile("./src/mintLC.cs");
+const mintLCSrc = await Deno.readTextFile("./src/mintLC.hl");
 const programMintLC = helios.Program.new(mintLCSrc);
 const simplifyMintLC = false;
 const uplcProgramMintLC = programMintLC.compile(simplifyMintLC);

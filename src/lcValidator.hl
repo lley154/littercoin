@@ -21,7 +21,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #e0db2efbdc69be9f190d62f3a1b6d38d119e7a4622f80d11bfa56858
+const TT_MPH: ByteArray = #48da23fab203a72111096b5e5b67f8d99331efa1df843d7c16c51f0e
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -31,7 +31,7 @@ const ttVal : Value = Value::new(ttAssetclass, 1)
 
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #67fcf82bf28050e0fb1682d4eb9a0d6818a85d9e499273460650dafa
+const LC_MPH: ByteArray = #ebfe7fbeb3d4de7c220cf630d39202d15e9a7e2786696c3fe7adc202
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -71,12 +71,10 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // Verify that the total Ada amount from the datum and
                     // the thread token is the same as the output value
                     // locked at the validator address                   
-                    print("LCV1" + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show());
-                        tx.value_locked_by(vHash) == (ttVal + adaVal) &&
-                    (print("LCV2" + (addAdaDatumAmt > 2000000).show()); 
-                        addAdaDatumAmt > 2000000)
+                    (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV1: ") &&
+                    (addAdaDatumAmt > 2000000).trace("LCV2: ")
                 },
-                else => print("LCV3: invalid datum"); false
+                else => false.trace("LCV3: ")
             }
 
         },
@@ -93,18 +91,13 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // the thread token is the same as the output value
                     // locked at the validator address.  Also check the tx 
                     // is signed by the owner pkh                   
-                    print("LCV4: " + (adaDatumAmt == 0).show()); 
-                        adaDatumAmt == 0 && 
-                    (print("LCV5: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
-                        tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("LCV6: " + (tx.minted.contains(lcMintVal)).show()); 
-                        tx.minted.contains(lcMintVal)) && 
-                    (print("LCV7: " + (tx.is_signed_by(ownerPkh)).show()); 
-                        tx.is_signed_by(ownerPkh)) && 
-                    (print("LCV8: " + (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).show()); 
-                        0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount) 
+                    (adaDatumAmt == 0).trace("LCV4: ") && 
+                    (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV5: ") &&
+                    tx.minted.contains(lcMintVal).trace("LCV6: ") && 
+                    tx.is_signed_by(ownerPkh).trace("LCV7: ") &&  
+                    (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV8: ") 
                 },
-                else => print("LCV9: invalid datum"); false
+                else => false.trace("LCV9: " )
             }
         },
         red: Burn => {    
@@ -122,28 +115,22 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
                     
                     // Verify that the amount of littercoin burned is the actual amount
-                    // reduced by in the datum and also check that the Ada withdraw
+                    // reduced by in the datum.   Also check that the Ada withdraw
                     // is equal to the amount of Ada remanining in the datum output.
-                    // Also confirm that thread token is sent to back to the validator
+                    // Finally confirm that thread token is sent to back to the validator
                     // with correct Ada amount                   
-                    (print("LCV10: " + (adaDatumAmt == adaWithdraw).show()); 
-                        adaDatumAmt == adaWithdraw) &&
-                    (print("LCV11: " + (tx.value_locked_by(vHash) == (ttVal + adaVal)).show()); 
-                        tx.value_locked_by(vHash) == (ttVal + adaVal)) &&
-                    (print("LCV12: " + (tx.minted.contains(lcBurnVal)).show()); 
-                        tx.minted.contains(lcBurnVal)) &&
-                    (print("LCV13: " + (merchOutTxs.get(2).value.contains(minAda + merchVal)).show());
-                        merchOutTxs.get(2).value.contains(minAda + merchVal)) &&
-                    (print("LCV14: " + (merchOutTxs.get(1).value.contains(adaWithdrawVal)).show());
-                        merchOutTxs.get(1).value.contains(adaWithdrawVal))
+                    (adaDatumAmt == adaWithdraw).trace("LCV10: ") &&
+                    (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV11: ") &&
+                    tx.minted.contains(lcBurnVal).trace("LCV12: ") &&
+                    merchOutTxs.get(1).value.contains(adaWithdrawVal).trace("LCV13: ") &&
+                    merchOutTxs.get(2).value.contains(minAda + merchVal).trace("LCV14: ") 
+                    
 
-
-                    //(print("LCV13: " + (tx.value_sent_to(merchPkh).contains(minAda + merchVal)).show()); 
-                    //    tx.value_sent_to(merchPkh).contains(minAda + merchVal))
-                    //(print("LCV14: " + (tx.value_sent_to(merchPkh).contains(adaWithdrawVal)).show()); 
-                    //    tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
+                    // the following causes an error in cpu/mem estimates
+                    //tx.value_sent_to(merchPkh).contains(minAda + merchVal))
+                    //tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
                 },
-                else => print("LCV15: invalid datum"); false
+                else => false.trace("LCV15: ")
             }
         }
     }

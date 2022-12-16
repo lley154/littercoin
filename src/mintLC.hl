@@ -13,7 +13,7 @@ const minAda : Value = Value::lovelace(2000000)
 
 
 // Define thread token value
-const TT_MPH: ByteArray = #e0db2efbdc69be9f190d62f3a1b6d38d119e7a4622f80d11bfa56858
+const TT_MPH: ByteArray = #48da23fab203a72111096b5e5b67f8d99331efa1df843d7c16c51f0e
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -30,14 +30,12 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         red: Mint => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                print("MLC1: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
-                    tx.value_locked_by(vHash).contains(ttVal)
+                tx.value_locked_by(vHash).contains(ttVal).trace("MLC1: ")
         },
         red: Burn => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                print("MLC2: " + (tx.value_locked_by(vHash).contains(ttVal)).show()); 
-                    tx.value_locked_by(vHash).contains(ttVal)
+                tx.value_locked_by(vHash).contains(ttVal).trace("MLC2: ")
         }
     }
 }

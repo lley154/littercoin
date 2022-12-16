@@ -9,10 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@emurgo/cardano-serialization-lib-asmjs": "^10.0.4-beta.4",
-    "@hyperionbt/helios": "^0.9.3",
-    "buffer": "^6.0.3",
-    "lucid-cardano": "^0.7.9",
+    "@lley/helios": "github:lley154/Helios",
     "next": "12.3.1",
     "react": "18.2.0",
     "react-dom": "18.2.0"

@@ -6,7 +6,7 @@
 // Author:      Christian Schmitz
 // Email:       cschmitz398@gmail.com
 // Website:     github.com/hyperion-bt/helios
-// Version:     0.9.3
+// Version:     0.9.7
 // Last update: November 2022
 // License:     Unlicense
 //
@@ -202,7 +202,7 @@
 // Section 1: Global constants and vars
 ///////////////////////////////////////
 
-export const VERSION = "0.9.3"; // don't forget to change to version number at the top of this file, and in package.json
+export const VERSION = "0.9.7"; // don't forget to change to version number at the top of this file, and in package.json
 
 var DEBUG = false;
 
@@ -2468,16 +2468,23 @@ class IR {
  */
 class Source {
 	#raw;
+	#fileIndex;
 
 	/**
 	 * @param {string} raw 
+	 * @param {?number} fileIndex
 	 */
-	constructor(raw) {
+	constructor(raw, fileIndex = null) {
 		this.#raw = assertDefined(raw);
+		this.#fileIndex = fileIndex;
 	}
 
 	get raw() {
 		return this.#raw;
+	}
+
+	get fileIndex() {
+		return this.#fileIndex;
 	}
 
 	/**
@@ -2623,6 +2630,9 @@ export class UserError extends Error {
 		return new UserError(msg, src, pos);
 	}
 
+	/**
+	 * @type {Source}
+	 */
 	get src() {
 		return this.#src;
 	}
@@ -6892,6 +6902,15 @@ export class UplcProgram {
 	}
 
 	/**
+	 * @type {StakingValidatorHash}
+	 */
+	get stakingValidatorHash() {
+		assert(this.#purpose === null || this.#purpose === ScriptPurpose.Staking);
+
+		return new StakingValidatorHash(this.hash());
+	}
+
+	/**
 	 * @param {number[]} bytes 
 	 * @returns {UplcProgram}
 	 */
@@ -9982,7 +10001,7 @@ class Type extends EvalEntity {
 	 * @returns {number}
 	 */
 	nEnumMembers(site) {
-		throw site.typeError("not an enum type");
+		throw site.typeError(`'${this.toString()}' isn't an enum type`);
 	}
 
 	/**
@@ -10832,10 +10851,13 @@ class GlobalScope {
 		scope.set("Bool", new BoolType());
 		scope.set("String", new StringType());
 		scope.set("ByteArray", new ByteArrayType());
-		scope.set("PubKeyHash", new PubKeyHashType());
 		scope.set("PubKey", new PubKeyType());
+		scope.set("PubKeyHash", new PubKeyHashType());
+		scope.set("StakeKeyHash", new StakeKeyHashType());
+		scope.set("ScriptHash", new ScriptHashType());
 		scope.set("ValidatorHash", new ValidatorHashType(purpose));
 		scope.set("MintingPolicyHash", new MintingPolicyHashType(purpose));
+		scope.set("StakingValidatorHash", new StakingValidatorHashType(purpose));
 		scope.set("DatumHash", new DatumHashType());
 		scope.set("ScriptContext", new ScriptContextType(purpose));
 		scope.set("StakingPurpose", new StakingPurposeType());
@@ -10850,6 +10872,7 @@ class GlobalScope {
 		scope.set("TxOutputId", new TxOutputIdType());
 		scope.set("Address", new AddressType());
 		scope.set("Credential", new CredentialType());
+		scope.set("StakingHash", new StakingHashType());
 		scope.set("StakingCredential", new StakingCredentialType());
 		scope.set("Time", new TimeType());
 		scope.set("Duration", new DurationType());
@@ -11532,14 +11555,31 @@ class AssignExpr extends ValueExpr {
 			if (!upstreamVal.isInstanceOf(this.#upstreamExpr.site, type)) {
 				throw this.#upstreamExpr.typeError(`expected ${type.toString()}, got ${upstreamVal.toString()}`);
 			}
-		} else {
-			if (!(this.#upstreamExpr.isLiteral())) {
-				throw this.typeError("unable to infer type of assignment rhs");
+
+			upstreamVal = Instance.new(type);
+		} else if (this.#upstreamExpr.isLiteral()) {
+			// enum variant type resulting from a constructor-like associated function must be cast back into its enum type
+			if ((this.#upstreamExpr instanceof CallExpr &&
+				this.#upstreamExpr.fnExpr instanceof ValuePathExpr) || 
+				(this.#upstreamExpr instanceof ValuePathExpr && 
+				!this.#upstreamExpr.isZeroFieldConstructor())) 
+			{
+				let upstreamType = upstreamVal.getType(this.#upstreamExpr.site);
+
+				if (upstreamType instanceof StatementType && 
+					upstreamType.statement instanceof EnumMember) 
+				{
+					upstreamVal = Instance.new(new StatementType(upstreamType.statement.parent));
+				} else if (upstreamType instanceof BuiltinEnumMember) {
+					upstreamVal = Instance.new(upstreamType.parentType);
+				}
 			}
+		} else {
+			throw this.typeError("unable to infer type of assignment rhs");
 		}
 
 		subScope.set(this.#name, upstreamVal);
-
+		
 		let downstreamVal = this.#downstreamExpr.eval(subScope);
 
 		subScope.assertAllUsed();
@@ -12550,21 +12590,43 @@ class ValuePathExpr extends ValueExpr {
 		this.#isRecursiveFunc = false;
 	}
 
+	/**
+	 * @type {Type}
+	 */
+	get baseType() {
+		return this.#baseTypeExpr.type;
+	}
+
 	toString() {
 		return `${this.#baseTypeExpr.toString()}::${this.#memberName.toString()}`;
 	}
 
-	/**
-	 * Returns true if ValuePathExpr constructs a literal enum member with zero fields
-	 * @returns {boolean}
-	 */
-	isLiteral() {
-		let type = this.value.getType(this.site);
+	isZeroFieldConstructor() {
+		let type = this.type;
 
-		if (type instanceof StatementType && type.statement instanceof EnumMember) {
+		if (type instanceof StatementType && type.statement instanceof EnumMember && type.statement.name.value === this.#memberName.value) {
 			return true;
 		} else {
 			return false;
+		}
+	}
+
+	/**
+	 * Returns true if ValuePathExpr constructs a literal enum member with zero field or
+	 * if this baseType is also a baseType of the returned value
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		if (this.isZeroFieldConstructor()) {
+			return true;
+		} else {
+			let type = this.type;
+
+			if (this.baseType.isBaseOf(this.site, type)) {
+				return true;
+			} else {
+				return false;
+			}
 		}
 	}
 
@@ -12934,8 +12996,20 @@ class CallExpr extends ValueExpr {
 		this.#argExprs = argExprs;
 	}
 
+	get fnExpr() {
+		return this.#fnExpr;
+	}
+
 	toString() {
 		return `${this.#fnExpr.toString()}(${this.#argExprs.map(a => a.toString()).join(", ")})`;
+	}
+
+	isLiteral() {
+		if (this.#fnExpr instanceof ValuePathExpr && this.#fnExpr.baseType.isBaseOf(this.site, this.type)) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
@@ -14058,7 +14132,7 @@ class DataDefinition extends Statement {
 	 * @returns {number}
 	 */
 	nEnumMembers(site) {
-		throw site.typeError("not an enum type");
+		throw site.typeError(`'${this.name.value}' isn't an enum type`);
 	}
 
 	/**
@@ -14422,6 +14496,9 @@ class EnumMember extends DataDefinition {
 		this.#constrIndex = i;
 	}
 	
+	/**
+	 * @type {EnumStatement}
+	 */
 	get parent() {
 		if (this.#parent === null) {
 			throw new Error("parent not yet registered");
@@ -14840,10 +14917,11 @@ class Module {
 
 	/**
 	 * @param {string} rawSrc
+	 * @param {?number} fileIndex - a unique optional index passed in from outside that makes it possible to associate a UserError with a specific file
 	 * @returns {Module}
 	 */
-	static new(rawSrc) {
-		let src = new Source(rawSrc);
+	static new(rawSrc, fileIndex = null) {
+		let src = new Source(rawSrc, fileIndex);
 
 		let ts = tokenize(src);
 
@@ -15046,7 +15124,7 @@ export class Program {
 	 * @returns {[purpose, Module[]]}
 	 */
 	static parseMain(rawSrc) {
-		let src = new Source(rawSrc);
+		let src = new Source(rawSrc, 0);
 
 		let ts = tokenize(src);
 
@@ -15087,7 +15165,7 @@ export class Program {
 	 * @returns {Module[]}
 	 */
 	static parseImports(mainName, moduleSrcs = []) {
-		let imports = moduleSrcs.map(src => Module.new(src));
+		let imports = moduleSrcs.map((src, i) => Module.new(src, i+1));
 
 		/**
 		 * @type {Set<string>}
@@ -15098,7 +15176,7 @@ export class Program {
 
 		for (let m of imports) {
 			if (names.has(m.name.value)) {
-				throw m.name.syntaxError(`non-unique module name ${m.name.value}`);
+				throw m.name.syntaxError(`non-unique module name '${m.name.value}'`);
 			}
 
 			names.add(m.name.value);
@@ -17541,6 +17619,8 @@ class BoolType extends BuiltinType {
 				return Instance.new(new FuncType([], new IntType()));
 			case "show":
 				return Instance.new(new FuncType([], new StringType()));
+			case "trace":
+				return Instance.new(new FuncType([new StringType()], new BoolType()));
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -17735,6 +17815,8 @@ class ListType extends BuiltinType {
 					}
 				});
 			}
+			case "sort":
+				return Instance.new(new FuncType([new FuncType([this.#itemType, this.#itemType], new BoolType())], new ListType(this.#itemType)));
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -17818,6 +17900,30 @@ class MapType extends BuiltinType {
 				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], this));
 			case "filter_by_value":
 				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], this));
+			/*case "find": { // the following functions won't work well as long as unused vars aren't allowed
+				let a = new ParamType("a");
+
+				return new ParamFuncValue([a], new FuncType([
+					new FuncType([this.#keyType, this.#valueType], new BoolType()), 
+					new FuncType([this.#keyType, this.#valueType], a)
+				], a));
+			}
+			case "find_safe": {
+				let a = new ParamType("a");
+
+				return new ParamFuncValue([a], new FuncType([
+					new FuncType([this.#keyType, this.#valueType], new BoolType()), 
+					new FuncType([this.#keyType, this.#valueType], a)
+				], new OptionType(a)));
+			}*/
+			case "find_key":
+				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], this.#keyType));
+			case "find_key_safe":
+				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], new OptionType(this.#keyType)));
+			case "find_value":
+				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], this.#valueType));
+			case "find_value_safe":
+				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], new OptionType(this.#valueType)));
 			case "fold": {
 				let a = new ParamType("a");
 				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#keyType, this.#valueType], a), a], a));
@@ -17864,6 +17970,12 @@ class MapType extends BuiltinType {
 					}
 				});
 			}
+			case "sort":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType, this.#keyType, this.#valueType], new BoolType())], new MapType(this.#keyType, this.#valueType)));
+			case "sort_by_key":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#keyType], new BoolType())], new MapType(this.#keyType, this.#valueType)));
+			case "sort_by_value":
+				return Instance.new(new FuncType([new FuncType([this.#valueType, this.#valueType], new BoolType())], new MapType(this.#keyType, this.#valueType)));
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -18316,7 +18428,7 @@ class HashType extends BuiltinType {
 	}
 
 	get path() {
-		return "__helios__hash"
+		return "__helios__hash";
 	}
 }
 
@@ -18330,9 +18442,18 @@ class PubKeyHashType extends HashType {
 }
 
 /**
+ * Builtin StakeKeyHash type
+ */
+class StakeKeyHashType extends HashType {
+	toString() {
+		return "StakeKeyHash";
+	}
+}
+
+/**
  * Builtin PubKey type
  */
- class PubKeyType extends BuiltinType {
+class PubKeyType extends BuiltinType {
 	toString() {
 		return "PubKey";
 	}
@@ -18371,6 +18492,24 @@ class PubKeyHashType extends HashType {
 }
 
 /**
+ * Generalization of ValidatorHash type and MintingPolicyHash type
+ * Must be cast before being able to use the Hash type methods
+ */
+class ScriptHashType extends BuiltinType {
+	constructor() {
+		super();
+	}
+
+	toString() {
+		return "ScriptHash";
+	}
+
+	get path() {
+		return "__helios__scripthash";
+	}
+}
+
+/**
  * Builtin ValidatorHash type
  */
 class ValidatorHashType extends HashType {
@@ -18400,6 +18539,8 @@ class ValidatorHashType extends HashType {
 				} else {
 					throw name.referenceError("'ValidatorHash::CURRENT' can only be used after 'main'");
 				}
+			case "from_script_hash":
+				return Instance.new(new FuncType([new ScriptHashType()], new ValidatorHashType()));
 			default:
 				return super.getTypeMember(name);
 		}
@@ -18440,6 +18581,8 @@ class MintingPolicyHashType extends HashType {
 				} else {
 					throw name.referenceError("'MintingPolicyHash::CURRENT' can only be used after 'main'");
 				}
+			case "from_script_hash":
+				return Instance.new(new FuncType([new ScriptHashType()], new MintingPolicyHashType()));
 			default:
 				return super.getTypeMember(name);
 		}
@@ -18447,6 +18590,48 @@ class MintingPolicyHashType extends HashType {
 
 	toString() {
 		return "MintingPolicyHash";
+	}
+}
+
+/**
+ * Builtin StakingValidatorHash type
+ */
+class StakingValidatorHashType extends HashType {
+	#purpose;
+
+	/**
+	 * @param {number} purpose 
+	 */
+	constructor(purpose = -1) {
+		super();
+		this.#purpose = purpose;
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {EvalEntity}
+	 */
+	 getTypeMember(name) {
+		switch (name.value) {
+			case "CURRENT":
+				if (this.macrosAllowed) {
+					if (this.#purpose == ScriptPurpose.Staking) {
+						return Instance.new(this);
+					} else {
+						throw name.referenceError("'StakingValidatorHash::CURRENT' only available in minting script");
+					}
+				} else {
+					throw name.referenceError("'StakingValidatorHash::CURRENT' can only be used after 'main'");
+				}
+			case "from_script_hash":
+				return Instance.new(new FuncType([new ScriptHashType()], new StakingValidatorHashType()));
+			default:
+				return super.getTypeMember(name);
+		}
+	}
+
+	toString() {
+		return "StakingValidatorHash";
 	}
 }
 
@@ -19365,6 +19550,8 @@ class TxOutputType extends BuiltinType {
 				return Instance.new(new ValueType());
 			case "datum":
 				return Instance.new(new OutputDatumType());
+			case "ref_script_hash":
+				return Instance.new(new OptionType(new ScriptHashType()));
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -19757,6 +19944,135 @@ class CredentialValidatorType extends BuiltinEnumMember {
 }
 
 /**
+ * Builtin StakingHash type
+ */
+class StakingHashType extends BuiltinType {
+	toString() {
+		return "StakingHash";
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @param {Type} type 
+	 * @returns {boolean}
+	 */
+	isBaseOf(site, type) {
+		let b = super.isBaseOf(site, type) ||
+				(new StakingHashStakeKeyType()).isBaseOf(site, type) || 
+				(new StakingHashValidatorType()).isBaseOf(site, type); 
+
+		return b;
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name) {
+		switch (name.value) {
+			case "StakeKey":
+				return new StakingHashStakeKeyType();
+			case "Validator":
+				return new StakingHashValidatorType();
+			case "new_stakekey":
+				return Instance.new(new FuncType([new StakeKeyHashType()], new StakingHashStakeKeyType()));
+			case "new_validator":
+				return Instance.new(new FuncType([new StakingValidatorHashType()], new StakingHashValidatorType()));
+			default:
+				return super.getTypeMember(name);
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	nEnumMembers(site) {
+		return 2;
+	}
+
+	get path() {
+		return "__helios__stakinghash";
+	}
+}
+
+/**
+ * Builtin StakingHash::StakeKey
+ */
+class StakingHashStakeKeyType extends BuiltinEnumMember {
+	constructor() {
+		super(new StakingHashType());
+	}
+
+	toString() {
+		return "StakingHash::StakeKey";
+	}
+	
+	/**
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "hash":
+				return Instance.new(new StakeKeyHashType());
+			default:
+				return super.getInstanceMember(name);
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	getConstrIndex(site) {
+		return 0;
+	}
+
+	get path() {
+		return "__helios__stakinghash__stakekey";
+	}
+}
+
+/**
+ * Builtin StakingHash::Validator type
+ */
+class StakingHashValidatorType extends BuiltinEnumMember {
+	constructor() {
+		super(new StakingHashType());
+	}
+
+	toString() {
+		return "StakingHash::Validator";
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "hash":
+				return Instance.new(new StakingValidatorHashType());
+			default:
+				return super.getInstanceMember(name);
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	getConstrIndex(site) {
+		return 1;
+	}
+
+	get path() {
+		return "__helios__stakinghash__validator";
+	}
+}
+
+/**
  * Builtin StakingCredential type
  */
 class StakingCredentialType extends BuiltinType {
@@ -19788,7 +20104,7 @@ class StakingCredentialType extends BuiltinType {
 			case "Ptr":
 				return new StakingPtrCredentialType();
 			case "new_hash":
-				return Instance.new(new FuncType([new CredentialType()], new StakingHashCredentialType()));
+				return Instance.new(new FuncType([new StakingHashType()], new StakingHashCredentialType()));
 			case "new_ptr":
 				return Instance.new(new FuncType([new IntType(), new IntType(), new IntType()], new StakingPtrCredentialType()));
 			default:
@@ -19812,7 +20128,7 @@ class StakingCredentialType extends BuiltinType {
 /**
  * Builtin StakingCredential::Hash
  */
- class StakingHashCredentialType extends BuiltinEnumMember {
+class StakingHashCredentialType extends BuiltinEnumMember {
 	constructor() {
 		super(new StakingCredentialType());
 	}
@@ -19827,6 +20143,8 @@ class StakingCredentialType extends BuiltinType {
 	 */
 	getInstanceMember(name) {
 		switch (name.value) {
+			case "hash":
+				return Instance.new(new StakingHashType());
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -19848,7 +20166,7 @@ class StakingCredentialType extends BuiltinType {
 /**
  * Builtin StakingCredential::Ptr
  */
- class StakingPtrCredentialType extends BuiltinEnumMember {
+class StakingPtrCredentialType extends BuiltinEnumMember {
 	constructor() {
 		super(new StakingCredentialType());
 	}
@@ -20099,10 +20417,14 @@ class ValueType extends BuiltinType {
 				return Instance.new(new FuncType([], new BoolType()));
 			case "get":
 				return Instance.new(new FuncType([new AssetClassType()], new IntType()));
+			case "get_safe":
+				return Instance.new(new FuncType([new AssetClassType()], new IntType()));
 			case "get_policy":
 				return Instance.new(new FuncType([new MintingPolicyHashType()], new MapType(new ByteArrayType(), new IntType())));
 			case "contains_policy":
 				return Instance.new(new FuncType([new MintingPolicyHashType()], new BoolType()));
+			case "to_map":
+				return Instance.new(new FuncType([], new MapType(new MintingPolicyHashType(), new MapType(new ByteArrayType(), new IntType()))));
 			default:
 				return super.getInstanceMember(name);
 		}
@@ -20426,7 +20748,7 @@ function makeRawFunctions() {
 		__helios__common__filter(self, fn, __core__mkNilPairData(()))
 	}`));
 	add(new RawFunc("__helios__common__find",
-	`(self, fn) -> {
+	`(self, fn, callback) -> {
 		(recurse) -> {
 			recurse(recurse, self, fn)
 		}(
@@ -20437,7 +20759,7 @@ function makeRawFunctions() {
 					() -> {
 						__core__ifThenElse(
 							fn(__core__headList(self)), 
-							() -> {__core__headList(self)}, 
+							() -> {callback(__core__headList(self))}, 
 							() -> {recurse(recurse, __core__tailList(self), fn)}
 						)()
 					}
@@ -20446,7 +20768,7 @@ function makeRawFunctions() {
 		)
 	}`));
 	add(new RawFunc("__helios__common__find_safe",
-	`(self, fn) -> {
+	`(self, fn, callback) -> {
 		(recurse) -> {
 			recurse(recurse, self, fn)
 		}(
@@ -20457,7 +20779,7 @@ function makeRawFunctions() {
 					() -> {
 						__core__ifThenElse(
 							fn(__core__headList(self)), 
-							() -> {__core__constrData(0, __helios__common__list_1(__core__headList(self)))}, 
+							() -> {__core__constrData(0, __helios__common__list_1(callback(__core__headList(self))))}, 
 							() -> {recurse(recurse, __core__tailList(self), fn)}
 						)()
 					}
@@ -20475,6 +20797,46 @@ function makeRawFunctions() {
 					__core__nullList(self), 
 					() -> {z}, 
 					() -> {recurse(recurse, __core__tailList(self), fn, fn(z, __core__headList(self)))}
+				)()
+			}
+		)
+	}`));
+	add(new RawFunc("__helios__common__insert_in_sorted",
+	`(x, lst, comp) -> {
+		(recurse) -> {
+			recurse(recurse, lst)
+		}(
+			(recurse, lst) -> {
+				__core__ifThenElse(
+					__core__nullList(lst),
+					() -> {__core__mkCons(x, lst)},
+					() -> {
+						(head) -> {
+							__core__ifThenElse(
+								comp(x, head),
+								() -> {__core__mkCons(x, lst)},
+								() -> {__core__mkCons(head, recurse(recurse, __core__tailList(lst)))}
+							)()
+						}(__core__headList(lst))
+					}
+				)()
+			}
+		)
+	}`));
+	add(new RawFunc("__helios__common__sort", 
+	`(lst, comp) -> {
+		(recurse) -> {
+			recurse(recurse, lst)
+		}(
+			(recurse, lst) -> {
+				__core__ifThenElse(
+					__core__nullList(lst),
+					() -> {lst},
+					() -> {
+						(head, tail) -> {
+							__helios__common__insert_in_sorted(head, tail, comp)
+						}(__core__headList(lst), recurse(recurse, __core__tailList(lst)))
+					}
 				)()
 			}
 		)
@@ -21040,6 +21402,19 @@ function makeRawFunctions() {
 			__helios__common__stringData(__core__ifThenElse(self, "true", "false"))
 		}
 	}`));
+	add(new RawFunc("__helios__bool__trace",
+	`(self) -> {
+		(prefix) -> {
+			__core__trace(
+				__helios__common__unStringData(
+					__helios__string____add(prefix)(
+						__helios__bool__show(self)()
+					)
+				), 
+				self
+			)
+		}
+	}`));
 
 
 	// String builtins
@@ -21287,8 +21662,7 @@ function makeRawFunctions() {
 	`(self) -> {
 		(self) -> {
 			(fn) -> {
-				__helios__common__find(self, fn)
-				
+				__helios__common__find(self, fn, __helios__common__identity)
 			}
 		}(__core__unListData(self))
 	}`));
@@ -21296,10 +21670,10 @@ function makeRawFunctions() {
 	`(self) -> {
 		(self) -> {
 			(fn) -> {
-				__helios__common__find_safe(self, fn)
+				__helios__common__find_safe(self, fn, __helios__common__identity)
 			}
 		}(__core__unListData(self))
-	}`))
+	}`));
 	add(new RawFunc("__helios__list__filter",
 	`(self) -> {
 		(self) -> {
@@ -21333,6 +21707,14 @@ function makeRawFunctions() {
 				}
 			)
 		}
+	}`));
+	add(new RawFunc("__helios__list__sort",
+	`(self) -> {
+		(self) -> {
+			(comp) -> {
+				__core__listData(__helios__common__sort(self, comp))
+			}
+		}(__core__unListData(self))
 	}`));
 	add(new RawFunc("__helios__boollist__new", 
 	`(n, fn) -> {
@@ -21453,6 +21835,20 @@ function makeRawFunctions() {
 				}
 			)
 		}
+	}`));
+	add(new RawFunc("__helios__boollist__sort",
+	`(self) -> {
+		(self) -> {
+			(comp) -> {
+				(comp) -> {
+					__core__listData(__helios__common__sort(self, comp))
+				}(
+					(a, b) -> {
+						comp(__helios__common__unBoolData(a), __helios__common__unBoolData(b))
+					}
+				)
+			}
+		}(__core__unListData(self))
 	}`));
 
 
@@ -21627,6 +22023,118 @@ function makeRawFunctions() {
 			}
 		}(__core__unMapData(self))
 	}`));
+	add(new RawFunc("__helios__map__find",
+	`(self) -> {
+		(self) -> {
+			(fn, callback) -> {
+				(fn) -> {
+					__helios__common__find(
+						self, 
+						fn,
+						(result) -> {
+							callback(__core__fstPair(result), __core__sndPair(result))
+						}	
+					)
+				}(
+					(pair) -> {
+						fn(__core__fstPair(pair), __core__sndPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__find_safe",
+	`(self) -> {
+		(self) -> {
+			(fn, callback) -> {
+				(fn) -> {
+					__helios__common__find_safe(
+						self,
+						fn,
+						(result) -> {
+							callback(__core__fstPair(result), __core__sndPair(result))
+						}
+					)
+				}(
+					(pair) -> {
+						fn(__core__fstPair(pair), __core__sndPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__find_key",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find(
+						self, 
+						fn,
+						__core__fstPair
+					)
+				}(
+					(pair) -> {
+						fn(__core__fstPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__find_key_safe",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find_safe(
+						self,
+						fn,
+						__core__fstPair
+					)
+				}(
+					(pair) -> {
+						fn(__core__fstPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__find_value",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find(
+						self, 
+						fn,
+						__core__sndPair
+					)
+				}(
+					(pair) -> {
+						fn(__core__sndPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__find_value_safe",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find_safe(
+						self,
+						fn,
+						__core__sndPair
+					)
+				}(
+					(pair) -> {
+						fn(__core__sndPair(pair))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
 	add(new RawFunc("__helios__map__map",
 	`(self) -> {
 		(self) -> {
@@ -21716,6 +22224,48 @@ function makeRawFunctions() {
 			}
 		}(__core__unMapData(self))
 	}`));
+	add(new RawFunc("__helios__map__sort",
+	`(self) -> {
+		(self) -> {
+			(comp) -> {
+				(comp) -> {
+					__core__mapData(__helios__common__sort(self, comp))
+				}(
+					(a, b) -> {
+						comp(__core__fstPair(a), __core__sndPair(a), __core__fstPair(b), __core__sndPair(b))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__sort_by_key",
+	`(self) -> {
+		(self) -> {
+			(comp) -> {
+				(comp) -> {
+					__core__mapData(__helios__common__sort(self, comp))
+				}(
+					(a, b) -> {
+						comp(__core__fstPair(a), __core__fstPair(b))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__sort_by_value",
+	`(self) -> {
+		(self) -> {
+			(comp) -> {
+				(comp) -> {
+					__core__mapData(__helios__common__sort(self, comp))
+				}(
+					(a, b) -> {
+						comp(__core__sndPair(a), __core__sndPair(b))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
 	add(new RawFunc("__helios__boolmap____eq", "__helios__map____eq"));
 	add(new RawFunc("__helios__boolmap____neq", "__helios__map____neq"));
 	add(new RawFunc("__helios__boolmap__serialize", "__helios__map__serialize"));
@@ -21792,6 +22342,78 @@ function makeRawFunctions() {
 			)
 		}
 	}`));
+	add(new RawFunc("__helios__boolmap__find",
+	`(self) -> {
+		(fn, callback) -> {
+			(fn, callback) -> {
+				__helios__map__find(self)(fn, callback)
+			}(
+				(a, b) -> {
+					fn(a, __helios__common__unBoolData(b))
+				},
+				(a, b) -> {
+					callback(a, __helios__common__unBoolData(b))
+				}
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__boolmap__find_safe",
+	`(self) -> {
+		(fn, callback) -> {
+			(fn, callback) -> {
+				__helios__map__find_safe(self)(fn, callback)
+			}(
+				(a, b) -> {
+					fn(a, __helios__common__unBoolData(b))
+				},
+				(a, b) -> {
+					callback(a, __helios__common__unBoolData(b))
+				}
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__boolmap__find_key", "__helios__map__find_key"));
+	add(new RawFunc("__helios__boolmap__find_key_safe", "__helios__map__find_key_safe"));
+	add(new RawFunc("__helios__boolmap__find_value",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find(
+						self, 
+						fn,
+						(result) -> {
+							__helios__common__unBoolData(__core__sndPair(result))
+						}	
+					)
+				}(
+					(pair) -> {
+						fn(__helios__common__unBoolData(__core__sndPair(pair)))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__boolmap__find_value_safe",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(fn) -> {
+					__helios__common__find_safe(
+						self, 
+						fn,
+						(result) -> {
+							__core__sndPair(result)
+						}	
+					)
+				}(
+					(pair) -> {
+						fn(__helios__common__unBoolData(__core__sndPair(pair)))
+					}
+				)
+			}
+		}(__core__unMapData(self))
+	}`));
 	add(new RawFunc("__helios__boolmap__map",
 	`(self) -> {
 		(fn) -> {
@@ -21843,6 +22465,31 @@ function makeRawFunctions() {
 					fn(prev, __helios__common__unBoolData(value))
 				},
 				z
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__boolmap__sort",
+	`(self) -> {
+		(comp) -> {
+			(comp) -> {
+				__helios__map__sort(self)(comp)
+			}(
+				(ak, av, bk, bv) -> {
+					comp(ak, __helios__common__unBoolData(av), bk, __helios__common__unBoolData(bv))
+				}
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__boolmap__sort_by_key", "__helios__map__sort_by_key"));
+	add(new RawFunc("__helios__boolmap__sort_by_value",
+	`(self) -> {
+		(comp) -> {
+			(comp) -> {
+				__helios__map__sort_by_value(self)(comp)
+			}(
+				(a, b) -> {
+					comp(__helios__common__unBoolData(a), __helios__common__unBoolData(b))
+				}
 			)
 		}
 	}`));
@@ -21924,6 +22571,11 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__hash__new", `__helios__common__identity`));
 	add(new RawFunc("__helios__hash__show", "__helios__bytearray__show"));
 	add(new RawFunc("__helios__hash__CURRENT", "__core__bData(#0000000000000000000000000000000000000000000000000000000000000000)"));
+	add(new RawFunc("__helios__hash__from_script_hash", "__helios__common__identity"));
+
+	
+	// ScriptHash builtin
+	addDataFuncs("__helios__scripthash");
 
 
 	// PubKey builtin
@@ -22031,6 +22683,7 @@ function makeRawFunctions() {
 	// StakingPurpose::Certifying builtins
 	addEnumDataFuncs("__helios__stakingpurpose__certifying");
 	add(new RawFunc("__helios__stakingpurpose__certifying__dcert", "__helios__common__field_0"));
+
 
 	// ScriptPurpose builtins
 	addDataFuncs("__helios__scriptpurpose");
@@ -22158,10 +22811,12 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__tx__find_datum_hash",
 	`(self) -> {
 		(datum) -> {
-			__core__fstPair(__helios__common__find(__core__unMapData(__helios__tx__datums(self)),
+			__core__fstPair(__helios__common__find(
+				__core__unMapData(__helios__tx__datums(self)),
 				(pair) -> {
 					__core__equalsData(__core__sndPair(pair), datum)
-				}
+				},
+				__helios__common__identity
 			))
 		}
 	}`));
@@ -22351,6 +23006,7 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__txoutput__address", "__helios__common__field_0"));
 	add(new RawFunc("__helios__txoutput__value", "__helios__common__field_1"));
 	add(new RawFunc("__helios__txoutput__datum", "__helios__common__field_2"));
+	add(new RawFunc("__helios__txoutput__ref_script_hash", "__helios__common__field_3"));
 	add(new RawFunc("__helios__txoutput__get_datum_hash",
 	`(self) -> {
 		() -> {
@@ -22522,6 +23178,26 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__credential__validator__hash", "__helios__common__field_0"));
 
 
+	// StakingHash builtins
+	addDataFuncs("__helios__stakinghash");
+	add(new RawFunc("__helios__stakinghash__new_stakekey", "__helios__credential__new_pubkey"));
+	add(new RawFunc("__helios__stakinghash__new_validator", "__helios__credential__new_validator"));
+	add(new RawFunc("__helios__stakinghash__is_stakekey", "__helios__credential__is_stakekey"));
+	add(new RawFunc("__helios__stakinghash__is_validator", "__helios__credential__is_validator"));
+
+
+	// StakingHash::StakeKey builtins
+	addEnumDataFuncs("__helios__stakinghash__stakekey");
+	add(new RawFunc("__helios__stakinghash__stakekey__cast", "__helios__credential__pubkey__cast"));
+	add(new RawFunc("__helios__stakinghash__stakekey__hash", "__helios__credential__pubkey__hash"));
+
+
+	// StakingHash::Validator builtins
+	addEnumDataFuncs("__helios__stakinghash__validator");
+	add(new RawFunc("__helios__stakinghash__validator__cast", "__helios__credential__validator__cast"));
+	add(new RawFunc("__helios__stakinghash__validator__hash", "__helios__credential__validator__hash"));
+
+
 	// StakingCredential builtins
 	addDataFuncs("__helios__stakingcredential");
 	add(new RawFunc("__helios__stakingcredential__new_hash", 
@@ -22536,6 +23212,7 @@ function makeRawFunctions() {
 	
 	// StakingCredential::Hash builtins
 	addEnumDataFuncs("__helios__stakingcredential__hash");
+	add(new RawFunc("__helios__stakingcredential__hash__hash", "__helios__common__field_0"));
 
 
 	// StakingCredential::Ptr builtins
@@ -22804,6 +23481,7 @@ function makeRawFunctions() {
 		)()
 	}`));
 	add(new RawFunc("__helios__value__from_map", "__helios__common__identity"));
+	add(new RawFunc("__helios__value__to_map", "__helios__common__identity"));
 	add(new RawFunc("__helios__value__get_map_keys",
 	`(map) -> {
 		(recurse) -> {
@@ -23161,6 +23839,42 @@ function makeRawFunctions() {
 						__core__ifThenElse(
 							__core__nullList(map), 
 							() -> {__core__error("tokenName not found")}, 
+							() -> {
+								__core__ifThenElse(
+									__core__equalsData(__core__fstPair(__core__headList(map)), tokenName),
+									() -> {__core__sndPair(__core__headList(map))},
+									() -> {inner(inner, __core__tailList(map))}
+								)()
+							}
+						)()
+					}
+				)
+			}(__core__unMapData(self), __helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
+		}
+	}`));
+	add(new RawFunc("__helios__value__get_safe",
+	`(self) -> {
+		(assetClass) -> {
+			(map, mintingPolicyHash, tokenName) -> {
+				(outer, inner) -> {
+					outer(outer, inner, map)
+				}(
+					(outer, inner, map) -> {
+						__core__ifThenElse(
+							__core__nullList(map), 
+							() -> {__core__iData(0)}, 
+							() -> {
+								__core__ifThenElse(
+									__core__equalsData(__core__fstPair(__core__headList(map)), mintingPolicyHash), 
+									() -> {inner(inner, __core__unMapData(__core__sndPair(__core__headList(map))))}, 
+									() -> {outer(outer, inner, __core__tailList(map))}
+								)()
+							}
+						)()
+					}, (inner, map) -> {
+						__core__ifThenElse(
+							__core__nullList(map), 
+							() -> {__core__iData(0)}, 
 							() -> {
 								__core__ifThenElse(
 									__core__equalsData(__core__fstPair(__core__headList(map)), tokenName),
@@ -27193,7 +27907,7 @@ class TxBody extends CborData {
 	 * @param {NetworkParams} networkParams
 	 * @param {Redeemer[]} redeemers
 	 * @param {ListData} datums 
-	 * @param {Hash} txId
+	 * @param {TxId} txId
 	 * @returns {ConstrData}
 	 */
 	toTxData(networkParams, redeemers, datums, txId) {
@@ -27227,7 +27941,7 @@ class TxBody extends CborData {
 	toScriptContextData(networkParams, redeemers, datums, redeemerIdx) {		
 		return new ConstrData(0, [
 			// tx (we can't know the txId right now, because we don't know the execution costs yet, but a dummy txId should be fine)
-			this.toTxData(networkParams, redeemers, datums, Hash.dummy()),
+			this.toTxData(networkParams, redeemers, datums, TxId.dummy()),
 			redeemers[redeemerIdx].toScriptPurposeData(this),
 		]);
 	}
@@ -27830,7 +28544,7 @@ export class TxWitnesses extends CborData {
 }
 
 class TxInput extends CborData {
-	/** @type {Hash} */
+	/** @type {TxId} */
 	#txId;
 
 	/** @type {bigint} */
@@ -27840,7 +28554,7 @@ class TxInput extends CborData {
 	#origOutput;
 
 	/**
-	 * @param {Hash} txId 
+	 * @param {TxId} txId 
 	 * @param {bigint} utxoIdx 
 	 * @param {?TxOutput} origOutput - used during building, not part of serialization
 	 */
@@ -27851,10 +28565,16 @@ class TxInput extends CborData {
 		this.#origOutput = origOutput;
 	}
 	
+	/**
+	 * @type {TxId}
+	 */
 	get txId() {
 		return this.#txId;
 	}
 
+	/**
+	 * @type {bigint}
+	 */
 	get utxoIdx() {
 		return this.#utxoIdx;
 	}
@@ -27925,7 +28645,7 @@ class TxInput extends CborData {
 	 * @returns {TxInput}
 	 */
 	static fromCbor(bytes) {
-		/** @type {?Hash} */
+		/** @type {?TxId} */
 		let txId = null;
 
 		/** @type {?bigint} */
@@ -27934,7 +28654,7 @@ class TxInput extends CborData {
 		CborData.decodeTuple(bytes, (i, fieldBytes) => {
 			switch(i) {
 				case 0:
-					txId = Hash.fromCbor(fieldBytes);
+					txId = TxId.fromCbor(fieldBytes);
 					break;
 				case 1:
 					utxoIdx = CborData.decodeInteger(fieldBytes);
@@ -28249,7 +28969,7 @@ export class TxOutput extends CborData {
 						value = Value.fromCbor(fieldBytes);
 						break;
 					case 2:
-						outputDatum = new HashedDatum(Hash.fromCbor(fieldBytes));
+						outputDatum = new HashedDatum(DatumHash.fromCbor(fieldBytes));
 						break;
 					default:
 						throw new Error("unrecognized field");
@@ -28383,6 +29103,10 @@ export class Address extends CborData {
 		this.#bytes = bytes;
 	}
 
+	get bytes() {
+		return this.#bytes.slice();
+	}
+
 	toCbor() {
 		return CborData.encodeBytes(this.#bytes);
 	}
@@ -28401,9 +29125,13 @@ export class Address extends CborData {
 	 */
 	static fromBech32(str) {
 		// ignore the prefix (encoded in the bytes anyway)
-		let [_, bytes] = Crypto.decodeBech32(str);
+		let [prefix, bytes] = Crypto.decodeBech32(str);
 
-		return new Address(bytes);
+		let result = new Address(bytes);
+
+		assert(prefix == (result.isForTestnet() ? "addr_test" : "addr"), "invalid Address prefix");
+
+		return result;
 	}
 
 	/**
@@ -28427,14 +29155,21 @@ export class Address extends CborData {
 	 * Simple payment address without a staking part
 	 * @param {boolean} isTestnet
 	 * @param {PubKeyHash} hash
-	 * @param {?Hash} stakingHash
+	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
 	 * @returns {Address}
 	 */
 	static fromPubKeyHash(isTestnet, hash, stakingHash = null) {
 		if (stakingHash !== null) {
-			return new Address(
-				[isTestnet ? 0x00 : 0x01].concat(hash.bytes).concat(stakingHash.bytes)
-			);
+			if (stakingHash instanceof StakeKeyHash) {
+				return new Address(
+					[isTestnet ? 0x00 : 0x01].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			} else {
+				assert(stakingHash instanceof StakingValidatorHash);
+				return new Address(
+					[isTestnet ? 0x20 : 0x21].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			}
 		} else {
 			return new Address([isTestnet ? 0x60 : 0x61].concat(hash.bytes));
 		}
@@ -28445,14 +29180,21 @@ export class Address extends CborData {
 	 * Only relevant for validator scripts
 	 * @param {boolean} isTestnet
 	 * @param {ValidatorHash} hash
-	 * @param {?Hash} stakingHash
+	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
 	 * @returns {Address}
 	 */
 	static fromValidatorHash(isTestnet, hash, stakingHash = null) {
 		if (stakingHash !== null) {
-			return new Address(
-				[isTestnet ? 0x10 : 0x11].concat(hash.bytes).concat(stakingHash.bytes)
-			);
+			if (stakingHash instanceof StakeKeyHash) {
+				return new Address(
+					[isTestnet ? 0x10 : 0x11].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			} else {
+				assert(stakingHash instanceof StakingValidatorHash);
+				return new Address(
+					[isTestnet ? 0x30 : 0x31].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			}
 		} else {
 			return new Address([isTestnet ? 0x70 : 0x71].concat(hash.bytes));
 		}
@@ -28585,6 +29327,79 @@ export class Address extends CborData {
 	}
 }
 
+/**
+ * Convenience address that is to query all assets controlled by a given StakeHash (can be scriptHash or regular stakeHash)
+ */
+export class StakeAddress extends Address {
+	/**
+	 * @param {number[]} bytes
+	 * @returns {StakeAddress}
+	 */
+	static fromCbor(bytes) {
+		return new StakeAddress(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {string} str
+	 * @returns {StakeAddress}
+	 */
+	static fromBech32(str) {
+		let [prefix, bytes] = Crypto.decodeBech32(str);
+
+		let result = new StakeAddress(bytes);
+
+		assert(prefix == (result.isForTestnet() ? "stake_test" : "stake"), "invalid StakeAddress prefix");
+
+		return result;
+	}
+
+	/**
+	 * Doesn't check validity
+	 * @param {string} hex
+	 * @returns {StakeAddress}
+	 */
+	static fromHex(hex) {
+		return new StakeAddress(hexToBytes(hex));
+	}
+
+	/**
+	 * Address with only staking part (regular StakeKeyHash)
+	 * @param {boolean} isTestnet
+	 * @param {StakeKeyHash} hash
+	 * @returns {StakeAddress}
+	 */
+	static fromStakeKeyHash(isTestnet, hash) {
+		return new StakeAddress(
+			[isTestnet ? 0xe0 : 0xe1].concat(hash.bytes)
+		);
+	}
+
+	/**
+	 * Address with only staking part (script StakingValidatorHash)
+	 * @param {boolean} isTestnet
+	 * @param {StakingValidatorHash} hash
+	 * @returns {StakeAddress}
+	 */
+	static fromStakingValidatorHash(isTestnet, hash) {
+		return new StakeAddress(
+			[isTestnet ? 0xf0 : 0xf1].concat(hash.bytes)
+		);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toBech32() {
+		return Crypto.encodeBech32(
+			this.isForTestnet() ? "stake_test" : "stake",
+			this.bytes
+		);
+	}
+}
+
+/**
+ * Collection of non-lovelace assets
+ */
 export class Assets extends CborData {
 	/** @type {[MintingPolicyHash, [number[], bigint][]][]} */
 	#assets;
@@ -29200,7 +30015,7 @@ class Hash extends CborData {
 	}
 
 	/**
-	 * TODO: have an appropriate child type for every hash kind and remove this function
+	 * Used internally for metadataHash and scriptDataHash
 	 * @param {number[]} bytes 
 	 * @returns {Hash}
 	 */
@@ -29209,21 +30024,12 @@ class Hash extends CborData {
 	}
 
 	/**
-	 * TODO: have an appropriate child type for every hash kind and remove this function
+	 * Might be needed for internal use
 	 * @param {string} str 
 	 * @returns {Hash}
 	 */
 	static fromHex(str) {
 		return new Hash(hexToBytes(str));
-	}
-
-	/**
-	 * Used by correct sizing of transactions before signing
-	 * @param {number} n 
-	 * @returns {Hash}
-	 */
-	static dummy(n = 32) {
-		return new Hash((new Array(n)).fill(0));
 	}
 
 	/**
@@ -29255,6 +30061,7 @@ export class TxId extends Hash {
 	 * @param {number[]} bytes 
 	 */
 	constructor(bytes) {
+		assert(bytes.length == 32);
 		super(bytes);
 	}
 
@@ -29272,6 +30079,13 @@ export class TxId extends Hash {
 	 */
 	static fromHex(str) {
 		return new TxId(hexToBytes(str));
+	}
+
+	/**
+	 * @returns {TxId}
+	 */
+	static dummy() {
+		return new TxId((new Array(32)).fill(0));
 	}
 }
 
@@ -29327,7 +30141,33 @@ export class PubKeyHash extends Hash {
 	}
 }
 
-export class ValidatorHash extends Hash {
+export class StakeKeyHash extends Hash {
+	/**
+	 * @param {number[]} bytes 
+	 */
+	constructor(bytes) {
+		assert(bytes.length == 28);
+		super(bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {StakeKeyHash}
+	 */
+	static fromCbor(bytes) {
+		return new StakeKeyHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {StakeKeyHash}
+	 */
+	static fromHex(str) {
+		return new StakeKeyHash(hexToBytes(str));
+	}
+}
+
+export class ScriptHash extends Hash {
 	/**
 	 * @param {number[]} bytes 
 	 */
@@ -29335,7 +30175,9 @@ export class ValidatorHash extends Hash {
 		assert(bytes.length == 28);
 		super(bytes);
 	}
+}
 
+export class ValidatorHash extends ScriptHash {
 	/**
 	 * @param {number[]} bytes 
 	 * @returns {ValidatorHash}
@@ -29353,15 +30195,7 @@ export class ValidatorHash extends Hash {
 	}
 }
 
-export class MintingPolicyHash extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	 constructor(bytes) {
-		assert(bytes.length == 28);
-		super(bytes);
-	}
-
+export class MintingPolicyHash extends ScriptHash {
 	/**
 	 * @param {number[]} bytes 
 	 * @returns {MintingPolicyHash}
@@ -29384,6 +30218,24 @@ export class MintingPolicyHash extends Hash {
 	 */
 	toBech32() {
 		return Crypto.encodeBech32("asset", Crypto.blake2b(this.bytes, 20));
+	}
+}
+
+export class StakingValidatorHash extends ScriptHash {
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromCbor(bytes) {
+		return new StakingValidatorHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromHex(str) {
+		return new StakingValidatorHash(hexToBytes(str));
 	}
 }
 
