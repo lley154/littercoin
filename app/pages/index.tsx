@@ -44,7 +44,7 @@ import {
     const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
 
     try {
-      //Find the absolute path of the json directory
+      //Find the absolute path of the contracts directory
       const contractDirectory = path.join(process.cwd(), 'contracts/src');
       const fileContents = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
     
@@ -53,6 +53,8 @@ import {
       const valHash = compiledScript.validatorHash;
       const valAddr = Address.fromValidatorHash(true, valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
+
+      console.log("blockfrostUrl", blockfrostUrl);
 
       var payload;
       let resp = await fetch(blockfrostUrl, {
@@ -67,7 +69,9 @@ import {
         throw console.error("Blockfrost API error", resp)
       }
       payload = await resp.json();
+      console.log("payload", payload);
 
+      // The oldest (first) utxo returned is the reference utxo
       if (payload && (payload[0].reference_script_hash === valHash.hex)) {
         const lcVal = {
           lcValAddr: valAddr.toBech32(),
@@ -75,12 +79,13 @@ import {
           lcRefTxId: payload[0].tx_hash,
           lcRefTxIdx: payload[0].output_index
         }
-      return { props: lcVal }
+        console.log("lcVal", lcVal);
+        return { props: lcVal }
       }
     } catch (err) {
       console.log('getServerSideProps', err);
     } 
-    return { props: undefined };
+    return { props: {} };
   }
 
 
@@ -96,6 +101,7 @@ const Home: NextPage = (props) => {
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
+  const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
 
   const [lcInfo, setLCInfo] = useState(
@@ -365,11 +371,11 @@ const Home: NextPage = (props) => {
     //console.log("prettyIR", Program.new(contractScript).prettyIR());
     const valAddr = Address.fromValidatorHash(true, compiledScript.validatorHash);
 
-    // Currently not working in tx builder using changeAddr from wallet
-    //const cborChangeAddr = await walletAPI.getChangeAddress();
-    //const changeAddr = Address.fromCbor(hexToBytes(cborChangeAddr));
-    const changeAddr = Address.fromBech32("addr_test1vq7k907l7e59t52skm8e0ezsnmmc7h4xy30kg2klwc5n8rx5wscj60kfrsr64u3lf3sxnd7a375cscwe4t4jp39euxmqqchlvw");
-    
+    // Get the change address from the wallet
+    const hexChangeAddr = await walletAPI.getChangeAddress();
+    const changeAddr = Address.fromHex(hexChangeAddr);
+
+    // Start building the transaction
     const tx = new Tx();
 
     for (const utxo of Utxos) {
@@ -397,10 +403,9 @@ const Home: NextPage = (props) => {
     tx.addCollateral(colatUtxo);
 
     const networkParams = new NetworkParams(
-      await fetch("https://d1t0d7c2nekuk0.cloudfront.net/preprod.json")
+      await fetch(networkParamsUrl)
           .then(response => response.json())
     )
-
     console.log("tx before final", tx.dump());
 
     // send any change back to the buyer
@@ -408,10 +413,10 @@ const Home: NextPage = (props) => {
     console.log("tx after final", tx.dump());
 
     console.log("Waiting for wallet signature...");
-    const walletResp = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
+    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
 
     console.log("Verifying signature...");
-    const signatures = TxWitnesses.fromCbor(hexToBytes(walletResp)).signatures
+    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
     tx.addSignatures(signatures)
 
     console.log("Submitting transaction...");

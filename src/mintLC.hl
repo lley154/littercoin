@@ -9,18 +9,14 @@ enum Redeemer {
     }
  }
 
-const minAda : Value = Value::lovelace(2000000)
-
-
 // Define thread token value
-const TT_MPH: ByteArray = #48da23fab203a72111096b5e5b67f8d99331efa1df843d7c16c51f0e
+const TT_MPH: ByteArray = #ac8e811df3974e849578b214db9e87ccba6d332ec289a0fd9084dba8
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
         "Thread Token Littercoin".encode_utf8()
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
-
 
 func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     

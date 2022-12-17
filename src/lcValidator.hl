@@ -17,11 +17,11 @@ enum Redeemer {
     }
 }
 
-const minAda : Value = Value::lovelace(2000000)
-
+const minAda : Int = 2000000
+const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #48da23fab203a72111096b5e5b67f8d99331efa1df843d7c16c51f0e
+const TT_MPH: ByteArray = #ac8e811df3974e849578b214db9e87ccba6d332ec289a0fd9084dba8
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -29,9 +29,8 @@ const ttAssetclass: AssetClass = AssetClass::new(
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
-
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #ebfe7fbeb3d4de7c220cf630d39202d15e9a7e2786696c3fe7adc202
+const LC_MPH: ByteArray = #ac8e811df3974e849578b214db9e87ccba6d332ec289a0fd9084dba8
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -42,7 +41,6 @@ const lcAssetClass: AssetClass = AssetClass::new(
 const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
 const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
 
-
 // Define the merchant token
 const MERCHANT_MPH: ByteArray = #e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
 const merchMph: MintingPolicyHash = MintingPolicyHash::new(MERCHANT_MPH)
@@ -51,7 +49,6 @@ const merchAssetclass: AssetClass = AssetClass::new(
         "Merchant Token Littercoin".encode_utf8()
     )
 const merchVal: Value = Value::new(merchAssetclass, 1)
-
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     
@@ -72,7 +69,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     // the thread token is the same as the output value
                     // locked at the validator address                   
                     (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV1: ") &&
-                    (addAdaDatumAmt > 2000000).trace("LCV2: ")
+                    (addAdaDatumAmt >= minAda).trace("LCV2: ")
                 },
                 else => false.trace("LCV3: ")
             }
@@ -123,12 +120,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                     (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV11: ") &&
                     tx.minted.contains(lcBurnVal).trace("LCV12: ") &&
                     merchOutTxs.get(1).value.contains(adaWithdrawVal).trace("LCV13: ") &&
-                    merchOutTxs.get(2).value.contains(minAda + merchVal).trace("LCV14: ") 
-                    
-
-                    // the following causes an error in cpu/mem estimates
-                    //tx.value_sent_to(merchPkh).contains(minAda + merchVal))
-                    //tx.value_sent_to(merchPkh).contains(adaWithdrawVal))
+                    merchOutTxs.get(2).value.contains(minAdaVal + merchVal).trace("LCV14: ") 
                 },
                 else => false.trace("LCV15: ")
             }
