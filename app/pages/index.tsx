@@ -54,8 +54,6 @@ import {
       const valAddr = Address.fromValidatorHash(true, valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
-      console.log("blockfrostUrl", blockfrostUrl);
-
       var payload;
       let resp = await fetch(blockfrostUrl, {
         method: "GET",
@@ -69,22 +67,25 @@ import {
         throw console.error("Blockfrost API error", resp)
       }
       payload = await resp.json();
-      console.log("payload", payload);
 
-      // The oldest (first) utxo returned is the reference utxo
-      if (payload && (payload[0].reference_script_hash === valHash.hex)) {
-        const lcVal = {
-          lcValAddr: valAddr.toBech32(),
-          lcValAdaAmt: payload[0].amount[0].quantity, 
-          lcRefTxId: payload[0].tx_hash,
-          lcRefTxIdx: payload[0].output_index
+      // Find the reference utxo with the correct validator hash
+      if (payload) {
+        for (var utxo of payload) {
+          if (utxo.reference_script_hash === valHash.hex) {
+            const lcVal = {
+              lcValAddr: valAddr.toBech32(),
+              lcValAdaAmt: utxo.amount[0].quantity, 
+              lcRefTxId: utxo.tx_hash,
+              lcRefTxIdx: utxo.output_index
+            }
+            return { props: lcVal }
+          }
         }
-        console.log("lcVal", lcVal);
-        return { props: lcVal }
       }
     } catch (err) {
       console.log('getServerSideProps', err);
     } 
+    // No valid reference utxo found
     return { props: {} };
   }
 
@@ -207,10 +208,14 @@ const Home: NextPage = (props) => {
     });
 
     if (resp?.status > 299) {
-      throw console.error(payload);
+      throw console.error(resp);
     }
 
     payload = await resp.json();
+    
+    if (payload.length == 0) {
+      throw console.error("thread token not found")
+    }
     const lovelaceAmount = payload[0].amount[0].quantity;
     const mph = MintingPolicyHash.fromHex(threadTokenMPH);
     const token = hexToBytes(threadTokenName);
@@ -266,7 +271,7 @@ const Home: NextPage = (props) => {
       return {datum: datObj, address: lcValidatorScriptAddress};
 
     } else {
-      console.log("fetchLittercoin: invalid number of utxos");
+      console.log("fetchLittercoin: thread token not found");
     }
   }
 
@@ -337,6 +342,7 @@ const Home: NextPage = (props) => {
 
   const addAda = async (adaQty : any) => {
 
+    console.log("walletAPI", walletAPI);
     const info = await fetchLittercoinInfo();
     const datObj = info?.datum;
     const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
@@ -361,7 +367,18 @@ const Home: NextPage = (props) => {
       Utxos.push(_utxo);
     }
 
-    const cborColatUtxo = await walletAPI.getCollateral();
+    var cborColatUtxo;
+    if (whichWalletSelected == "eternl") {
+      cborColatUtxo = await walletAPI.getCollateral();
+    } else if (whichWalletSelected == "nami") {
+      cborColatUtxo = await walletAPI.experimental.getCollateral();
+    } else {
+      throw console.error("No wallet selected")
+    }
+
+    if (cborColatUtxo.length == 0) {
+      throw console.error("No collateral set in wallet");
+    }
     const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
 
     const response = await fetch('/api/lcValidator'); 

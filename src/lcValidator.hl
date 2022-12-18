@@ -21,7 +21,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #ac8e811df3974e849578b214db9e87ccba6d332ec289a0fd9084dba8
+const TT_MPH: ByteArray = #0df2b3c5c22e1603e122e10f3db79f7d616db4ac5eb42b4a522415bb
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -30,7 +30,7 @@ const ttAssetclass: AssetClass = AssetClass::new(
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #ac8e811df3974e849578b214db9e87ccba6d332ec289a0fd9084dba8
+const LC_MPH: ByteArray = #24a6a42b5dbbe709e19ceb4f5043a1d44f2448b26254e1aa35c52b69
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
