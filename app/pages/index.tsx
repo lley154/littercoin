@@ -30,8 +30,8 @@ import {
   TxOutput,
   TxWitnesses,
   Tx, 
-  UTxO} from "@hyperionbt/helios";
-  //UTxO} from "@lley/helios";
+  //UTxO} from "@hyperionbt/helios";
+  UTxO} from "@lley/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -326,6 +326,33 @@ const Home: NextPage = (props) => {
     }
   }
 
+  const submitTx = async (tx: Tx) : Promise<string> => {
+    const data = new Uint8Array(tx.toCbor());
+    const url = blockfrostAPI + "/tx/submit";
+
+    return new Promise((resolve, reject) => {
+        const req = new XMLHttpRequest();
+        req.onload = (_e) => {
+            if (req.status == 200) {
+                resolve(req.responseText);
+            } else {
+                reject(new Error(req.responseText));
+            }
+        }
+
+        req.onerror = (e) => {
+            reject(e);
+        }
+
+        req.open("POST", url, false);
+
+        req.setRequestHeader("content-type", "application/cbor");
+        req.setRequestHeader("project_id", apiKey);
+        
+        req.send(data);
+    });   
+}
+
   // user selects what wallet to connect to
   const handleWalletSelect = (obj : any) => {
     const whichWalletSelected = obj.target.value
@@ -417,7 +444,7 @@ const Home: NextPage = (props) => {
 
     const valScript = await fetch('/api/lcValidator'); 
     const valContractScript = await valScript.text();
-    console.log("prettyIR", Program.new(valContractScript).prettyIR());
+    //console.log("prettyIR", Program.new(valContractScript).prettyIR());
 
     const valCompiledScript = Program.new(valContractScript).compile(optimize);
     
@@ -444,7 +471,7 @@ const Home: NextPage = (props) => {
 
     const mintScript = await fetch('/api/lcMint'); 
     const mintContractScript = await mintScript.text();
-    console.log("prettyIR", Program.new(mintContractScript).prettyIR());
+    //console.log("prettyIR", Program.new(mintContractScript).prettyIR());
 
     const mintCompiledScript = Program.new(mintContractScript).compile(optimize);
     const mintRefUtxo = await getLCMintRefUtxo();
@@ -498,12 +525,16 @@ const Home: NextPage = (props) => {
     console.log("Waiting for wallet signature...");
     const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
 
+    console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
+
     console.log("Verifying signature...");
     const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
     tx.addSignatures(signatures)
 
     console.log("Submitting transaction...");
+    console.log("signed tx: ", bytesToHex(tx.toCbor()));
     const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
+    //const txHash = await submitTx(tx);
     console.log("txHash", txHash);
     setTx({ txId: txHash });
     return txHash;

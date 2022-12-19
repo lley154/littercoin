@@ -145,7 +145,7 @@ $CARDANO_CLI transaction build \
   --out-file $WORK/mint-tx-alonzo.body
 
 
-#  --calculate-plutus-script-cost "$BASE/scripts/$ENV/data/add-ada.costs"
+#  --calculate-plutus-script-cost "$BASE/scripts/$ENV/data/mint-tx.costs"
   
 echo "tx has been built"
 
@@ -157,8 +157,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-echo "Submit the tx with plutus script and wait 5 seconds..."
-$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
+#echo "Submit the tx with plutus script and wait 5 seconds..."
+#$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
 
 
 
