@@ -1,5 +1,14 @@
 minting littercoin
 
+struct Datum {
+    adaAmount: Int
+    lcAmount: Int
+
+    func get_ratio(self) -> Int {
+        self.adaAmount / self.lcAmount
+    }
+}
+
 enum Redeemer { 
     Mint {
         lcValHashBA: ByteArray
@@ -18,6 +27,18 @@ const ttAssetclass: AssetClass = AssetClass::new(
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
+func getDatum (txOuts : []TxOutput) -> []TxOutput {
+
+    if (txOuts.is_empty()) {
+        txOuts
+    } else {
+            txOuts.head.datum.switch {
+            Inline => { []TxOutput::new_const(1, txOuts.head) },
+            else => getDatum (txOuts.tail)
+            }
+    }
+}
+
 func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     
     tx: Tx = ctx.tx;
@@ -26,7 +47,28 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         red: Mint => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                tx.value_locked_by(vHash).contains(ttVal).trace("MLC1: ")
+                txOutputs : []TxOutput = tx.outputs_locked_by(vHash);
+                txOut : []TxOutput = getDatum(txOutputs);
+
+                if (!txOut.is_empty()) {
+                txOut.head.datum.switch {
+                    dat: Inline => { 
+                        outDat: Datum = Datum::from_data(dat.data);
+                        adaVal: Value = Value::lovelace(outDat.adaAmount);
+
+                        // Verify that the total Ada amount from the datum and
+                        // the thread token is the same as the output value
+                        // locked at the validator address                   
+                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCM1: ") &&
+                        tx.minted.contains(lcMintVal).trace("LCM2: ")
+                    },
+                    else => false.trace("LCV3: ") // No inline datum found
+                }
+            } else {
+                false.trace("LCV4: ") // No datum found in outputs
+            }
+
+                //tx.value_locked_by(vHash).contains(ttVal).trace("MLC1: ")
         },
         red: Burn => {
                 // Check that thread token is part of this transaction
