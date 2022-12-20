@@ -118,6 +118,8 @@ cat $redeemer_mint_file_path | \
 jq -c '
   .fields[0].bytes         |= "'$lc_validator_hash'"' > $WORK/redeemer-mint.json
 
+# create destination user address
+user_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$USER_VKEY")
 
 # Step 3: Build and submit the transaction
 $CARDANO_CLI transaction build \
@@ -139,7 +141,7 @@ $CARDANO_CLI transaction build \
   --policy-id "$lc_mint_mph" \
   --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$admin_utxo_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
+  --tx-out "$user_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
   --required-signer-hash $admin_pkh \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-tx-alonzo.body
@@ -157,8 +159,8 @@ $CARDANO_CLI transaction sign \
 
 echo "tx has been signed"
 
-#echo "Submit the tx with plutus script and wait 5 seconds..."
-#$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
+echo "Submit the tx with plutus script and wait 5 seconds..."
+$CARDANO_CLI transaction submit --tx-file $WORK/mint-tx-alonzo.tx $network
 
 
 
