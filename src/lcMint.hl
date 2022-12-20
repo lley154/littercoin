@@ -19,7 +19,7 @@ enum Redeemer {
  }
 
 // Define thread token value
-const TT_MPH: ByteArray = #32355d9cc97429d138da94f856f4c8209ceb946300403228f15530d2
+const TT_MPH: ByteArray = #98389e427873c17d340d352fccfa4f465fdab4404fc29e4eda71d686
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -27,17 +27,32 @@ const ttAssetclass: AssetClass = AssetClass::new(
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
-func getDatum (txOuts : []TxOutput) -> []TxOutput {
+func getDatumOut (txOuts : []TxOutput) -> []TxOutput {
 
     if (txOuts.is_empty()) {
         txOuts
     } else {
             txOuts.head.datum.switch {
             Inline => { []TxOutput::new_const(1, txOuts.head) },
-            else => getDatum (txOuts.tail)
+            else => getDatumOut(txOuts.tail)
             }
     }
 }
+
+func getDatumIn (txIns : []TxInput) -> OutputDatum {
+
+    if (txIns.is_empty()) {
+        OutputDatum::new_none()
+    } else {
+        txIns.head.output.datum.switch {
+            dat: Inline => { 
+                OutputDatum::new_inline(dat.data)
+            },
+            else => getDatumIn(txIns.tail)
+        }
+    }
+}
+
 
 func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     
@@ -45,30 +60,38 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
 
     redeemer.switch {
         red: Mint => {
-                // Check that thread token is part of this transaction
+                // Confirmed minted value and check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                txOutputs : []TxOutput = tx.outputs_locked_by(vHash);
-                txOut : []TxOutput = getDatum(txOutputs);
+                txOutputs: []TxOutput = tx.outputs_locked_by(vHash);
+                txOut: []TxOutput = getDatumOut(txOutputs);
+                //txIn: []TxOutput = getDatumIn(tx.inputs);
+                txIn: []TxOutput = getDatumIn(tx.inputs).switch {
+                    txDat: Some => { txDat },
+                    else => error("LCMP1") // no datum found in inputs
+                };
 
                 if (!txOut.is_empty()) {
-                txOut.head.datum.switch {
-                    dat: Inline => { 
-                        outDat: Datum = Datum::from_data(dat.data);
-                        adaVal: Value = Value::lovelace(outDat.adaAmount);
+                    txOut.head.datum.switch {
+                        outDat: Inline => { 
+                            getDatumIn(tx.inputs).switch {
+                                inDat: Inline => {
+                                    datumOut: Datum = Datum::from_dat(outDat.data);
+                                    datumIn: Datum = Datum::from_dat(inDat.data);
+                                    lcDatAmount: Int = datumOut.lcAmount - datumIn.lcAmount;
+                                    lcMintVal: Value = Value::new(lcAssetClass, lcDatAmt);
 
-                        // Verify that the total Ada amount from the datum and
-                        // the thread token is the same as the output value
-                        // locked at the validator address                   
-                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCM1: ") &&
-                        tx.minted.contains(lcMintVal).trace("LCM2: ")
-                    },
-                    else => false.trace("LCV3: ") // No inline datum found
+                                    (tx.minted == lcMintVal).trace("LCMP1: ") &&
+                                    (txOut.head.value ==  (ttVal + adaVal)).trace("LCM2: ")
+                                    //(tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCM2: ")
+                                },
+                                else => false.trace("LCMP3") // No input inline datum found
+                            }
+                        },
+                        else => false.trace("LCMP4") // No output inline datum found
+                    }
+                } else {
+                    false.trace("LCMP5: ") // No valid inputs and outputs found 
                 }
-            } else {
-                false.trace("LCV4: ") // No datum found in outputs
-            }
-
-                //tx.value_locked_by(vHash).contains(ttVal).trace("MLC1: ")
         },
         red: Burn => {
                 // Check that thread token is part of this transaction

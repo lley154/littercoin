@@ -11,9 +11,11 @@ struct Datum {
 
 enum Redeemer {
     AddAda
-    Mint
+    Mint{ 
+        pkhBA: ByteArray // Littercoin desintation address 
+    }
     Burn { 
-        pkhBA: ByteArray 
+        pkhBA: ByteArray  // Merchant return address
     }
 }
 
@@ -21,7 +23,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #32355d9cc97429d138da94f856f4c8209ceb946300403228f15530d2
+const TT_MPH: ByteArray = #98389e427873c17d340d352fccfa4f465fdab4404fc29e4eda71d686
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -92,16 +94,16 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                 false.trace("LCV4: ") // No datum found in outputs
             }
         },
-        Mint => {
+        red: Mint => {
              if (!txOut.is_empty()) {
                 txOut.head.datum.switch {
                     dat: Inline => { 
                         outDat: Datum = Datum::from_data(dat.data);
                         adaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
                         adaVal: Value = Value::lovelace(outDat.adaAmount);
-                        lcDatumAmt: Int = outDat.lcAmount - datum.lcAmount;
-                        lcMintVal: Value = Value::new(lcAssetClass, lcDatumAmt);
-            
+                        //lcDatumAmt: Int = outDat.lcAmount - datum.lcAmount;
+                        //lcMintVal: Value = Value::new(lcAssetClass, lcDatumAmt);
+
                         // Verify that the total Ada amount from the datum and
                         // the thread token is the same as the output value
                         // locked at the validator address.  Also check the tx 
@@ -109,8 +111,8 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
 
                         (adaDatumAmt == 0).trace("LCV5: ") && 
                         (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV6: ") &&
-                        //tx.minted.contains(lcMintVal).trace("LCV7: ") && -- Runtime ERROR
-                        //(tx.minted == lcMintVal).trace("LCV7: ") && -- Runtime ERROR
+                        //tx.minted.contains(lcMintVal).trace("LCV7: ") && -- Causes runtime ERROR
+                        //(tx.minted == lcMintVal).trace("LCV7: ") && -- Causes runtime ERROR
                         tx.is_signed_by(ownerPkh).trace("LCV8: ") &&  
                         (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV9: ") 
                     },
@@ -161,6 +163,6 @@ const LC_DATUM = Datum {
 }
 
 const VAL_ADD_ADA_REDEEMER = Redeemer::AddAda
-const VAL_MINT_REDEEMER = Redeemer::Mint
+const VAL_MINT_REDEEMER = Redeemer::Mint{#1a2b3c}
 const VAL_BURN_REDEEMER = Redeemer::Burn{#1a2b3c}
 
