@@ -25,15 +25,12 @@ func main(ctx: ScriptContext) -> Bool {
     );
     ttVal : Value = Value::new(tt_assetclass, 1);
     lcVal : Value = Value::new(lc_assetclass, LC_FIXED_SUPPLY);
-    //value_minted: Value = tx.minted;
-    //value_minted == Value::new(tt_assetclass, 1) &&
     
     (tx.minted == ttVal + lcVal).trace("TTMP1: ") &&
      tx.inputs.any((input: TxInput) -> Bool {
                                     (input.output_id == outputId).trace("TTMP1: ")
                                     }
     )
-
 }
 
 const INIT_REDEEMER = Redeemer::Init

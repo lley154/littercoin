@@ -16,7 +16,7 @@ const BurnLC = ({ onBurnLC } : any) => {
             <div>
                 <b>Littercoin Full Amount To Burn</b> 
                 <br></br>
-                <input name='qty' type='number' id='qty' placeholder='Enter The Full Amount of Littercoin To Burn' 
+                <input name='qty' type='number' id='qty' placeholder='Enter Amount' 
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 />

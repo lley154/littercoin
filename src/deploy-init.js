@@ -11,7 +11,7 @@ const mphTT = myUplcProgramTT.mintingPolicyHash;
 const tnTT = helios.ByteArrayData.fromString("Thread Token Littercoin");
 
 console.log("thread token mph: ", mphTT.hex);
-console.log("thread token name: ", tnTT.toSchemaJson());
+console.log("thread token name: ", tnTT.toString());
 
 const initRedeemerTT = programTT.evalParam("INIT_REDEEMER");
 const initRedeemerDataTT = initRedeemerTT.data;
@@ -25,7 +25,7 @@ await Deno.writeTextFile("./deploy/tt-minting-policy.hash", mphTT.hex);
 // Littercoin Token
 
 const tnLC = helios.ByteArrayData.fromString("Littercoin");
-console.log("littercoin token name: ", tnLC.toSchemaJson());
+console.log("littercoin token name: ", tnLC.toString());
 
 await Deno.writeTextFile("./deploy/lc-token-name.json", tnLC.toSchemaJson());
 
@@ -45,7 +45,7 @@ const mphMT = myUplcProgramMT.mintingPolicyHash;
 const tnMT = helios.ByteArrayData.fromString("Merchant Token Littercoin");
 
 console.log("merchant token mph: ", mphMT.hex);
-console.log("merchant token name: ", tnMT.toSchemaJson());
+console.log("merchant token name: ", tnMT.toString());
 
 await Deno.writeTextFile("./deploy/mt-token-name.json", tnMT.toSchemaJson());
 await Deno.writeTextFile("./deploy/mt-minting-policy.plutus", myUplcProgramMT.serialize());

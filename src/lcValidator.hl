@@ -53,7 +53,6 @@ const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
 
 
 func getDatum (txOuts : []TxOutput) -> []TxOutput {
-
     if (txOuts.is_empty()) {
         txOuts
     } else {
@@ -71,6 +70,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx : Tx = ctx.tx;
     txOutputs : []TxOutput = tx.outputs_locked_by(vHash);
     txOut : []TxOutput = getDatum(txOutputs);
+    
 
     redeemer.switch {
         AddAda => {
