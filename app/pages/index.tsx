@@ -100,7 +100,7 @@ const Home: NextPage = (props) => {
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
 
-  const optimize = false;
+  const optimize = true;
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
