@@ -24,7 +24,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #d335ad8888fc4091f373d19db206a66563e851fa5e8ee83c2decc2cf
+const TT_MPH: ByteArray = #e4dd443efa0c879463ff1ef8d054ab4bebcb1e02f4217cfff66896fb
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -32,9 +32,7 @@ const ttAssetclass: AssetClass = AssetClass::new(
     )
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
-// Define the mph of the littercoin asset class
-//const LC_MPH: ByteArray = #5bea03876b6b618800348d23ca1bf9685488dea39b1979da3b6cf5e9
-//const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
+// Define the littercoin asset class
 const lcAssetClass: AssetClass = AssetClass::new(
         ttMph, 
         "Littercoin".encode_utf8()
@@ -69,7 +67,6 @@ func getDatum (txOuts : []TxOutput) -> []TxOutput {
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     
-    // Get hash of this validator
     vHash : ValidatorHash = ctx.get_current_validator_hash();
     tx : Tx = ctx.tx;
     txOutputs : []TxOutput = tx.outputs_locked_by(vHash);
@@ -90,10 +87,10 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         (addAdaDatumAmt >= minAda).trace("LCV2: ") &&
                         (outDat.lcAmount == datum.lcAmount).trace("LCV3: ")
                     },
-                    else => false.trace("LCV3: ") // No inline datum found
+                    else => false.trace("LCV4: ") // No inline datum found
                 }
             } else {
-                false.trace("LCV4: ") // No datum found in outputs
+                false.trace("LCV5: ") // No datum found in outputs
             }
         },
         red: Mint => {
@@ -101,7 +98,6 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                 txOut.head.datum.switch {
                     dat: Inline => { 
                         outDat: Datum = Datum::from_data(dat.data);
-                        //adaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
                         adaVal: Value = Value::lovelace(outDat.adaAmount);
                         lcResAmt: Int = LC_FIXED_SUPPLY - outDat.lcAmount;
                         lcResVal:  Value = Value::new(lcAssetClass, lcResAmt);
@@ -110,18 +106,16 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         destPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
                         destOutTxs : []TxOutput = tx.outputs_sent_to(destPkh);
 
-                        tx.is_signed_by(ownerPkh).trace("LCV5: ") &&  
-                        (outDat.adaAmount == datum.adaAmount).trace("LCV6: ") && 
-                        (tx.value_locked_by(vHash) == (adaVal + ttVal + lcResVal)).trace("LCV7: ") &&
-                        //(destOutTxs.head.value.contains(minAdaVal + lcMintVal)).trace("LCV8: ") &&
-                        (destOutTxs.head.value == (minAdaVal + lcMintVal)).trace("LCV8: ") &&
-                        //(tx.value_sent_to(destPkh) == (minAdaVal + lcMintVal)).trace("LCV8: ") &&
-                        (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV9: ") 
+                        tx.is_signed_by(ownerPkh).trace("LCV6: ") &&  
+                        (outDat.adaAmount == datum.adaAmount).trace("LCV7: ") && 
+                        (tx.value_locked_by(vHash) == (adaVal + ttVal + lcResVal)).trace("LCV8: ") &&
+                        (destOutTxs.head.value == (minAdaVal + lcMintVal)).trace("LCV9: ") &&
+                        (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV10: ") 
                     },
-                    else => false.trace("LCV10: " ) // Non inline datum found
+                    else => false.trace("LCV11: " ) // Non inline datum found
                 }
              } else {
-                false.trace("LCV11: ") // No datum found in outputs
+                false.trace("LCV12: ") // No datum found in outputs
              }
         },
         red: Burn => {
@@ -134,26 +128,26 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         lcResAmt: Int = LC_FIXED_SUPPLY - outDat.lcAmount;
                         lcResVal:  Value = Value::new(lcAssetClass, lcResAmt);
                         lcDatumAmt: Int = datum.lcAmount - outDat.lcAmount;
-                        //lcBurnVal: Value = Value::new(lcAssetClass, lcDatumAmt) * (-1);
                         ratio: Int = datum.get_ratio();
                         adaWithdraw : Int = lcDatumAmt * ratio;
                         adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
                         merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
                         merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
                                          
-                        (adaDatumAmt == adaWithdraw).trace("LCV12: ") &&
-                        (tx.value_locked_by(vHash) == (ttVal + adaVal + lcResVal)).trace("LCV13: ") &&
-                        //tx.minted.contains(lcBurnVal).trace("LCV14: ") &&
-                        //(tx.value_sent_to(merchPkh) == (minAdaVal + merchVal)).trace("LCV14: ") &&
-                        //(merchOutTxs.head.value.contains(adaWithdrawVal + merchVal)).trace("LCV15: ")
-                        (merchOutTxs.head.value == (adaWithdrawVal + merchVal)).trace("LCV15: ")
-                        //merchOutTxs.get(1).value.contains(adaWithdrawVal).trace("LCV15: ") &&
-                        //merchOutTxs.get(2).value.contains(minAdaVal + merchVal).trace("LCV16: ") 
+                        (outDat.adaAmount >= 0).trace("LCV13: ") &&
+                        (adaDatumAmt == adaWithdraw).trace("LCV14: ") &&
+                        (merchOutTxs.head.value == (adaWithdrawVal + merchVal)).trace("LCV15: ") &&
+                        if (outDat.adaAmount == 0 ) {
+                            (tx.value_locked_by(vHash) == (ttVal + minAdaVal + lcResVal)).trace("LCV16: ") 
+                        } else {
+                            (tx.value_locked_by(vHash) == (ttVal + adaVal + lcResVal)).trace("LCV17: ")
+                        }
+
                     },
-                    else => false.trace("LCV15: ") // No inline datum found
+                    else => false.trace("LCV18: ") // No inline datum found
                 }
             } else {
-                false.trace("LCV16: ") // No datum found in outputs
+                false.trace("LCV18: ") // No datum found in outputs
             }
         }
     }

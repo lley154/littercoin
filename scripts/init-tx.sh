@@ -93,6 +93,10 @@ cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace =
 readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
 admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
+# Update the littercoin datum accordingly
+cat $BASE/scripts/$ENV/data/lc-datum-init.json | \
+jq -c '
+  .list[0].int   |= '$MIN_ADA_OUTPUT_TX'' > $WORK/lc-datum-out.json
 
 
 # Step 2: Build and submit the transaction
@@ -107,7 +111,7 @@ $CARDANO_CLI transaction build \
   --mint-script-file "$thread_token_script" \
   --mint-redeemer-file "$threat_token_redeemer_file_path" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name + $LC_SUPPLY $thread_token_mph.$lc_token_name" \
-  --tx-out-inline-datum-file "$BASE/scripts/$ENV/data/lc-datum-init.json" \
+  --tx-out-inline-datum-file "$WORK/lc-datum-out.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
   --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \

@@ -105,9 +105,9 @@ const Home: NextPage = (props) => {
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
-  const lcTokenMPH = process.env.NEXT_PUBLIC_LC_TOKEN_MPH as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
-  const lcMintAddr = process.env.NEXT_PUBLIC_LC_MINT_ADDR as string;
+  const merchTokenMPH = process.env.NEXT_PUBLIC_MERCH_TOKEN_MPH as string;
+  const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
@@ -485,13 +485,251 @@ const Home: NextPage = (props) => {
    } 
 
 
-  const burnLC = async (lcQty : any) => {
-    return true;
+  const burnLC = async (lcQty : number) => {
+  
+    const info = await fetchLittercoinInfo();
+    console.log("info", info);
+    const datObj = info?.datum;
+    const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
+    console.log("datAda", datAda);
+    const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
+    console.log("datLC", datLC);
+    const ratio : number = datAda / datLC;
+    console.log("ratio", ratio);
+    const withdrawAda : number = lcQty * ratio;
+    console.log("withdrawAda", withdrawAda);
+    const newLCAmount : BigInt = BigInt(datLC) - BigInt(lcQty);
+    console.log("newLCAmount", newLCAmount);
+    const newAdaAmount : BigInt = BigInt(datAda) - BigInt(withdrawAda);
+    console.log("newAdaAmount", newAdaAmount);
+    const lcResAmount: BigInt = BigInt(lcSupply) - BigInt(newLCAmount.valueOf());
+
+    // Get the change address from the wallet
+    const hexChangeAddr = await walletAPI.getChangeAddress();
+    const changeAddr = Address.fromHex(hexChangeAddr);
+
+
+    const valRedeemer = new ConstrData(
+      2,
+      [new ByteArrayData(changeAddr.pubKeyHash.bytes)]
+    )
+
+    const minAdaVal = new Value(BigInt(minAda));
+    const cborUtxos = await walletAPI.getUtxos(bytesToHex(minAdaVal.toCbor()));
+ 
+    let Utxos = [];
+
+    for (const cborUtxo of cborUtxos) {
+      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
+      Utxos.push(_utxo);
+    }
+
+    var cborColatUtxo;
+    if (whichWalletSelected == "eternl") {
+      cborColatUtxo = await walletAPI.getCollateral();
+    } else if (whichWalletSelected == "nami") {
+      cborColatUtxo = await walletAPI.experimental.getCollateral();
+    } else {
+      throw console.error("No wallet selected")
+    }
+
+    if (cborColatUtxo.length == 0) {
+      throw console.error("No collateral set in wallet");
+    }
+    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
+
+    const valScript = await fetch('/api/lcValidator'); 
+    const valContractScript = await valScript.text();
+    //console.log("prettyIR", Program.new(valContractScript).prettyIR());
+
+    const valCompiledScript = Program.new(valContractScript).compile(optimize);
+    const valAddr = Address.fromValidatorHash(true, valCompiledScript.validatorHash);
+
+    // Start building the transaction
+    const tx = new Tx();
+
+    for (const utxo of Utxos) {
+        tx.addInput(utxo);
+    }
+    const valUtxo = await getTTUtxo();
+    tx.addInput(valUtxo, valRedeemer);
+
+    const valRefUtxo = await getLCValRefUtxo();
+    tx.addRefInput(
+        valRefUtxo,
+        valCompiledScript
+    );
+
+    const newDatAda = new IntData(BigInt(newAdaAmount.valueOf()));
+    const newDatLC = new IntData(newLCAmount.valueOf());
+    const newDatum = new ListData([newDatAda, newDatLC]);
+    const newInlineDatum = Datum.inline(newDatum);
+
+    if (newAdaAmount < BigInt(minAda)) {
+
+      const value = new Value(BigInt(minAda), new Assets([
+        [MintingPolicyHash.fromHex(threadTokenMPH), [
+          [hexToBytes(threadTokenName), BigInt(1)],
+          [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
+        ]]
+      ]));
+
+      // send Ada, updated dautm and thread token back to script address
+      tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+
+    } else {
+
+      const value = new Value(BigInt(newAdaAmount.valueOf()), new Assets([
+        [MintingPolicyHash.fromHex(threadTokenMPH), [
+          [hexToBytes(threadTokenName), BigInt(1)],
+          [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
+        ]]
+      ]));
+
+      // send Ada, updated dautm and thread token back to script address
+      tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+    }
+
+    const tokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+
+    tx.addOutput(new TxOutput(
+      changeAddr,
+      new Value(BigInt(withdrawAda), new Assets([[MintingPolicyHash.fromHex(merchTokenMPH), tokens]]))
+    ));
+
+    tx.addCollateral(colatUtxo);
+
+    const networkParams = new NetworkParams(
+      await fetch(networkParamsUrl)
+          .then(response => response.json())
+    )
+    console.log("tx before final", tx.dump());
+
+    // send any change back to the buyer
+    await tx.finalize(networkParams, changeAddr);
+    console.log("tx after final", tx.dump());
+
+    console.log("Waiting for wallet signature...");
+    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
+
+    console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
+
+    console.log("Verifying signature...");
+    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
+    tx.addSignatures(signatures)
+
+    console.log("Submitting transaction...");
+    console.log("signed tx: ", bytesToHex(tx.toCbor()));
+    //const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
+    return txHash;
+
   } 
 
 
   const mintMerchantToken = async (merchAddress : string) => {
-    return true;
+
+    const mintScript =`
+    minting signed
+
+    const OWNER_PKH: ByteArray = #` + ownerPkh + `
+    const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
+
+    func main(ctx: ScriptContext) -> Bool {
+        ctx.tx.is_signed_by(ownerPkh)
+    }`;
+
+    const mintProgram = Program.new(mintScript).compile(optimize);
+
+    const minAdaVal = new Value(BigInt(minAda));
+    const cborUtxos = await walletAPI.getUtxos(bytesToHex(minAdaVal.toCbor()));
+ 
+    let Utxos = [];
+
+    for (const cborUtxo of cborUtxos) {
+      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
+      Utxos.push(_utxo);
+    }
+
+    var cborColatUtxo;
+    if (whichWalletSelected == "eternl") {
+      cborColatUtxo = await walletAPI.getCollateral();
+    } else if (whichWalletSelected == "nami") {
+      cborColatUtxo = await walletAPI.experimental.getCollateral();
+    } else {
+      throw console.error("No wallet selected")
+    }
+
+    if (cborColatUtxo.length == 0) {
+      throw console.error("No collateral set in wallet");
+    }
+    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
+
+    // Get the change address from the wallet
+    const hexChangeAddr = await walletAPI.getChangeAddress();
+    const changeAddr = Address.fromHex(hexChangeAddr);
+
+    // Start building the transaction
+    const tx = new Tx();
+
+    for (const utxo of Utxos) {
+        tx.addInput(utxo);
+    }
+
+    tx.attachScript(mintProgram);
+
+    const merchTokenName = ByteArrayData.fromString("Merchant Token Littercoin").toHex();
+
+    const tokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+
+    const mintRedeemer = new ConstrData(
+      0,
+      []
+    )
+
+    tx.mintTokens(
+      mintProgram.mintingPolicyHash,
+      tokens,
+      mintRedeemer
+    )
+
+    tx.addOutput(new TxOutput(
+      Address.fromBech32(merchAddress),
+      new Value(BigInt(minAda), new Assets([[mintProgram.mintingPolicyHash, tokens]]))
+    ));
+
+    tx.addCollateral(colatUtxo);
+
+    tx.addSigner(PubKeyHash.fromHex(ownerPkh));
+
+    const networkParams = new NetworkParams(
+      await fetch(networkParamsUrl)
+          .then(response => response.json())
+    )
+    console.log("tx before final", tx.dump());
+
+    // send any change back to the buyer
+    await tx.finalize(networkParams, changeAddr);
+    console.log("tx after final", tx.dump());
+
+    console.log("Waiting for wallet signature...");
+    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
+
+    console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
+
+    console.log("Verifying signature...");
+    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
+    tx.addSignatures(signatures)
+
+    console.log("Submitting transaction...");
+    console.log("signed tx: ", bytesToHex(tx.toCbor()));
+    //const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
+    return txHash;
   }   
 
   const mintOwnerToken = async (ownerAddress : any) => {
