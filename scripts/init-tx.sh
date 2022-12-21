@@ -50,7 +50,6 @@ mkdir -p $WORK-backup
 rm -f $WORK/*
 rm -f $WORK-backup/*
 
-
 # generate values from cardano-cli tool
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
@@ -58,11 +57,16 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/$ENV/data/tt-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/$ENV/data/tt-minting-policy.hash)
 thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.bytes')
+threat_token_redeemer_file_path="$BASE/scripts/$ENV/data/tt-redeemer-init.json"
+
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
-redeemer_file_path="$BASE/scripts/$ENV/data/redeemer-init.json"
+
 lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
 lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
+#lc_token_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
+lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
+lc_redeemer_file_path="$BASE/scripts/$ENV/data/lc-redeemer-init.json"
 
 echo "starting littercoin init-tx.sh"
 
@@ -99,10 +103,10 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $thread_token_mph.$thread_token_name" \
+  --mint "1 $thread_token_mph.$thread_token_name + $LC_SUPPLY $thread_token_mph.$lc_token_name" \
   --mint-script-file "$thread_token_script" \
-  --mint-redeemer-file "$redeemer_file_path" \
-  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
+  --mint-redeemer-file "$threat_token_redeemer_file_path" \
+  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name + $LC_SUPPLY $thread_token_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$BASE/scripts/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \

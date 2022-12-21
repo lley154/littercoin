@@ -49,15 +49,16 @@ thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.byt
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 lc_validator_hash=$(cat $BASE/scripts/$ENV/data/lc-validator.hash)
-lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
-lc_mint_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
+#lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
+#lc_mint_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
 lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
 
-redeemer_mint_file_path="$BASE/scripts/$ENV/data/redeemer-mint.json"
+#redeemer_mint_file_path="$BASE/scripts/$ENV/data/redeemer-mint.json"
 redeemer_val_file_path="$BASE/scripts/$ENV/data/redeemer-val-mint.json"
-metadata_file_path="$BASE/scripts/$ENV/data/lc-token-metadata.json"
+#metadata_file_path="$BASE/scripts/$ENV/data/lc-token-metadata.json"
 
 admin_pkh=$(cat $ADMIN_PKH)
+user_pkh=$(cat $USER_PKH)
 
 echo "starting littercoin mint-tx.sh"
 
@@ -106,6 +107,8 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 total_ada=$(jq -r '.list[0].int' $WORK/lc-datum-in.json)
 total_lc=$(jq -r '.list[1].int' $WORK/lc-datum-in.json)
 new_total_lc=$(($total_lc + $lc_amount))
+lc_supply=$(($LC_SUPPLY - $new_total_lc)) 
+
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
@@ -113,10 +116,11 @@ jq -c '
   .list[1].int   |= '$new_total_lc'' > $WORK/lc-datum-out.json
 
 
-# Update the redeemer for minting policy to indicate the amount of ada being spent
-cat $redeemer_mint_file_path | \
+# Update the redeemer for the validator for the littercoin destination address
+cat $redeemer_val_file_path | \
 jq -c '
-  .fields[0].bytes         |= "'$lc_validator_hash'"' > $WORK/redeemer-mint.json
+  .fields[0].bytes         |= "'$user_pkh'"' > $WORK/redeemer-val-mint.json
+
 
 # create destination user address
 user_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$USER_VKEY")
@@ -133,15 +137,10 @@ $CARDANO_CLI transaction build \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file "$redeemer_val_file_path" \
-  --mint "$lc_amount $lc_mint_mph.$lc_token_name" \
-  --mint-tx-in-reference "$LC_MINT_REF_SCRIPT" \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file "$WORK/redeemer-mint.json" \
-  --policy-id "$lc_mint_mph" \
-  --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --spending-reference-tx-in-redeemer-file "$WORK/redeemer-val-mint.json" \
+  --tx-out "$lc_validator_script_addr+$total_ada + 1 $thread_token_mph.$thread_token_name + $lc_supply $thread_token_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
-  --tx-out "$user_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $lc_mint_mph.$lc_token_name" \
+  --tx-out "$user_addr+$MIN_ADA_OUTPUT_TX + $lc_amount $thread_token_mph.$lc_token_name" \
   --required-signer-hash $admin_pkh \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-tx-alonzo.body

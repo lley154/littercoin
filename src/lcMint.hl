@@ -1,40 +1,30 @@
 minting littercoin
 
 enum Redeemer { 
-    Mint {
-        lcValHashBA: ByteArray
-    }
-    Burn {
-        lcValHashBA: ByteArray
-    }
- }
-
-// Define thread token value
-const TT_MPH: ByteArray = #32355d9cc97429d138da94f856f4c8209ceb946300403228f15530d2
-const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
-const ttAssetclass: AssetClass = AssetClass::new(
-        ttMph, 
-        "Thread Token Littercoin".encode_utf8()
-    )
-const ttVal : Value = Value::new(ttAssetclass, 1)
-
-func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
-    
-    tx: Tx = ctx.tx;
-
-    redeemer.switch {
-        red: Mint => {
-                // Check that thread token is part of this transaction
-                vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                tx.value_locked_by(vHash).contains(ttVal).trace("MLC1: ")
-        },
-        red: Burn => {
-                // Check that thread token is part of this transaction
-                vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                tx.value_locked_by(vHash).contains(ttVal).trace("MLC2: ")
-        }
-    }
+    Init 
 }
 
-const MINT_REDEEMER = Redeemer::Mint{#1a2b3c}
-const BURN_REDEEMER = Redeemer::Burn{#1a2b3c}
+const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin 
+const TX_ID: ByteArray = #7a2678c8f48921f99ab051e3db701d9373f63d530184e01e40730ef37b944dfe
+const txId: TxId = TxId::new(TX_ID)
+const outputId: TxOutputId = TxOutputId::new(txId, 0)
+
+func main(ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+
+    tt_assetclass: AssetClass = AssetClass::new(
+        mph, 
+        "Littercoin".encode_utf8()
+    );
+
+    value_minted: Value = tx.minted;
+    value_minted == Value::new(tt_assetclass, LC_FIXED_SUPPLY) &&
+    tx.inputs.any((input: TxInput) -> Bool {
+                                    (input.output_id == outputId).trace("LCMP1: ")
+                                    }
+    )
+
+}
+
+const INIT_REDEEMER = Redeemer::Init

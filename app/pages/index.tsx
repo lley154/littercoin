@@ -54,6 +54,7 @@ import {
       const valHash = compiledScript.validatorHash;
       const valAddr = Address.fromValidatorHash(true, valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
+      console.log("blockfrosturl", blockfrostUrl);
 
       var payload;
       let resp = await fetch(blockfrostUrl, {
@@ -68,6 +69,7 @@ import {
         throw console.error("Blockfrost API error", resp)
       }
       payload = await resp.json();
+      console.log("payload", payload);
 
       // Find the reference utxo with the correct validator hash
       if (payload) {
@@ -109,6 +111,7 @@ const Home: NextPage = (props) => {
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
+  const lcSupply = process.env.NEXT_PUBLIC_LC_SUPPLY as string;
 
   const [lcInfo, setLCInfo] = useState(
     {
@@ -217,17 +220,23 @@ const Home: NextPage = (props) => {
     }
 
     payload = await resp.json();
+    console.log("payload", payload);
 
     if (payload.length == 0) {
       throw console.error("thread token not found")
     }
     const lovelaceAmount = payload[0].amount[0].quantity;
+    // TODO seach for lcAmount in payload
+    const lcAmount = payload[0].amount[1].quantity;
     const mph = MintingPolicyHash.fromHex(threadTokenMPH);
-    const token = hexToBytes(threadTokenName);
+    const ttToken = hexToBytes(threadTokenName);
+    const lcToken = hexToBytes(lcTokenName);
 
     const value = new Value(BigInt(lovelaceAmount), new Assets([
         [mph, [
-            [token, BigInt(1)]
+            [ttToken, BigInt(1)],
+            [lcToken, BigInt(lcAmount)],
+
         ]]
     ]));
 
@@ -258,51 +267,6 @@ const Home: NextPage = (props) => {
         compiledScript
       )
     )
-  }
-
-
-  // Get the utxo with the thread token at the LC validator address
-  const getLCMintRefUtxo = async () => {
-
-    const response = await fetch('/api/lcMint'); 
-    const contractScript = await response.text();
-    const compiledScript = Program.new(contractScript).compile(optimize);
-
-    
-    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcMintAddr + "/utxos/?order=asc";
-    
-    var payload;
-    let resp = await fetch(blockfrostUrl, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        project_id: apiKey,
-      },
-    });
-
-    if (resp?.status > 299) {
-      throw console.error(resp);
-    }
-
-    payload = await resp.json();
-
-    if (payload.length != 1) {
-      throw console.error("littercoin reference script not found")
-    }
-    const lovelaceAmount = payload[0].amount[0].quantity;
-
-    const value = new Value(BigInt(lovelaceAmount));
-
-    return new UTxO(
-      TxId.fromHex(payload[0].tx_hash),
-      BigInt(payload[0].output_index),
-      new TxOutput(
-        Address.fromBech32(lcMintAddr),
-        value,
-        null,
-        compiledScript
-      )
-    );
   }
 
 
@@ -409,13 +373,14 @@ const Home: NextPage = (props) => {
     const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
     const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
     const newLCAmount : BigInt = BigInt(datLC) + BigInt(lcQty);
+    const lcResAmount: BigInt = BigInt(lcSupply) - BigInt(newLCAmount.valueOf());
     const newDatAda = new IntData(BigInt(datAda));
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
 
     const valRedeemer = new ConstrData(
       1,
-      []
+      [new ByteArrayData((Address.fromBech32(address)).pubKeyHash.bytes)]
     )
 
     const minAdaVal = new Value(BigInt(minAda));
@@ -469,43 +434,22 @@ const Home: NextPage = (props) => {
         valCompiledScript
     );
 
-    const mintScript = await fetch('/api/lcMint'); 
-    const mintContractScript = await mintScript.text();
-    //console.log("prettyIR", Program.new(mintContractScript).prettyIR());
-
-    const mintCompiledScript = Program.new(mintContractScript).compile(optimize);
-    const mintRefUtxo = await getLCMintRefUtxo();
-
-    tx.addRefInput(
-      mintRefUtxo,
-      mintCompiledScript
-  );
-
     const newInlineDatum = Datum.inline(newDatum);
     const value = new Value(BigInt(datAda), new Assets([
       [MintingPolicyHash.fromHex(threadTokenMPH), [
-          [hexToBytes(threadTokenName), BigInt(1)]
+        [hexToBytes(threadTokenName), BigInt(1)],
+        [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
       ]]
     ]));
 
     // send Ada, updated dautm and thread token back to script address
     tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
 
-    const mintRedeemer = new ConstrData(
-      0,
-      [new ByteArrayData(valCompiledScript.validatorHash.bytes)]
-    )
     const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
-
-    tx.mintTokens(
-      MintingPolicyHash.fromHex(lcTokenMPH),
-      tokens,
-      mintRedeemer
-    )
 
     tx.addOutput(new TxOutput(
       Address.fromBech32(address),
-      new Value(BigInt(minAda), new Assets([[MintingPolicyHash.fromHex(lcTokenMPH), tokens]]))
+      new Value(BigInt(minAda), new Assets([[MintingPolicyHash.fromHex(threadTokenMPH), tokens]]))
     ));
 
     tx.addCollateral(colatUtxo);
@@ -533,8 +477,8 @@ const Home: NextPage = (props) => {
 
     console.log("Submitting transaction...");
     console.log("signed tx: ", bytesToHex(tx.toCbor()));
-    const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
-    //const txHash = await submitTx(tx);
+    //const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
+    const txHash = await submitTx(tx);
     console.log("txHash", txHash);
     setTx({ txId: txHash });
     return txHash;
@@ -560,6 +504,7 @@ const Home: NextPage = (props) => {
     const datObj = info?.datum;
     const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
     const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
+    const lcResAmount: BigInt = BigInt(lcSupply) - BigInt(datLC);
     const newAdaAmount : BigInt = BigInt(datAda) + BigInt(adaQty*1000000);
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(datLC));
@@ -624,7 +569,8 @@ const Home: NextPage = (props) => {
     const newInlineDatum = Datum.inline(newDatum);
     const value = new Value(newAdaAmount.valueOf(), new Assets([
       [MintingPolicyHash.fromHex(threadTokenMPH), [
-          [hexToBytes(threadTokenName), BigInt(1)]
+          [hexToBytes(threadTokenName), BigInt(1)],
+          [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
       ]]
     ]));
 

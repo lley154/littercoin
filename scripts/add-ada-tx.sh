@@ -49,10 +49,12 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/$ENV/data/tt-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/$ENV/data/tt-minting-policy.hash)
 thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.bytes')
+lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
 redeemer_file_path="$BASE/scripts/$ENV/data/redeemer-add-ada.json"
 
+# the amount of ada to add to the smart contract
 ada_amount=10000000
 
 echo "starting littercoin add-ada-tx.sh"
@@ -101,7 +103,9 @@ echo -n "$lc_validator_datum_in" > $WORK/lc-datum-in.json
 
 # get the current total Ada value
 total_ada=$(jq -r '.list[0].int' $WORK/lc-datum-in.json)
+total_lc=$(jq -r '.list[1].int' $WORK/lc-datum-in.json)
 new_total_ada=$(($total_ada + $ada_amount))
+lc_supply=$(($LC_SUPPLY - total_lc))
 
 # Update the littercoin datum accordingly
 cat $WORK/lc-datum-in.json | \
@@ -128,7 +132,7 @@ $CARDANO_CLI transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file "$redeemer_file_path" \
-  --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out "$lc_validator_script_addr+$new_total_ada + 1 $thread_token_mph.$thread_token_name + $lc_supply $thread_token_mph.$lc_token_name" \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json"  \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/add-ada-tx-alonzo.body

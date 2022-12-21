@@ -4,7 +4,9 @@ enum Redeemer {
     Init 
 }
 
-const TX_ID: ByteArray = #5e1324a0355a0ecefe009da1964b74302251055a42f90e8709c4f67bb306a5b9
+const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin 
+
+const TX_ID: ByteArray = #4c41969136edc4ec01c6ff9a222150533a1992a283bb656a999a8928fc01d45f
 const txId: TxId = TxId::new(TX_ID)
 const outputId: TxOutputId = TxOutputId::new(txId, 0)
 
@@ -16,11 +18,19 @@ func main(ctx: ScriptContext) -> Bool {
         mph, 
         "Thread Token Littercoin".encode_utf8()
     );
-
-    value_minted: Value = tx.minted;
-    value_minted == Value::new(tt_assetclass, 1) &&
-    tx.inputs.any((input: TxInput) -> Bool {
-                                    (input.output_id == outputId).trace("TT1: ")
+    
+    lc_assetclass: AssetClass = AssetClass::new(
+        mph, 
+        "Littercoin".encode_utf8()
+    );
+    ttVal : Value = Value::new(tt_assetclass, 1);
+    lcVal : Value = Value::new(lc_assetclass, LC_FIXED_SUPPLY);
+    //value_minted: Value = tx.minted;
+    //value_minted == Value::new(tt_assetclass, 1) &&
+    
+    (tx.minted == ttVal + lcVal).trace("TTMP1: ") &&
+     tx.inputs.any((input: TxInput) -> Bool {
+                                    (input.output_id == outputId).trace("TTMP1: ")
                                     }
     )
 
