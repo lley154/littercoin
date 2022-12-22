@@ -1,11 +1,27 @@
 # Littercoin Open Source Repository
-## Problem statement
+## Problem Statement
 Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualisations and incentives remain significantly underdeveloped
 ## The Solution
 Littercoin is the first token rewarded for doing citizen science by simply walking around with a smart phone and start collecting information about your local environmental surroundings.
 ## Getting Started
 To setup your own incentized token economy, you can follow the steps below and use this as  a template.
 #### Nami Wallet Setup
+You will need to use a Cardano wallet and using the Nami wallet is a good wallet for new and experienced users alike.   Nami wallet is a Chrome browser extension wallet and can be found on the Chrome extension page here: 
+
+https://chrome.google.com/webstore/detail/nami/lpfcbjknijpeeillifnkikgncikgfhdo
+
+For testing, it is recommended to setup 2 users.
+
+Follow the instructions to create a new wallet and a seed phase for the 1st user we will call the Admin.   Select the profile image to get to the account detail view, and from there you can create another account called User.
+
+You will need some Cardano, so you can go to the preprod test faucet page here:  
+
+https://docs.cardano.org/cardano-testnet/tools/faucet
+
+Select Receive on the Nami wallet to get and address to send the funds to.   Use that address in the test faucet page and make sure you select preprod network.
+
+Once you have some funds in the Admin account, you can proceed.
+
 #### Demeter Setup
 #### Determine your PKH & UTXO
 #### Compile Smart Contract Code and Deploy 
