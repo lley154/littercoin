@@ -1,8 +1,25 @@
 # Littercoin Open Source Repository
+## Getting Started
+#### Nami Wallet Setup
+#### Demeter Setup
+#### Determine your PKH & UTXO
+#### Compile Smart Contract Code and Deploy 
+#### Threadtoken and Littercoin Initialization
+#### Update Environment variables and Start Next.js
+## The Application
+#### Application Design
+##### Adding Ada
+##### Minting Littercoin
+##### Burning Littercoin
+## Why Helios
+### Performance Benchmarks
 
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
 ![Littercoin High Level Design](/images/littercoin_design.png)
+
+
+
 
 
 ## The Littercoin Smart Contract 
