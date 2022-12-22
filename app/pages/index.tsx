@@ -5,7 +5,6 @@ import Head from 'next/head'
 import LittercoinInfo from '../components/LittercoinInfo';
 import MintLC from '../components/MintLC';
 import MintMerchantToken from '../components/MintMerchantToken';
-import MintOwnerToken from '../components/MintOwnerToken';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
@@ -31,7 +30,6 @@ import {
   TxWitnesses,
   Tx, 
   UTxO} from "@hyperionbt/helios";
-  //UTxO} from "@lley/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -463,7 +461,7 @@ const Home: NextPage = (props) => {
     const datObj = info?.datum;
     const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
     const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-    const ratio : number = datAda / datLC;
+    const ratio = Math.floor(datAda / datLC);
     const withdrawAda : number = lcQty * ratio;
     const newLCAmount : BigInt = BigInt(datLC) - BigInt(lcQty);
     const newAdaAmount : BigInt = BigInt(datAda) - BigInt(withdrawAda);

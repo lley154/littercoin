@@ -2,6 +2,7 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@hyperionbt/helios": "^0.9.7",
+    "@hyperionbt/helios": "^0.9.13",
     "@lley/helios": "github:lley154/Helios",
     "next": "12.3.1",
     "react": "18.2.0",
