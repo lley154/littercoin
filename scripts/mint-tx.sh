@@ -127,8 +127,8 @@ $CARDANO_CLI transaction build \
   --cardano-mode \
   $network \
   --change-address "$admin_utxo_addr" \
-  --tx-in-collateral "$admin_utxo_collateral_in" \
-  --tx-in "$admin_utxo_in" \
+  --tx-in-collateral "6f191ed147811b85ca9f6b33b64fabb0e4078b79ae14f5ee1532e1d30885fc22#0" \
+  --tx-in "6f191ed147811b85ca9f6b33b64fabb0e4078b79ae14f5ee1532e1d30885fc22#1" \
   --tx-in "$lc_validator_utxo_tx_in" \
   --spending-tx-in-reference "$LC_VAL_REF_SCRIPT" \
   --spending-plutus-script-v2 \
@@ -146,6 +146,8 @@ $CARDANO_CLI transaction build \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/mint-tx-alonzo.body
 
+#  --tx-in-collateral "$admin_utxo_collateral_in" \
+#   --tx-in "$admin_utxo_in" \
 
 #  --calculate-plutus-script-cost "$BASE/scripts/$ENV/data/mint-tx.costs"
   
