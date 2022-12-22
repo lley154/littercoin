@@ -30,8 +30,8 @@ import {
   TxOutput,
   TxWitnesses,
   Tx, 
-  //UTxO} from "@hyperionbt/helios";
-  UTxO} from "@lley/helios";
+  UTxO} from "@hyperionbt/helios";
+  //UTxO} from "@lley/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -55,6 +55,7 @@ import {
       const valAddr = Address.fromValidatorHash(true, valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
+      console.log("getServerSideProps: blockfrosturl", blockfrostUrl);
       var payload;
       let resp = await fetch(blockfrostUrl, {
         method: "GET",
