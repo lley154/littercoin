@@ -1,5 +1,10 @@
 # Littercoin Open Source Repository
+## Problem statement
+Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualisations and incentives remain significantly underdeveloped
+## The Solution
+Littercoin is the first token rewarded for doing citizen science by simply walking around with a smart phone and start collecting information about your local environmental surroundings.
 ## Getting Started
+To setup your own incentized token economy, you can follow the steps below and use this as  a template.
 #### Nami Wallet Setup
 #### Demeter Setup
 #### Determine your PKH & UTXO
@@ -8,15 +13,16 @@
 #### Update Environment variables and Start Next.js
 ## The Application
 #### Application Design
-##### Adding Ada
-##### Minting Littercoin
-##### Burning Littercoin
-## Why Helios
-### Performance Benchmarks
 
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
 ![Littercoin High Level Design](/images/littercoin_design.png)
+
+##### Adding Ada
+##### Minting Littercoin
+##### Burning Littercoin
+## Why Helios
+#### Performance Benchmarks
 
 
 
