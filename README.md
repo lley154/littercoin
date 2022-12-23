@@ -23,7 +23,7 @@ Only the owner using the owner's wallet can mint a merchant token.   This must m
 Only a wallet with a merchant token is able to burn littercoin and receive Ada.   The Merchant enters the total amount of littercoin they have in their wallet that they will burn.   The Smart Contract will then "burn" the littercoin and send them the amount of Ada corresponding to the current Ada:Littercoin price ratio.
 
 ## Why Helios
-Helios is an fantastic alternative language for writing plutus smart contracts.   No nix, no cabal and no haskell yet a strongly typed, functional programming language!   The excellent documentation and well designed language and syntax is very intuiative and easy to learn.  Find out more info here: [https://github.com/Hyperion-BT/Helios](https://github.com/Hyperion-BT/Helios)
+Helios is a fantastic alternative language for writing plutus smart contracts.   No nix, no cabal and no haskell yet a strongly typed, functional programming language!   The excellent documentation and well designed language and syntax is very intuiative and easy to learn.  Find out more info here: [https://github.com/Hyperion-BT/Helios](https://github.com/Hyperion-BT/Helios)
 #### Baseline Comparison
 Since I initially wrote the littercoin smart contract using Haskell Plutus Tx, I was able to compare a baseline, so here are the results.
 
