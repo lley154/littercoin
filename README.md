@@ -124,7 +124,7 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
     "address_style": "Shelley",
     "address_type": 0,
     "network_tag": 0,
-    "spending_key_hash": "**b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682**",
+    "spending_key_hash": "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682",
     "spending_key_hash_bech32": "addr_vkh1hx4u76r82x0zsppqfz4pzgrjzjjjum2ax2ytw5k3cfmgymje4ul",
     "stake_key_hash": "f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
     "stake_key_hash_bech32": "stake_vkh179a30u23rr0vdc6vrsf8fz95l50xh8umdy9c9s798wjdv8f4pge",
@@ -137,11 +137,13 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
 2. Navigate to the src directory and select the threadToken.hl file.
 3. Find and replace the UTXO that you identified in finding the UTXO step above
 ```
+// Define the UTXO to be spent
 const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
 ```
 4. Using the Web VS Code explorer, open merchToken.hl
 5. Find and replace the PKH of the owner that was obatin above.
 ```
+// Define the owner public key hash (PKH)
 const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
 ```
 
@@ -177,6 +179,7 @@ const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e53
 ```
 npx deno-bin run --allow-read --allow-write src/deploy-val.js 
 littercoin validator hash:  1289f3bf1ffb1a1dd43f590dd641d85c3dc4f97bd60510216388a8d3
+littercoin validator address:  addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44gdt8aldqp9hr70
 ```
 12.  Now copy the source and generated files in the deploy directory
 ```
@@ -200,6 +203,42 @@ cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc
 ```
 
 #### Update Environment variables and Start Next.js
+1. Using Web VS Code explorer, navigate to the .bashrc file located your home directory (cd ~).
+2. Add the following lines at the end of it, and use the correct values obtain from the above steps.
+```
+export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
+export NEXT_PUBLIC_BLOCKFROST_API="https://cardano-preprod.blockfrost.io/api/v0"
+export NEXT_PUBLIC_LC_SUPPLY=1000000000
+export NEXT_PUBLIC_MIN_ADA=2000000
+export NEXT_PUBLIC_NETWORK_PARAMS_URL="https://d1t0d7c2nekuk0.cloudfront.net/preprod.json"
+export NEXT_PUBLIC_OPTIMIZED="false"
+export NEXT_PUBLIC_THREAD_TOKEN_MPH="1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565"
+export NEXT_PUBLIC_THREAD_TOKEN_NAME="54687265616420546f6b656e204c6974746572636f696e"
+export NEXT_PUBLIC_LC_TOKEN_NAME="4c6974746572636f696e"
+export NEXT_PUBLIC_OWNER_PKH="b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
+export NEXT_PUBLIC_MERCH_TOKEN_MPH="b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67"
+export NEXT_PUBLIC_MERCH_TOKEN_NAME="4d65726368616e7420546f6b656e204c6974746572636f696e"
+```
+3. Now read in the environment variables using the terminal window.
+```
+source ~/.bashrc
+```
+4. cd app
+5. npm install --global yarn
+6. npm install
+7. yarn dev
+```
+yarn run v1.22.19
+$ next dev
+ready - started server on 0.0.0.0:3000, url: http://localhost:3000
+event - compiled client and server successfully in 1702 ms (173 modules)
+```
+8. Now go to the proxy URL which was obatined when we exposed the port 3000 in the Demeter setup steps above.  Eg. 
+```
+https://3000-venomous-audience-7gg1mp.us1.demeter.run/
+```
+
+
 ## The Application
 #### Application Design
 
