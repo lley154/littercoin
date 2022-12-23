@@ -15,6 +15,7 @@ const valBurnRedeemerData = valBurnRedeemer.data;
 
 const vHash = lcUplcProgramLC.validatorHash;
 console.log("littercoin validator hash: ", vHash.hex);
+console.log("littercoin validator address: ", helios.Address.fromValidatorHash(true, vHash).toBech32());
 
 await Deno.writeTextFile("./deploy/redeemer-add-ada.json", valAddAdaRedeemerData.toSchemaJson());
 await Deno.writeTextFile("./deploy/redeemer-val-mint.json", valMintRedeemerData.toSchemaJson());
