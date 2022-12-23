@@ -10,7 +10,7 @@ You will need to use a Cardano wallet and using the Nami wallet is a good wallet
 
 https://chrome.google.com/webstore/detail/nami/lpfcbjknijpeeillifnkikgncikgfhdo
 
-For testing, it is recommended to setup 2 users.
+For testing, it is recommended to setup 2 accounts.
 
 Follow the instructions to create a new wallet and a seed phase for the 1st user we will call the Admin.   Select the profile image to get to the account detail view, and from there you can create another account called User.
 
