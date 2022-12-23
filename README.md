@@ -157,7 +157,10 @@ d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        35
 ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382     0        5000000 lovelace + TxOutDatumNone
 ```
 
-Note: 1 Ada = 1,000,000 lovelace.
+Notes: 
+1 Ada = 1,000,000 lovelace.   
+The UTXO with 35,000,000 lovelace is the one we will use for our thread token input.   
+The UTXO for 5,000,000 lovelace will be used as collateral by the bash shell script.
 
 
 #### Determine The Owner PKH
@@ -192,7 +195,7 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
 #### Compile Smart Contract Code and Deploy 
 1. Open the Web VS Code editor and open the explorer tab on the left.  
 2. Navigate to the src directory and select the threadToken.hl file.
-3. Find and replace the UTXO that you identified in finding the UTXO step above
+3. Find and replace the UTXO that you identified in finding the UTXO (with 35,000,000 lovelace) step above
 ```
 // Define the UTXO to be spent
 const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
