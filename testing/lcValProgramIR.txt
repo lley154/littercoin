@@ -1,0 +1,1061 @@
+0001  (__helios__common__unStringData) -> {
+0002  (__helios__common__stringData) -> {
+0003  (__helios__string____add) -> {
+0004  (__helios__bool__show) -> {
+0005  (__helios__common__concat) -> {
+0006  (__helios__common__list_0) -> {
+0007  (__helios__common__any) -> {
+0008  (__helios__common__is_in_bytearray_list) -> {
+0009  (__helios__value__get_map_keys) -> {
+0010  (__helios__value__merge_map_keys) -> {
+0011  (__helios__common__not) -> {
+0012  (__helios__value__get_inner_map_int) -> {
+0013  (__helios__value__compare_inner) -> {
+0014  (__helios__value__get_inner_map) -> {
+0015  (__helios__value__compare) -> {
+0016  (__helios__value____eq) -> {
+0017  (__helios__common__fold) -> {
+0018  (__helios__list__fold) -> {
+0019  (__helios__value__add_or_subtract_inner) -> {
+0020  (__helios__value__add_or_subtract) -> {
+0021  (__helios__value____add) -> {
+0022  (__helios__common__fields) -> {
+0023  (__helios__common__fields_after_0) -> {
+0024  (__helios__common__field_1) -> {
+0025  (__helios__txoutput__value) -> {
+0026  (__helios__value__ZERO) -> {
+0027  (__helios__txoutput__sum_values) -> {
+0028  (__helios__common__filter) -> {
+0029  (__helios__common__filter_list) -> {
+0030  (__helios__common__fields_after_1) -> {
+0031  (__helios__common__field_2) -> {
+0032  (__helios__tx__outputs) -> {
+0033  (__helios__tx__filter_outputs) -> {
+0034  (__helios__credential__is_validator) -> {
+0035  (__helios__common__field_0) -> {
+0036  (__helios__credential__validator__hash) -> {
+0037  (__helios__common__assert_constr_index) -> {
+0038  (__helios__credential__validator__cast) -> {
+0039  (__helios__address__credential) -> {
+0040  (__helios__txoutput__address) -> {
+0041  (__helios__txoutput__is_locked_by) -> {
+0042  (__helios__tx__outputs_locked_by) -> {
+0043  (__helios__tx__value_locked_by) -> {
+0044  (__helios__bool__and) -> {
+0045  (__helios__int____gt) -> {
+0046  (__helios__value__new) -> {
+0047  (__helios__common__list_1) -> {
+0048  (__helios__common__list_2) -> {
+0049  (__helios__assetclass__new) -> {
+0050  (__helios__assetclass__ADA) -> {
+0051  (__helios__value__lovelace) -> {
+0052  (__helios__int____sub) -> {
+0053  (__helios__outputdatum__inline__data) -> {
+0054  (__helios__txoutput__datum) -> {
+0055  (__helios__list__get) -> {
+0056  (__helios__common____eq) -> {
+0057  (__helios__int____eq) -> {
+0058  (__helios__value____geq) -> {
+0059  (__helios__value__contains) -> {
+0060  (__helios__common__fields_after_2) -> {
+0061  (__helios__common__fields_after_3) -> {
+0062  (__helios__common__field_4) -> {
+0063  (__helios__tx__minted) -> {
+0064  (__helios__common__fields_after_4) -> {
+0065  (__helios__common__fields_after_5) -> {
+0066  (__helios__common__fields_after_6) -> {
+0067  (__helios__common__fields_after_7) -> {
+0068  (__helios__common__field_8) -> {
+0069  (__helios__tx__signatories) -> {
+0070  (__helios__tx__is_signed_by) -> {
+0071  (__helios__int____lt) -> {
+0072  (__helios__credential__is_pubkey) -> {
+0073  (__helios__credential__pubkey__hash) -> {
+0074  (__helios__credential__pubkey__cast) -> {
+0075  (__helios__txoutput__is_sent_to) -> {
+0076  (__helios__tx__outputs_sent_to) -> {
+0077  (__helios__common__identity) -> {
+0078  (__helios__hash__new) -> {
+0079  (__helios__int____mul) -> {
+0080  (__helios__value__map_quantities) -> {
+0081  (__helios__value____mul) -> {
+0082  (__helios__int____neg) -> {
+0083  (__helios__scriptcontext__tx) -> {
+0084  (__helios__txinput__output) -> {
+0085  (__helios__common__find) -> {
+0086  (__helios__list__find) -> {
+0087  (__helios__tx__inputs) -> {
+0088  (__helios__txinput__output_id) -> {
+0089  (__helios__scriptcontext__get_spending_purpose_output_id) -> {
+0090  (__helios__scriptcontext__get_current_input) -> {
+0091  (__helios__scriptcontext__get_current_validator_hash) -> {
+0092  (__helios__string__encode_utf8) -> {
+0093  (__helios__int____div) -> {
+0094  (__helios__common__tuple_fields_after_0) -> {
+0095  (__helios__common__tuple_field_1) -> {
+0096  (__helios__common__tuple_field_0) -> {
+0097  (__module__validator__Datum__adaAmount) -> {
+0098  (__module__validator__Datum__lcAmount) -> {
+0099  (__module__validator__Datum__from_data) -> {
+0100  (__module__validator__Datum__get_ratio) -> {
+0101  (__module__validator__Redeemer__Burn__pkhBA) -> {
+0102  (__module__validator__minAda) -> {
+0103  (__module__validator__TT_MPH) -> {
+0104  (__module__validator__ttMph) -> {
+0105  (__module__validator__ttAssetclass) -> {
+0106  (__module__validator__ttVal) -> {
+0107  (__module__validator__LC_MPH) -> {
+0108  (__module__validator__lcMph) -> {
+0109  (__module__validator__lcAssetClass) -> {
+0110  (__module__validator__OWNER_PKH) -> {
+0111  (__module__validator__ownerPkh) -> {
+0112  (__module__validator__MERCHANT_MPH) -> {
+0113  (__module__validator__merchMph) -> {
+0114  (__module__validator__merchAssetclass) -> {
+0115  (__module__validator__merchVal) -> {
+0116  (__module__validator__main) -> {
+0117    (datum, redeemer, ctx) -> {
+0118      __core__ifThenElse(
+0119        __module__validator__main(datum, redeemer, ctx),
+0120        () -> {
+0121          ()
+0122        },
+0123        () -> {
+0124          error()
+0125        }
+0126      )()
+0127    }
+0128  }(/*__module__validator__main*/(datum, redeemer, ctx) -> {
+0129    (vHash) -> {
+0130      (tx) -> {
+0131        (txOutput) -> {
+0132          (e) -> {
+0133            (i) -> {
+0134              __core__ifThenElse(
+0135                __core__equalsInteger(i, 0),
+0136                () -> {
+0137                  (_) -> {
+0138                    (e) -> {
+0139                      (i) -> {
+0140                        __core__ifThenElse(
+0141                          __core__equalsInteger(i, 2),
+0142                          () -> {
+0143                            (dat) -> {
+0144                              (outDat) -> {
+0145                                (addAdaDatumAmt) -> {
+0146                                  (adaVal) -> {
+0147                                    __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV1"))(__helios__bool__show(__helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal)))())), () -> {
+0148                                      __helios__bool__and(() -> {
+0149                                        __helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal))
+0150                                      }, () -> {
+0151                                        __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV2"))(__helios__bool__show(__helios__int____gt(addAdaDatumAmt)(__core__iData(2000000)))())), () -> {
+0152                                          __helios__int____gt(addAdaDatumAmt)(__core__iData(2000000))
+0153                                        })()
+0154                                      })
+0155                                    })()
+0156                                  }(__helios__value__lovelace(__module__validator__Datum__adaAmount(outDat)))
+0157                                }(__helios__int____sub(__module__validator__Datum__adaAmount(outDat))(__module__validator__Datum__adaAmount(datum)))
+0158                              }(__module__validator__Datum__from_data(__helios__outputdatum__inline__data(dat)))
+0159                            }
+0160                          },
+0161                          () -> {
+0162                            (_) -> {
+0163                              __core__trace(__helios__common__unStringData(__helios__common__stringData("LCV3: invalid datum")), () -> {
+0164                                false
+0165                              })()
+0166                            }
+0167                          }
+0168                        )()
+0169                      }(__core__fstPair(__core__unConstrData(e)))(e)
+0170                    }(__helios__txoutput__datum(__helios__list__get(txOutput)(__core__iData(0))))
+0171                  }
+0172                },
+0173                () -> {
+0174                  __core__ifThenElse(
+0175                    __core__equalsInteger(i, 1),
+0176                    () -> {
+0177                      (_) -> {
+0178                        (e) -> {
+0179                          (i) -> {
+0180                            __core__ifThenElse(
+0181                              __core__equalsInteger(i, 2),
+0182                              () -> {
+0183                                (dat) -> {
+0184                                  (outDat) -> {
+0185                                    (adaDatumAmt) -> {
+0186                                      (adaVal) -> {
+0187                                        (lcDatumAmt) -> {
+0188                                          (lcMintVal) -> {
+0189                                            __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV4: "))(__helios__bool__show(__helios__int____eq(adaDatumAmt)(__core__iData(0)))())), () -> {
+0190                                              __helios__bool__and(() -> {
+0191                                                __helios__bool__and(() -> {
+0192                                                  __helios__bool__and(() -> {
+0193                                                    __helios__bool__and(() -> {
+0194                                                      __helios__int____eq(adaDatumAmt)(__core__iData(0))
+0195                                                    }, () -> {
+0196                                                      __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV5: "))(__helios__bool__show(__helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal)))())), () -> {
+0197                                                        __helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal))
+0198                                                      })()
+0199                                                    })
+0200                                                  }, () -> {
+0201                                                    __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV6: "))(__helios__bool__show(__helios__value__contains(__helios__tx__minted(tx))(lcMintVal))())), () -> {
+0202                                                      __helios__value__contains(__helios__tx__minted(tx))(lcMintVal)
+0203                                                    })()
+0204                                                  })
+0205                                                }, () -> {
+0206                                                  __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV7: "))(__helios__bool__show(__helios__tx__is_signed_by(tx)(__module__validator__ownerPkh))())), () -> {
+0207                                                    __helios__tx__is_signed_by(tx)(__module__validator__ownerPkh)
+0208                                                  })()
+0209                                                })
+0210                                              }, () -> {
+0211                                                __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV8: "))(__helios__bool__show(__helios__bool__and(() -> {
+0212                                                  __helios__int____lt(__core__iData(0))(lcDatumAmt)
+0213                                                }, () -> {
+0214                                                  __helios__int____lt(lcDatumAmt)(__module__validator__Datum__adaAmount(outDat))
+0215                                                }))())), () -> {
+0216                                                  __helios__bool__and(() -> {
+0217                                                    __helios__int____lt(__core__iData(0))(lcDatumAmt)
+0218                                                  }, () -> {
+0219                                                    __helios__int____lt(lcDatumAmt)(__module__validator__Datum__adaAmount(outDat))
+0220                                                  })
+0221                                                })()
+0222                                              })
+0223                                            })()
+0224                                          }(__helios__value__new(__module__validator__lcAssetClass, lcDatumAmt))
+0225                                        }(__helios__int____sub(__module__validator__Datum__lcAmount(outDat))(__module__validator__Datum__lcAmount(datum)))
+0226                                      }(__helios__value__lovelace(__module__validator__Datum__adaAmount(outDat)))
+0227                                    }(__helios__int____sub(__module__validator__Datum__adaAmount(outDat))(__module__validator__Datum__adaAmount(datum)))
+0228                                  }(__module__validator__Datum__from_data(__helios__outputdatum__inline__data(dat)))
+0229                                }
+0230                              },
+0231                              () -> {
+0232                                (_) -> {
+0233                                  __core__trace(__helios__common__unStringData(__helios__common__stringData("LCV9: invalid datum")), () -> {
+0234                                    false
+0235                                  })()
+0236                                }
+0237                              }
+0238                            )()
+0239                          }(__core__fstPair(__core__unConstrData(e)))(e)
+0240                        }(__helios__txoutput__datum(__helios__list__get(txOutput)(__core__iData(0))))
+0241                      }
+0242                    },
+0243                    () -> {
+0244                      (red) -> {
+0245                        (e) -> {
+0246                          (i) -> {
+0247                            __core__ifThenElse(
+0248                              __core__equalsInteger(i, 2),
+0249                              () -> {
+0250                                (dat) -> {
+0251                                  (outDat) -> {
+0252                                    (adaDatumAmt) -> {
+0253                                      (adaVal) -> {
+0254                                        (lcDatumAmt) -> {
+0255                                          (lcBurnVal) -> {
+0256                                            (ratio) -> {
+0257                                              (adaWithdraw) -> {
+0258                                                (adaWithdrawVal) -> {
+0259                                                  (merchPkh) -> {
+0260                                                    (merchOutTxs) -> {
+0261                                                      __helios__bool__and(() -> {
+0262                                                        __helios__bool__and(() -> {
+0263                                                          __helios__bool__and(() -> {
+0264                                                            __helios__bool__and(() -> {
+0265                                                              __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV10: "))(__helios__bool__show(__helios__int____eq(adaDatumAmt)(adaWithdraw))())), () -> {
+0266                                                                __helios__int____eq(adaDatumAmt)(adaWithdraw)
+0267                                                              })()
+0268                                                            }, () -> {
+0269                                                              __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV11: "))(__helios__bool__show(__helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal)))())), () -> {
+0270                                                                __helios__value____eq(__helios__tx__value_locked_by(tx)(vHash))(__helios__value____add(__module__validator__ttVal)(adaVal))
+0271                                                              })()
+0272                                                            })
+0273                                                          }, () -> {
+0274                                                            __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV12: "))(__helios__bool__show(__helios__value__contains(__helios__tx__minted(tx))(lcBurnVal))())), () -> {
+0275                                                              __helios__value__contains(__helios__tx__minted(tx))(lcBurnVal)
+0276                                                            })()
+0277                                                          })
+0278                                                        }, () -> {
+0279                                                          __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV13: "))(__helios__bool__show(__helios__value__contains(__helios__txoutput__value(__helios__list__get(merchOutTxs)(__core__iData(2))))(__helios__value____add(__module__validator__minAda)(__module__validator__merchVal)))())), () -> {
+0280                                                            __helios__value__contains(__helios__txoutput__value(__helios__list__get(merchOutTxs)(__core__iData(2))))(__helios__value____add(__module__validator__minAda)(__module__validator__merchVal))
+0281                                                          })()
+0282                                                        })
+0283                                                      }, () -> {
+0284                                                        __core__trace(__helios__common__unStringData(__helios__string____add(__helios__common__stringData("LCV14: "))(__helios__bool__show(__helios__value__contains(__helios__txoutput__value(__helios__list__get(merchOutTxs)(__core__iData(1))))(adaWithdrawVal))())), () -> {
+0285                                                          __helios__value__contains(__helios__txoutput__value(__helios__list__get(merchOutTxs)(__core__iData(1))))(adaWithdrawVal)
+0286                                                        })()
+0287                                                      })
+0288                                                    }(__helios__tx__outputs_sent_to(tx)(merchPkh))
+0289                                                  }(__helios__hash__new(__module__validator__Redeemer__Burn__pkhBA(red)))
+0290                                                }(__helios__value__lovelace(adaWithdraw))
+0291                                              }(__helios__int____mul(lcDatumAmt)(ratio))
+0292                                            }(__module__validator__Datum__get_ratio(datum)())
+0293                                          }(__helios__value____mul(__helios__value__new(__module__validator__lcAssetClass, lcDatumAmt))(__helios__int____neg(__core__iData(1))()))
+0294                                        }(__helios__int____sub(__module__validator__Datum__lcAmount(datum))(__module__validator__Datum__lcAmount(outDat)))
+0295                                      }(__helios__value__lovelace(__module__validator__Datum__adaAmount(outDat)))
+0296                                    }(__helios__int____sub(__module__validator__Datum__adaAmount(datum))(__module__validator__Datum__adaAmount(outDat)))
+0297                                  }(__module__validator__Datum__from_data(__helios__outputdatum__inline__data(dat)))
+0298                                }
+0299                              },
+0300                              () -> {
+0301                                (_) -> {
+0302                                  __core__trace(__helios__common__unStringData(__helios__common__stringData("LCV15: invalid datum")), () -> {
+0303                                    false
+0304                                  })()
+0305                                }
+0306                              }
+0307                            )()
+0308                          }(__core__fstPair(__core__unConstrData(e)))(e)
+0309                        }(__helios__txoutput__datum(__helios__list__get(txOutput)(__core__iData(0))))
+0310                      }
+0311                    }
+0312                  )()
+0313                }
+0314              )()
+0315            }(__core__fstPair(__core__unConstrData(e)))(e)
+0316          }(redeemer)
+0317        }(__helios__tx__outputs_locked_by(tx)(vHash))
+0318      }(__helios__scriptcontext__tx(ctx))
+0319    }(__helios__scriptcontext__get_current_validator_hash(ctx)())
+0320  })
+0321  }(/*__module__validator__merchVal*/__helios__value__new(__module__validator__merchAssetclass, __core__iData(1)))
+0322  }(/*__module__validator__merchAssetclass*/__helios__assetclass__new(__module__validator__merchMph, __helios__string__encode_utf8(__helios__common__stringData("Merchant Token Littercoin"))()))
+0323  }(/*__module__validator__merchMph*/__helios__hash__new(__module__validator__MERCHANT_MPH))
+0324  }(/*__module__validator__MERCHANT_MPH*/__core__bData(#e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b))
+0325  }(/*__module__validator__ownerPkh*/__helios__hash__new(__module__validator__OWNER_PKH))
+0326  }(/*__module__validator__OWNER_PKH*/__core__bData(#b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682))
+0327  }(/*__module__validator__lcAssetClass*/__helios__assetclass__new(__module__validator__lcMph, __helios__string__encode_utf8(__helios__common__stringData("Littercoin"))()))
+0328  }(/*__module__validator__lcMph*/__helios__hash__new(__module__validator__LC_MPH))
+0329  }(/*__module__validator__LC_MPH*/__core__bData(#67fcf82bf28050e0fb1682d4eb9a0d6818a85d9e499273460650dafa))
+0330  }(/*__module__validator__ttVal*/__helios__value__new(__module__validator__ttAssetclass, __core__iData(1)))
+0331  }(/*__module__validator__ttAssetclass*/__helios__assetclass__new(__module__validator__ttMph, __helios__string__encode_utf8(__helios__common__stringData("Thread Token Littercoin"))()))
+0332  }(/*__module__validator__ttMph*/__helios__hash__new(__module__validator__TT_MPH))
+0333  }(/*__module__validator__TT_MPH*/__core__bData(#e0db2efbdc69be9f190d62f3a1b6d38d119e7a4622f80d11bfa56858))
+0334  }(/*__module__validator__minAda*/__helios__value__lovelace(__core__iData(2000000)))
+0335  }(/*__module__validator__Redeemer__Burn__pkhBA*/__helios__common__field_0)
+0336  }(/*__module__validator__Datum__get_ratio*/(self) -> {
+0337    () -> {
+0338      __helios__int____div(__module__validator__Datum__adaAmount(self))(__module__validator__Datum__lcAmount(self))
+0339    }
+0340  })
+0341  }(/*__module__validator__Datum__from_data*/__helios__common__identity)
+0342  }(/*__module__validator__Datum__lcAmount*/__helios__common__tuple_field_1)
+0343  }(/*__module__validator__Datum__adaAmount*/__helios__common__tuple_field_0)
+0344  }(/*__helios__common__tuple_field_0*/(self) -> {
+0345    __core__headList(__core__unListData(self))
+0346  })
+0347  }(/*__helios__common__tuple_field_1*/(self) -> {
+0348    __core__headList(__helios__common__tuple_fields_after_0(self))
+0349  })
+0350  }(/*__helios__common__tuple_fields_after_0*/(self) -> {
+0351    __core__tailList(__core__unListData(self))
+0352  })
+0353  }(/*__helios__int____div*/(self) -> {
+0354    (a) -> {
+0355      (b) -> {
+0356        __core__iData(__core__divideInteger(a, __core__unIData(b)))
+0357      }
+0358    }(__core__unIData(self))
+0359  })
+0360  }(/*__helios__string__encode_utf8*/(self) -> {
+0361    (self) -> {
+0362      () -> {
+0363        __core__bData(__core__encodeUtf8(self))
+0364      }
+0365    }(__helios__common__unStringData(self))
+0366  })
+0367  }(/*__helios__scriptcontext__get_current_validator_hash*/(self) -> {
+0368    () -> {
+0369      __helios__credential__validator__hash(__helios__credential__validator__cast(__helios__address__credential(__helios__txoutput__address(__helios__txinput__output(__helios__scriptcontext__get_current_input(self)())))))
+0370    }
+0371  })
+0372  }(/*__helios__scriptcontext__get_current_input*/(self) -> {
+0373    () -> {
+0374      (id) -> {
+0375        __helios__list__find(__helios__tx__inputs(__helios__scriptcontext__tx(self)))((input) -> {
+0376          __core__equalsData(__helios__txinput__output_id(input), id)
+0377        })
+0378      }(__helios__scriptcontext__get_spending_purpose_output_id(self)())
+0379    }
+0380  })
+0381  }(/*__helios__scriptcontext__get_spending_purpose_output_id*/(self) -> {
+0382    () -> {
+0383      __helios__common__field_0(__helios__common__field_1(self))
+0384    }
+0385  })
+0386  }(/*__helios__txinput__output_id*/__helios__common__field_0)
+0387  }(/*__helios__tx__inputs*/__helios__common__field_0)
+0388  }(/*__helios__list__find*/(self) -> {
+0389    (self) -> {
+0390      (fn) -> {
+0391        __helios__common__find(self, fn)
+0392      }
+0393    }(__core__unListData(self))
+0394  })
+0395  }(/*__helios__common__find*/(self, fn) -> {
+0396    (recurse) -> {
+0397      recurse(recurse, self, fn)
+0398    }((recurse, self, fn) -> {
+0399      __core__ifThenElse(
+0400        __core__nullList(self),
+0401        () -> {
+0402          error()
+0403        },
+0404        () -> {
+0405          __core__ifThenElse(
+0406            fn(__core__headList(self)),
+0407            () -> {
+0408              __core__headList(self)
+0409            },
+0410            () -> {
+0411              recurse(recurse, __core__tailList(self), fn)
+0412            }
+0413          )()
+0414        }
+0415      )()
+0416    })
+0417  })
+0418  }(/*__helios__txinput__output*/__helios__common__field_1)
+0419  }(/*__helios__scriptcontext__tx*/__helios__common__field_0)
+0420  }(/*__helios__int____neg*/(self) -> {
+0421    (self) -> {
+0422      () -> {
+0423        __core__iData(__core__multiplyInteger(self, -1))
+0424      }
+0425    }(__core__unIData(self))
+0426  })
+0427  }(/*__helios__value____mul*/(self) -> {
+0428    (scale) -> {
+0429      (scale) -> {
+0430        __helios__value__map_quantities(self, (qty) -> {
+0431          __core__multiplyInteger(qty, scale)
+0432        })
+0433      }(__core__unIData(scale))
+0434    }
+0435  })
+0436  }(/*__helios__value__map_quantities*/(self, op) -> {
+0437    (self) -> {
+0438      (recurseInner) -> {
+0439        (recurseOuter) -> {
+0440          __core__mapData(recurseOuter(recurseOuter, self))
+0441        }((recurseOuter, outer) -> {
+0442          __core__ifThenElse(
+0443            __core__nullList(outer),
+0444            () -> {
+0445              __core__mkNilPairData(())
+0446            },
+0447            () -> {
+0448              (head) -> {
+0449                __core__mkCons(__core__mkPairData(__core__fstPair(head), __core__mapData(recurseInner(recurseInner, __core__unMapData(__core__sndPair(head))))), recurseOuter(recurseOuter, __core__tailList(outer)))
+0450              }(__core__headList(outer))
+0451            }
+0452          )()
+0453        })
+0454      }((recurseInner, inner) -> {
+0455        __core__ifThenElse(
+0456          __core__nullList(inner),
+0457          () -> {
+0458            __core__mkNilPairData(())
+0459          },
+0460          () -> {
+0461            (head) -> {
+0462              __core__mkCons(__core__mkPairData(__core__fstPair(head), __core__iData(op(__core__unIData(__core__sndPair(head))))), recurseInner(recurseInner, __core__tailList(inner)))
+0463            }(__core__headList(inner))
+0464          }
+0465        )()
+0466      })
+0467    }(__core__unMapData(self))
+0468  })
+0469  }(/*__helios__int____mul*/(self) -> {
+0470    (a) -> {
+0471      (b) -> {
+0472        __core__iData(__core__multiplyInteger(a, __core__unIData(b)))
+0473      }
+0474    }(__core__unIData(self))
+0475  })
+0476  }(/*__helios__hash__new*/__helios__common__identity)
+0477  }(/*__helios__common__identity*/(self) -> {
+0478    self
+0479  })
+0480  }(/*__helios__tx__outputs_sent_to*/(self) -> {
+0481    (pubKeyHash) -> {
+0482      __helios__tx__filter_outputs(self, (output) -> {
+0483        __helios__txoutput__is_sent_to(output)(pubKeyHash)
+0484      })
+0485    }
+0486  })
+0487  }(/*__helios__txoutput__is_sent_to*/(self) -> {
+0488    (pkh) -> {
+0489      (credential) -> {
+0490        __core__ifThenElse(
+0491          __helios__credential__is_pubkey(credential),
+0492          () -> {
+0493            __core__equalsData(pkh, __helios__credential__pubkey__hash(__helios__credential__pubkey__cast(credential)))
+0494          },
+0495          () -> {
+0496            false
+0497          }
+0498        )()
+0499      }(__helios__address__credential(__helios__txoutput__address(self)))
+0500    }
+0501  })
+0502  }(/*__helios__credential__pubkey__cast*/(data) -> {
+0503    __helios__common__assert_constr_index(data, 0)
+0504  })
+0505  }(/*__helios__credential__pubkey__hash*/__helios__common__field_0)
+0506  }(/*__helios__credential__is_pubkey*/(self) -> {
+0507    __core__equalsInteger(__core__fstPair(__core__unConstrData(self)), 0)
+0508  })
+0509  }(/*__helios__int____lt*/(self) -> {
+0510    (a) -> {
+0511      (b) -> {
+0512        __core__lessThanInteger(a, __core__unIData(b))
+0513      }
+0514    }(__core__unIData(self))
+0515  })
+0516  }(/*__helios__tx__is_signed_by*/(self) -> {
+0517    (hash) -> {
+0518      __helios__common__any(__core__unListData(__helios__tx__signatories(self)), (signatory) -> {
+0519        __core__equalsData(signatory, hash)
+0520      })
+0521    }
+0522  })
+0523  }(/*__helios__tx__signatories*/__helios__common__field_8)
+0524  }(/*__helios__common__field_8*/(self) -> {
+0525    __core__headList(__helios__common__fields_after_7(self))
+0526  })
+0527  }(/*__helios__common__fields_after_7*/(self) -> {
+0528    __core__tailList(__helios__common__fields_after_6(self))
+0529  })
+0530  }(/*__helios__common__fields_after_6*/(self) -> {
+0531    __core__tailList(__helios__common__fields_after_5(self))
+0532  })
+0533  }(/*__helios__common__fields_after_5*/(self) -> {
+0534    __core__tailList(__helios__common__fields_after_4(self))
+0535  })
+0536  }(/*__helios__common__fields_after_4*/(self) -> {
+0537    __core__tailList(__helios__common__fields_after_3(self))
+0538  })
+0539  }(/*__helios__tx__minted*/__helios__common__field_4)
+0540  }(/*__helios__common__field_4*/(self) -> {
+0541    __core__headList(__helios__common__fields_after_3(self))
+0542  })
+0543  }(/*__helios__common__fields_after_3*/(self) -> {
+0544    __core__tailList(__helios__common__fields_after_2(self))
+0545  })
+0546  }(/*__helios__common__fields_after_2*/(self) -> {
+0547    __core__tailList(__helios__common__fields_after_1(self))
+0548  })
+0549  }(/*__helios__value__contains*/__helios__value____geq)
+0550  }(/*__helios__value____geq*/(self) -> {
+0551    (other) -> {
+0552      __helios__value__compare((a, b) -> {
+0553        __helios__common__not(__core__lessThanInteger(a, b))
+0554      }, self, other)
+0555    }
+0556  })
+0557  }(/*__helios__int____eq*/__helios__common____eq)
+0558  }(/*__helios__common____eq*/(self) -> {
+0559    (other) -> {
+0560      __core__equalsData(self, other)
+0561    }
+0562  })
+0563  }(/*__helios__list__get*/(self) -> {
+0564    (self) -> {
+0565      (index) -> {
+0566        (recurse) -> {
+0567          recurse(recurse, self, __core__unIData(index))
+0568        }((recurse, self, index) -> {
+0569          __core__ifThenElse(
+0570            __core__nullList(self),
+0571            () -> {
+0572              error()
+0573            },
+0574            () -> {
+0575              __core__ifThenElse(
+0576                __core__lessThanInteger(index, 0),
+0577                () -> {
+0578                  error()
+0579                },
+0580                () -> {
+0581                  __core__ifThenElse(
+0582                    __core__equalsInteger(index, 0),
+0583                    () -> {
+0584                      __core__headList(self)
+0585                    },
+0586                    () -> {
+0587                      recurse(recurse, __core__tailList(self), __core__subtractInteger(index, 1))
+0588                    }
+0589                  )()
+0590                }
+0591              )()
+0592            }
+0593          )()
+0594        })
+0595      }
+0596    }(__core__unListData(self))
+0597  })
+0598  }(/*__helios__txoutput__datum*/__helios__common__field_2)
+0599  }(/*__helios__outputdatum__inline__data*/__helios__common__field_0)
+0600  }(/*__helios__int____sub*/(self) -> {
+0601    (a) -> {
+0602      (b) -> {
+0603        __core__iData(__core__subtractInteger(a, __core__unIData(b)))
+0604      }
+0605    }(__core__unIData(self))
+0606  })
+0607  }(/*__helios__value__lovelace*/(i) -> {
+0608    __helios__value__new(__helios__assetclass__ADA, i)
+0609  })
+0610  }(/*__helios__assetclass__ADA*/__helios__assetclass__new(__core__bData(#), __core__bData(#)))
+0611  }(/*__helios__assetclass__new*/(mintingPolicyHash, tokenName) -> {
+0612    __core__constrData(0, __helios__common__list_2(mintingPolicyHash, tokenName))
+0613  })
+0614  }(/*__helios__common__list_2*/(arg0, arg1) -> {
+0615    __core__mkCons(arg0, __helios__common__list_1(arg1))
+0616  })
+0617  }(/*__helios__common__list_1*/(a) -> {
+0618    __core__mkCons(a, __helios__common__list_0)
+0619  })
+0620  }(/*__helios__value__new*/(assetClass, i) -> {
+0621    __core__ifThenElse(
+0622      __core__equalsInteger(0, __core__unIData(i)),
+0623      () -> {
+0624        __helios__value__ZERO
+0625      },
+0626      () -> {
+0627        (mintingPolicyHash, tokenName) -> {
+0628          __core__mapData(__core__mkCons(__core__mkPairData(mintingPolicyHash, __core__mapData(__core__mkCons(__core__mkPairData(tokenName, i), __core__mkNilPairData(())))), __core__mkNilPairData(())))
+0629        }(__helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
+0630      }
+0631    )()
+0632  })
+0633  }(/*__helios__int____gt*/(self) -> {
+0634    (a) -> {
+0635      (b) -> {
+0636        __helios__common__not(__core__lessThanEqualsInteger(a, __core__unIData(b)))
+0637      }
+0638    }(__core__unIData(self))
+0639  })
+0640  }(/*__helios__bool__and*/(a, b) -> {
+0641    __core__ifThenElse(
+0642      a(),
+0643      () -> {
+0644        b()
+0645      },
+0646      () -> {
+0647        false
+0648      }
+0649    )()
+0650  })
+0651  }(/*__helios__tx__value_locked_by*/(self) -> {
+0652    (validatorHash) -> {
+0653      __helios__txoutput__sum_values(__helios__tx__outputs_locked_by(self)(validatorHash))
+0654    }
+0655  })
+0656  }(/*__helios__tx__outputs_locked_by*/(self) -> {
+0657    (validatorHash) -> {
+0658      __helios__tx__filter_outputs(self, (output) -> {
+0659        __helios__txoutput__is_locked_by(output)(validatorHash)
+0660      })
+0661    }
+0662  })
+0663  }(/*__helios__txoutput__is_locked_by*/(self) -> {
+0664    (hash) -> {
+0665      (credential) -> {
+0666        __core__ifThenElse(
+0667          __helios__credential__is_validator(credential),
+0668          () -> {
+0669            __core__equalsData(hash, __helios__credential__validator__hash(__helios__credential__validator__cast(credential)))
+0670          },
+0671          () -> {
+0672            false
+0673          }
+0674        )()
+0675      }(__helios__address__credential(__helios__txoutput__address(self)))
+0676    }
+0677  })
+0678  }(/*__helios__txoutput__address*/__helios__common__field_0)
+0679  }(/*__helios__address__credential*/__helios__common__field_0)
+0680  }(/*__helios__credential__validator__cast*/(data) -> {
+0681    __helios__common__assert_constr_index(data, 1)
+0682  })
+0683  }(/*__helios__common__assert_constr_index*/(data, i) -> {
+0684    __core__ifThenElse(
+0685      __core__equalsInteger(__core__fstPair(__core__unConstrData(data)), i),
+0686      () -> {
+0687        data
+0688      },
+0689      () -> {
+0690        error()
+0691      }
+0692    )()
+0693  })
+0694  }(/*__helios__credential__validator__hash*/__helios__common__field_0)
+0695  }(/*__helios__common__field_0*/(self) -> {
+0696    __core__headList(__helios__common__fields(self))
+0697  })
+0698  }(/*__helios__credential__is_validator*/(self) -> {
+0699    __core__equalsInteger(__core__fstPair(__core__unConstrData(self)), 1)
+0700  })
+0701  }(/*__helios__tx__filter_outputs*/(self, fn) -> {
+0702    __core__listData(__helios__common__filter_list(__core__unListData(__helios__tx__outputs(self)), fn))
+0703  })
+0704  }(/*__helios__tx__outputs*/__helios__common__field_2)
+0705  }(/*__helios__common__field_2*/(self) -> {
+0706    __core__headList(__helios__common__fields_after_1(self))
+0707  })
+0708  }(/*__helios__common__fields_after_1*/(self) -> {
+0709    __core__tailList(__helios__common__fields_after_0(self))
+0710  })
+0711  }(/*__helios__common__filter_list*/(self, fn) -> {
+0712    __helios__common__filter(self, fn, __helios__common__list_0)
+0713  })
+0714  }(/*__helios__common__filter*/(self, fn, nil) -> {
+0715    (recurse) -> {
+0716      recurse(recurse, self, fn)
+0717    }((recurse, self, fn) -> {
+0718      __core__ifThenElse(
+0719        __core__nullList(self),
+0720        () -> {
+0721          nil
+0722        },
+0723        () -> {
+0724          __core__ifThenElse(
+0725            fn(__core__headList(self)),
+0726            () -> {
+0727              __core__mkCons(__core__headList(self), recurse(recurse, __core__tailList(self), fn))
+0728            },
+0729            () -> {
+0730              recurse(recurse, __core__tailList(self), fn)
+0731            }
+0732          )()
+0733        }
+0734      )()
+0735    })
+0736  })
+0737  }(/*__helios__txoutput__sum_values*/(outputs) -> {
+0738    __helios__list__fold(outputs)((prev, txOutput) -> {
+0739      __helios__value____add(prev)(__helios__txoutput__value(txOutput))
+0740    }, __helios__value__ZERO)
+0741  })
+0742  }(/*__helios__value__ZERO*/__core__mapData(__core__mkNilPairData(())))
+0743  }(/*__helios__txoutput__value*/__helios__common__field_1)
+0744  }(/*__helios__common__field_1*/(self) -> {
+0745    __core__headList(__helios__common__fields_after_0(self))
+0746  })
+0747  }(/*__helios__common__fields_after_0*/(self) -> {
+0748    __core__tailList(__helios__common__fields(self))
+0749  })
+0750  }(/*__helios__common__fields*/(self) -> {
+0751    __core__sndPair(__core__unConstrData(self))
+0752  })
+0753  }(/*__helios__value____add*/(self) -> {
+0754    (other) -> {
+0755      __helios__value__add_or_subtract((a, b) -> {
+0756        __core__addInteger(a, b)
+0757      }, self, other)
+0758    }
+0759  })
+0760  }(/*__helios__value__add_or_subtract*/(op, a, b) -> {
+0761    (a, b) -> {
+0762      (recurse) -> {
+0763        __core__mapData(recurse(recurse, __helios__value__merge_map_keys(a, b), __core__mkNilPairData(())))
+0764      }((recurse, keys, result) -> {
+0765        __core__ifThenElse(
+0766          __core__nullList(keys),
+0767          () -> {
+0768            result
+0769          },
+0770          () -> {
+0771            (key, tail) -> {
+0772              (item) -> {
+0773                __core__ifThenElse(
+0774                  __core__nullList(item),
+0775                  () -> {
+0776                    tail
+0777                  },
+0778                  () -> {
+0779                    __core__mkCons(__core__mkPairData(key, __core__mapData(item)), tail)
+0780                  }
+0781                )()
+0782              }(__helios__value__add_or_subtract_inner(op)(__helios__value__get_inner_map(a, key), __helios__value__get_inner_map(b, key)))
+0783            }(__core__headList(keys), recurse(recurse, __core__tailList(keys), result))
+0784          }
+0785        )()
+0786      })
+0787    }(__core__unMapData(a), __core__unMapData(b))
+0788  })
+0789  }(/*__helios__value__add_or_subtract_inner*/(op) -> {
+0790    (a, b) -> {
+0791      (recurse) -> {
+0792        recurse(recurse, __helios__value__merge_map_keys(a, b), __core__mkNilPairData(()))
+0793      }((recurse, keys, result) -> {
+0794        __core__ifThenElse(
+0795          __core__nullList(keys),
+0796          () -> {
+0797            result
+0798          },
+0799          () -> {
+0800            (key, tail) -> {
+0801              (sum) -> {
+0802                __core__ifThenElse(
+0803                  __core__equalsInteger(sum, 0),
+0804                  () -> {
+0805                    tail
+0806                  },
+0807                  () -> {
+0808                    __core__mkCons(__core__mkPairData(key, __core__iData(sum)), tail)
+0809                  }
+0810                )()
+0811              }(op(__helios__value__get_inner_map_int(a, key), __helios__value__get_inner_map_int(b, key)))
+0812            }(__core__headList(keys), recurse(recurse, __core__tailList(keys), result))
+0813          }
+0814        )()
+0815      })
+0816    }
+0817  })
+0818  }(/*__helios__list__fold*/(self) -> {
+0819    (self) -> {
+0820      (fn, z) -> {
+0821        __helios__common__fold(self, fn, z)
+0822      }
+0823    }(__core__unListData(self))
+0824  })
+0825  }(/*__helios__common__fold*/(self, fn, z) -> {
+0826    (recurse) -> {
+0827      recurse(recurse, self, fn, z)
+0828    }((recurse, self, fn, z) -> {
+0829      __core__ifThenElse(
+0830        __core__nullList(self),
+0831        () -> {
+0832          z
+0833        },
+0834        () -> {
+0835          recurse(recurse, __core__tailList(self), fn, fn(z, __core__headList(self)))
+0836        }
+0837      )()
+0838    })
+0839  })
+0840  }(/*__helios__value____eq*/(self) -> {
+0841    (other) -> {
+0842      __helios__value__compare((a, b) -> {
+0843        __core__equalsInteger(a, b)
+0844      }, self, other)
+0845    }
+0846  })
+0847  }(/*__helios__value__compare*/(comp, a, b) -> {
+0848    (a, b) -> {
+0849      (recurse) -> {
+0850        recurse(recurse, __helios__value__merge_map_keys(a, b))
+0851      }((recurse, keys) -> {
+0852        __core__ifThenElse(
+0853          __core__nullList(keys),
+0854          () -> {
+0855            true
+0856          },
+0857          () -> {
+0858            (key) -> {
+0859              __core__ifThenElse(
+0860                __helios__common__not(__helios__value__compare_inner(comp, __helios__value__get_inner_map(a, key), __helios__value__get_inner_map(b, key))),
+0861                () -> {
+0862                  false
+0863                },
+0864                () -> {
+0865                  recurse(recurse, __core__tailList(keys))
+0866                }
+0867              )()
+0868            }(__core__headList(keys))
+0869          }
+0870        )()
+0871      })
+0872    }(__core__unMapData(a), __core__unMapData(b))
+0873  })
+0874  }(/*__helios__value__get_inner_map*/(map, mph) -> {
+0875    (recurse) -> {
+0876      recurse(recurse, map)
+0877    }((recurse, map) -> {
+0878      __core__ifThenElse(
+0879        __core__nullList(map),
+0880        () -> {
+0881          __core__mkNilPairData(())
+0882        },
+0883        () -> {
+0884          __core__ifThenElse(
+0885            __core__equalsData(__core__fstPair(__core__headList(map)), mph),
+0886            () -> {
+0887              __core__unMapData(__core__sndPair(__core__headList(map)))
+0888            },
+0889            () -> {
+0890              recurse(recurse, __core__tailList(map))
+0891            }
+0892          )()
+0893        }
+0894      )()
+0895    })
+0896  })
+0897  }(/*__helios__value__compare_inner*/(comp, a, b) -> {
+0898    (recurse) -> {
+0899      recurse(recurse, __helios__value__merge_map_keys(a, b))
+0900    }((recurse, keys) -> {
+0901      __core__ifThenElse(
+0902        __core__nullList(keys),
+0903        () -> {
+0904          true
+0905        },
+0906        () -> {
+0907          (key) -> {
+0908            __core__ifThenElse(
+0909              __helios__common__not(comp(__helios__value__get_inner_map_int(a, key), __helios__value__get_inner_map_int(b, key))),
+0910              () -> {
+0911                false
+0912              },
+0913              () -> {
+0914                recurse(recurse, __core__tailList(keys))
+0915              }
+0916            )()
+0917          }(__core__headList(keys))
+0918        }
+0919      )()
+0920    })
+0921  })
+0922  }(/*__helios__value__get_inner_map_int*/(map, key) -> {
+0923    (recurse) -> {
+0924      recurse(recurse, map, key)
+0925    }((recurse, map, key) -> {
+0926      __core__ifThenElse(
+0927        __core__nullList(map),
+0928        () -> {
+0929          0
+0930        },
+0931        () -> {
+0932          __core__ifThenElse(
+0933            __core__equalsData(__core__fstPair(__core__headList(map)), key),
+0934            () -> {
+0935              __core__unIData(__core__sndPair(__core__headList(map)))
+0936            },
+0937            () -> {
+0938              recurse(recurse, __core__tailList(map), key)
+0939            }
+0940          )()
+0941        }
+0942      )()
+0943    })
+0944  })
+0945  }(/*__helios__common__not*/(b) -> {
+0946    __core__ifThenElse(
+0947      b,
+0948      false,
+0949      true
+0950    )
+0951  })
+0952  }(/*__helios__value__merge_map_keys*/(a, b) -> {
+0953    (aKeys) -> {
+0954      (recurse) -> {
+0955        (uniqueBKeys) -> {
+0956          __helios__common__concat(aKeys, uniqueBKeys)
+0957        }(recurse(recurse, aKeys, b))
+0958      }((recurse, keys, map) -> {
+0959        __core__ifThenElse(
+0960          __core__nullList(map),
+0961          () -> {
+0962            __helios__common__list_0
+0963          },
+0964          () -> {
+0965            (key) -> {
+0966              __core__ifThenElse(
+0967                __helios__common__is_in_bytearray_list(aKeys, key),
+0968                () -> {
+0969                  recurse(recurse, keys, __core__tailList(map))
+0970                },
+0971                () -> {
+0972                  __core__mkCons(key, recurse(recurse, keys, __core__tailList(map)))
+0973                }
+0974              )()
+0975            }(__core__fstPair(__core__headList(map)))
+0976          }
+0977        )()
+0978      })
+0979    }(__helios__value__get_map_keys(a))
+0980  })
+0981  }(/*__helios__value__get_map_keys*/(map) -> {
+0982    (recurse) -> {
+0983      recurse(recurse, map)
+0984    }((recurse, map) -> {
+0985      __core__ifThenElse(
+0986        __core__nullList(map),
+0987        () -> {
+0988          __helios__common__list_0
+0989        },
+0990        () -> {
+0991          __core__mkCons(__core__fstPair(__core__headList(map)), recurse(recurse, __core__tailList(map)))
+0992        }
+0993      )()
+0994    })
+0995  })
+0996  }(/*__helios__common__is_in_bytearray_list*/(lst, key) -> {
+0997    __helios__common__any(lst, (item) -> {
+0998      __core__equalsData(item, key)
+0999    })
+1000  })
+1001  }(/*__helios__common__any*/(self, fn) -> {
+1002    (recurse) -> {
+1003      recurse(recurse, self, fn)
+1004    }((recurse, self, fn) -> {
+1005      __core__ifThenElse(
+1006        __core__nullList(self),
+1007        () -> {
+1008          false
+1009        },
+1010        () -> {
+1011          __core__ifThenElse(
+1012            fn(__core__headList(self)),
+1013            () -> {
+1014              true
+1015            },
+1016            () -> {
+1017              recurse(recurse, __core__tailList(self), fn)
+1018            }
+1019          )()
+1020        }
+1021      )()
+1022    })
+1023  })
+1024  }(/*__helios__common__list_0*/__core__mkNilData(()))
+1025  }(/*__helios__common__concat*/(a, b) -> {
+1026    (recurse) -> {
+1027      recurse(recurse, b, a)
+1028    }((recurse, lst, rem) -> {
+1029      __core__ifThenElse(
+1030        __core__nullList(rem),
+1031        () -> {
+1032          lst
+1033        },
+1034        () -> {
+1035          __core__mkCons(__core__headList(rem), recurse(recurse, lst, __core__tailList(rem)))
+1036        }
+1037      )()
+1038    })
+1039  })
+1040  }(/*__helios__bool__show*/(self) -> {
+1041    () -> {
+1042      __helios__common__stringData(__core__ifThenElse(
+1043        self,
+1044        "true",
+1045        "false"
+1046      ))
+1047    }
+1048  })
+1049  }(/*__helios__string____add*/(self) -> {
+1050    (self) -> {
+1051      (other) -> {
+1052        __helios__common__stringData(__core__appendString(self, __helios__common__unStringData(other)))
+1053      }
+1054    }(__helios__common__unStringData(self))
+1055  })
+1056  }(/*__helios__common__stringData*/(s) -> {
+1057    __core__bData(__core__encodeUtf8(s))
+1058  })
+1059  }(/*__helios__common__unStringData*/(d) -> {
+1060    __core__decodeUtf8(__core__unBData(d))
+1061  })

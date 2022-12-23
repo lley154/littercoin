@@ -1,0 +1,37 @@
+minting threadToken
+
+enum Redeemer { 
+    Init 
+}
+
+const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin 
+
+// Define the UTXO to be spent
+const TX_ID: ByteArray = #ac3f52b1f714a28ecc5a84f151dd1d76e8654faa534a3a6d22f4c7b3a09ac08f
+const txId: TxId = TxId::new(TX_ID)
+const outputId: TxOutputId = TxOutputId::new(txId, 0)
+
+func main(ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+
+    tt_assetclass: AssetClass = AssetClass::new(
+        mph, 
+        "Thread Token Littercoin".encode_utf8()
+    );
+    
+    lc_assetclass: AssetClass = AssetClass::new(
+        mph, 
+        "Littercoin".encode_utf8()
+    );
+    ttVal : Value = Value::new(tt_assetclass, 1);
+    lcVal : Value = Value::new(lc_assetclass, LC_FIXED_SUPPLY);
+    
+    (tx.minted == ttVal + lcVal).trace("TTMP1: ") &&
+     tx.inputs.any((input: TxInput) -> Bool {
+                                    (input.output_id == outputId).trace("TTMP1: ")
+                                    }
+    )
+}
+
+const INIT_REDEEMER = Redeemer::Init

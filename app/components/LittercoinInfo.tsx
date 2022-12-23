@@ -12,7 +12,7 @@ const LittercoinInfo = ({ littercoinInfo } : any) => {
             <p><b>Total Lovelace</b> &nbsp; {Number(ada).toLocaleString()}</p>
             <p><b>Total Littercoin</b> &nbsp; {Number(lc).toLocaleString()}</p>
             <p><b>Lovelace / Littercoin Ratio</b> &nbsp; {Number(ratio).toLocaleString()}</p>
-            <p><b>Address:</b> &nbsp; <a href={"https://preview.cexplorer.io/address/" + littercoinInfo.address} target="_blank" rel="noopener noreferrer" >{littercoinInfo.address}</a></p>            
+            <p><b>Address:</b> &nbsp; <a href={"https://preprod.cexplorer.io/address/" + littercoinInfo.address} target="_blank" rel="noopener noreferrer" >{littercoinInfo.address}</a></p>            
         </div>
     )
 }

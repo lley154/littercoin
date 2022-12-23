@@ -16,7 +16,7 @@ const MintLC = ({ onMintLC } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>User Wallet Address</b> 
+                <b>Mint Littercoin</b> 
                 <br></br>
                 <input name='address' type='text' id='address' placeholder='Enter User Wallet Address' 
                 value={address}

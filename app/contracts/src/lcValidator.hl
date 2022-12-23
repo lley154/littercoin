@@ -1,0 +1,164 @@
+spending validator
+
+struct Datum {
+    adaAmount: Int
+    lcAmount: Int
+
+    func get_ratio(self) -> Int {
+        self.adaAmount / self.lcAmount
+    }
+}
+
+enum Redeemer {
+    AddAda
+    Mint{ 
+        pkhBA: ByteArray    // Destination address for littercoin
+    }
+    Burn { 
+        pkhBA: ByteArray    // Return address for merchant token
+    }
+}
+
+const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin 
+const minAda : Int = 2000000
+const minAdaVal: Value = Value::lovelace(minAda)
+
+// Define thread token value
+const TT_MPH: ByteArray = #5c0dcb1858bbdbcd9f745f37bac3d35d5e2fd59a06ca5c3e62a246b4
+const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
+const ttAssetclass: AssetClass = AssetClass::new(
+        ttMph, 
+        "Thread Token Littercoin".encode_utf8()
+    )
+const ttVal : Value = Value::new(ttAssetclass, 1)
+
+// Define the littercoin asset class
+const lcAssetClass: AssetClass = AssetClass::new(
+        ttMph, 
+        "Littercoin".encode_utf8()
+    )
+
+// Define the merchant token
+const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
+const merchMph: MintingPolicyHash = MintingPolicyHash::new(MERCHANT_MPH)
+const merchAssetclass: AssetClass = AssetClass::new(
+        merchMph, 
+        "Merchant Token Littercoin".encode_utf8()
+    )
+const merchVal: Value = Value::new(merchAssetclass, 1)
+
+// Define the pkh of the owner
+const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
+const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
+
+
+func getDatum (txOuts : []TxOutput) -> []TxOutput {
+    if (txOuts.is_empty()) {
+        txOuts
+    } else {
+            txOuts.head.datum.switch {
+            Inline => { []TxOutput::new_const(1, txOuts.head) },
+            else => getDatum (txOuts.tail)
+            }
+    }
+}
+
+
+func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    
+    vHash : ValidatorHash = ctx.get_current_validator_hash();
+    tx : Tx = ctx.tx;
+    txOutputs : []TxOutput = tx.outputs_locked_by(vHash);
+    txOut : []TxOutput = getDatum(txOutputs);
+    
+
+    redeemer.switch {
+        AddAda => {
+            if (!txOut.is_empty()) {
+                txOut.head.datum.switch {
+                    dat: Inline => { 
+                        outDat: Datum = Datum::from_data(dat.data);
+                        addAdaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
+                        adaVal: Value = Value::lovelace(outDat.adaAmount);
+                        lcResAmt: Int = LC_FIXED_SUPPLY - outDat.lcAmount;
+                        lcResVal: Value = Value::new(lcAssetClass, lcResAmt);
+
+                        (tx.value_locked_by(vHash) == (ttVal + adaVal + lcResVal)).trace("LCV1: ") &&
+                        (addAdaDatumAmt >= minAda).trace("LCV2: ") &&
+                        (outDat.lcAmount == datum.lcAmount).trace("LCV3: ")
+                    },
+                    else => false.trace("LCV4: ") // No inline datum found
+                }
+            } else {
+                false.trace("LCV5: ") // No datum found in outputs
+            }
+        },
+        red: Mint => {
+             if (!txOut.is_empty()) {
+                txOut.head.datum.switch {
+                    dat: Inline => { 
+                        outDat: Datum = Datum::from_data(dat.data);
+                        adaVal: Value = Value::lovelace(outDat.adaAmount);
+                        lcResAmt: Int = LC_FIXED_SUPPLY - outDat.lcAmount;
+                        lcResVal:  Value = Value::new(lcAssetClass, lcResAmt);
+                        lcDatumAmt: Int = outDat.lcAmount - datum.lcAmount;
+                        lcMintVal: Value = Value::new(lcAssetClass, lcDatumAmt);
+                        destPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
+                        destOutTxs : []TxOutput = tx.outputs_sent_to(destPkh);
+
+                        tx.is_signed_by(ownerPkh).trace("LCV6: ") &&  
+                        (outDat.adaAmount == datum.adaAmount).trace("LCV7: ") && 
+                        (tx.value_locked_by(vHash) == (adaVal + ttVal + lcResVal)).trace("LCV8: ") &&
+                        (destOutTxs.head.value == (minAdaVal + lcMintVal)).trace("LCV9: ") &&
+                        (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV10: ") 
+                    },
+                    else => false.trace("LCV11: " ) // Non inline datum found
+                }
+             } else {
+                false.trace("LCV12: ") // No datum found in outputs
+             }
+        },
+        red: Burn => {
+             if (!txOut.is_empty()) {    
+                txOut.head.datum.switch {
+                    dat: Inline => { 
+                        outDat: Datum = Datum::from_data(dat.data);
+                        adaDatumAmt: Int = datum.adaAmount - outDat.adaAmount;
+                        adaVal: Value = Value::lovelace(outDat.adaAmount);
+                        lcResAmt: Int = LC_FIXED_SUPPLY - outDat.lcAmount;
+                        lcResVal:  Value = Value::new(lcAssetClass, lcResAmt);
+                        lcDatumAmt: Int = datum.lcAmount - outDat.lcAmount;
+                        ratio: Int = datum.get_ratio();
+                        adaWithdraw : Int = lcDatumAmt * ratio;
+                        adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
+                        merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
+                        merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
+                                         
+                        (outDat.adaAmount >= 0).trace("LCV13: ") &&
+                        (adaDatumAmt == adaWithdraw).trace("LCV14: ") &&
+                        (merchOutTxs.head.value == (adaWithdrawVal + merchVal)).trace("LCV15: ") &&
+                        if (outDat.adaAmount == 0 ) {
+                            (tx.value_locked_by(vHash) == (ttVal + minAdaVal + lcResVal)).trace("LCV16: ") 
+                        } else {
+                            (tx.value_locked_by(vHash) == (ttVal + adaVal + lcResVal)).trace("LCV17: ")
+                        }
+
+                    },
+                    else => false.trace("LCV18: ") // No inline datum found
+                }
+            } else {
+                false.trace("LCV18: ") // No datum found in outputs
+            }
+        }
+    }
+}
+
+const LC_DATUM = Datum {
+    lcAmount : 0,
+    adaAmount : 0
+}
+
+const VAL_ADD_ADA_REDEEMER = Redeemer::AddAda
+const VAL_MINT_REDEEMER = Redeemer::Mint{#1a2b3c}
+const VAL_BURN_REDEEMER = Redeemer::Burn{#1a2b3c}
+
