@@ -70,6 +70,12 @@ For testing, it is recommended to setup 2 accounts.
 
 Follow the instructions to create a new wallet and a seed phase for the 1st user we will call the Admin.   Select the profile image to get to the account detail view, and from there you can create another account called User.
 
+```
+*** Important Step ***
+Select the profile icon to get to access the Settings menu.   
+Then select Network and select Preprod.
+```
+
 You will need some Ada, so you can go to the preprod test faucet page here:  
 
 https://docs.cardano.org/cardano-testnet/tools/faucet
