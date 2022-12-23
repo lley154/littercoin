@@ -1,4 +1,28 @@
 # Littercoin Open Source Repository
+#### Table Of Contents
+- [Problem Statement](#problem-statement)
+- [The Solution](#the-solution)
+- [The Application](#the-application)
+  - [Application Design](#application-design)
+  - [Adding Ada](#adding-ada)
+  - [Minting Littercoin](#minting-littercoin)
+  - [Minting Merchant Token](#minting-merchant-token)
+  - [Burning Littercoin](#burning-littercoin)
+- [Why Helios](#why-helios)
+  - [Baseline Comparison](#baseline-comparison)
+- [Getting Started](#getting-started)
+  - [Nami Wallet Setup](#nami-wallet-setup)
+  - [Demeter Run Setup](#demeter-run-setup)
+  - [Determine The Admin UTXO](#determine-the-admin-utxo)
+  - [Create The Admin Keys And Address](#create-the-admin-keys-and-address)
+  - [Send Ada To The Admin Address](#send-ada-to-the-admin-address)
+  - [Determine The Admin UTXO](#determine-the-admin-utxo)
+  - [Determine The Owner PKH](#determine-the-owner-pkh) 
+  - [Compile Smart Contract Code and Deploy](#compile-smart-contract-code-and-deploy)
+  - [Threadtoken and Littercoin Initialization](#threadtoken-and-littercoin-initialization)
+  - [Update Environment variables and Start Next.js](#update-environment-variables-and-start-nextjs)
+  - [Support/Issues/Community](#supportissuescommunity)   
+
 ## Problem Statement
 Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualizations and incentives remain significantly underdeveloped
 ## The Solution
