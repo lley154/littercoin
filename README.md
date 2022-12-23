@@ -82,7 +82,7 @@ https://docs.cardano.org/cardano-testnet/tools/faucet
 
 Select receive in the Nami wallet to get an address to send the funds to.   Use that address in the test faucet page and make sure you select preprod network.
 
-Once you have some funds in the Admin account, you can proceed.
+Once you have some funds in the User account, you can proceed.
 
 #### Demeter Run Setup
 Demeter Run is a fully hosted provider that creates workspaces where you can interact with the cardano node and build and launch web3 applications.  You will need to create a workspace (for free) for the steps below.
