@@ -115,7 +115,7 @@ To initialize the littercoin smart contract, we will need admin keys that are us
 
 1. Go to your Web VS Code in your browser
 2. Select the hamburger menu (top left) and Terminal -> New Terminal
-3. cd mkdir ~/.local/keys
+3. mkdir ~/.local/keys
 2. cd ~/workspace
 3. wget https://github.com/input-output-hk/cardano-wallet/releases/download/v2022-12-14/cardano-wallet-v2022-12-14-linux64.tar.gz
 4. tar -xvzf cardano-wallet-v2022-12-14-linux64.tar.gz
