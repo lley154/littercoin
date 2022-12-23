@@ -1,6 +1,6 @@
 # Littercoin Open Source Repository
 ## Problem Statement
-Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualisations and incentives remain significantly underdeveloped
+Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualizations and incentives remain significantly underdeveloped
 ## The Solution
 Littercoin is the first token rewarded for doing citizen science by simply walking around with a smart phone and start collecting information about your local environmental surroundings.
 ## The Application
@@ -16,14 +16,14 @@ The high level design was used to create a model of the sequence of transactions
 ##### Adding Ada
 Any user with a Nami wallet can go the web application and add Ada to the smart contract. Please make sure there is only Ada in the wallet and avoid including other native tokens at for this testing phase.
 ##### Minting Littercoin
-Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the user who will receive the littercoin and the amount of littercoin to mint.
+Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was derived in the steps above.   On the web application, the owner enters the address of the user who will receive the littercoin and the amount of littercoin to mint.
 ##### Minting Merchant Token
-Only the owner using the owner's wallet can mint a merchant token.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the merchant who will receive the merchant token. 
+Only the owner using the owner's wallet can mint a merchant token.   This must match the PKH that was derived in the steps above.   On the web application, the owner enters the address of the merchant who will receive the merchant token. 
 ##### Burning Littercoin
 Only a wallet with a merchant token is able to burn littercoin and receive Ada.   The Merchant enters the total amount of littercoin they have in their wallet that they will burn.   The Smart Contract will then "burn" the littercoin and send them the amount of Ada corresponding to the current Ada:Littercoin price ratio.
 
 ## Why Helios
-Helios is a fantastic alternative language for writing plutus smart contracts.   No nix, no cabal and no haskell yet a strongly typed, functional programming language!   The excellent documentation and well designed language and syntax is very intuiative and easy to learn.  Find out more info here: [https://github.com/Hyperion-BT/Helios](https://github.com/Hyperion-BT/Helios)
+Helios is a fantastic alternative language for writing plutus smart contracts.   No nix, no cabal and no haskell yet a strongly typed, functional programming language!   The excellent documentation and well designed language and syntax is very intuitive and easy to learn.  Find out more info here: [https://github.com/Hyperion-BT/Helios](https://github.com/Hyperion-BT/Helios)
 #### Baseline Comparison
 Since I initially wrote the littercoin smart contract using Haskell Plutus Tx, I was able to compare a baseline, so here are the results.
 
@@ -31,17 +31,12 @@ Since I initially wrote the littercoin smart contract using Haskell Plutus Tx, I
 
 Baseline results for Littercoin validator script
 
-Helios Plutus V2 Littercoin validation script: https://github.com/lley154/littercoin/blob/preprod-5.0/src/lcValidator.cs
-
-Haskell PlutusV2 Littercoin validator script: https://github.com/lley154/littercoin/blob/baseline/src/Littercoin/OnChain.hs
-
-
 Helios Plutus V2 baseline testing log: https://github.com/lley154/littercoin/blob/preprod-5.0/testing/baseline.log
 
-Hasekll Plutus V2 baseline testing log: https://github.com/lley154/littercoin/blob/baseline/testing/baseline.log
+Haskell Plutus V2 baseline testing log: https://github.com/lley154/littercoin/blob/baseline/testing/baseline.log
 
 ## Getting Started
-To setup your own incentized token economy, you can follow the steps below and use this as  a template.
+To setup your own incentivized token economy, you can follow the steps below and use this as  a template.
 #### Nami Wallet Setup
 You will need to use a Cardano wallet and using the Nami wallet is a good wallet for new and experienced users alike.   Nami wallet is a Chrome browser extension wallet and can be found on the Chrome extension page here: 
 
@@ -80,13 +75,13 @@ Demeter Run is a fully hosted provider that creates workspaces where you can int
 17. Select on the Exposed Ports tab
 18. Select Exposed Port
 19. Enter Port Name as Next.js
-20. Enter Port Numer as 3000
+20. Enter Port Number as 3000
 21. Select Expose
 22. Now select the Open VSCode button (top right)
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
 #### Determine The Admin UTXO
-To initialize the littercoin smart contract, we will need admin keys that is used one time to run the init-tx.sh bash shell script.  To determin the UTXO will require 3 main steps
+To initialize the littercoin smart contract, we will need admin keys that are used one time to run the init-tx.sh bash shell script.  To determine the UTXO will require 3 main steps
 1. Create the admin keys and address
 2. Send funds to the admin address
 3. Identify the UTXOs at the admin address
@@ -116,7 +111,7 @@ addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4
 ```
 
 ##### Send Ada To The Admin Address
-You need need to send 2 transactions to this address from your Nami wallet.
+You need to send 2 transactions to this address from your Nami wallet.
 
 - Transaction #1 - 5 Ada
 - Transaction #2 - 45 Ada
@@ -141,7 +136,7 @@ Note: 1 Ada = 1,000,000 lovelace.
 
 
 #### Determine The Owner PKH
-The Owner is a business owner and does not have to the be same person as the admin and does not require a technical background.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
+The Owner is a business owner and does not have to be same person as the admin and does not require a technical background.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
 
 A Cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from the owner's wallet is to use the cardano-address command.   Open the Nami wallet and copy the receiving address to your clipboard.  Then, follow these steps:
 
@@ -154,7 +149,7 @@ echo "paste-the-owner-address-from-nami-here" | ./cardano-address address inspec
 ```
 Note: Please grant Web VS Code permission to access your clipboard
 
-You will see the something like the following, and the value of the spending_key_hash without the quotes and is the pkh that we will need.
+You will see something like the following, and the value of the spending_key_hash without the quotes and is the pkh that we will need.
 ```
 abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n" | ./cardano-address address inspect
 {
@@ -178,7 +173,7 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
 const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
 ```
 4. Using the Web VS Code explorer, open merchToken.hl
-5. Find and replace the PKH of the owner that was obatin above.
+5. Find and replace the PKH of the owner that was obtained above.
 ```
 // Define the owner public key hash (PKH)
 const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
@@ -189,11 +184,11 @@ const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1
 ```
 cd ~/workspace/repo
 ```
-7. Install deno testing a simple welcom typescript program
+7. Install deno testing a simple welcome typescript program
 ```
 npx deno-bin run https://deno.land/std/examples/welcome.ts
 ```
-8. The execute the following compand to compile the threadToken.hl file
+8. The execute the following command to compile the threadToken.hl file
 ```
 npx deno-bin run --allow-read --allow-write ./src/deploy-init.js
 thread token mph:  87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
@@ -225,7 +220,7 @@ cp src/* app/contracts/src
 ```
 
 #### Threadtoken and Littercoin Initialization
-1. Next we are going to intialize the smart contract
+1. Next we are going to initialize the smart contract
 ```
 cd scripts
 ./init-tx.sh preprod
@@ -240,8 +235,8 @@ cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc
 ```
 
 #### Update Environment variables and Start Next.js
-1. Using Web VS Code explorer, navigate to the .bashrc file located your home directory (cd ~).
-2. Add the following lines at the end of it, and use the correct values obtain from the above steps.
+1. Using Web VS Code explorer, navigate to the .bashrc file located in your home directory (cd ~).
+2. Add the following lines at the end of it, and use the correct values obtained from the above steps.
 ```
 export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
 export NEXT_PUBLIC_BLOCKFROST_API="https://cardano-preprod.blockfrost.io/api/v0"
@@ -270,7 +265,7 @@ $ next dev
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
 event - compiled client and server successfully in 1702 ms (173 modules)
 ```
-8. Now go to the proxy URL which was obatined when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
+8. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
 ```
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
