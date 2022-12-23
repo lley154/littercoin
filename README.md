@@ -1,8 +1,72 @@
 # Littercoin Open Source Repository
+## Problem Statement
+Litter and plastic pollution are global problems. Crowdsourcing data can help fix this, but data collection tools, visualisations and incentives remain significantly underdeveloped
+## The Solution
+Littercoin is the first token rewarded for doing citizen science by simply walking around with a smart phone and start collecting information about your local environmental surroundings.
+## Getting Started
+To setup your own incentized token economy, you can follow the steps below and use this as  a template.
+#### Nami Wallet Setup
+You will need to use a Cardano wallet and using the Nami wallet is a good wallet for new and experienced users alike.   Nami wallet is a Chrome browser extension wallet and can be found on the Chrome extension page here: 
+
+https://chrome.google.com/webstore/detail/nami/lpfcbjknijpeeillifnkikgncikgfhdo
+
+For testing, it is recommended to setup 2 users.
+
+Follow the instructions to create a new wallet and a seed phase for the 1st user we will call the Admin.   Select the profile image to get to the account detail view, and from there you can create another account called User.
+
+You will need some Cardano, so you can go to the preprod test faucet page here:  
+
+https://docs.cardano.org/cardano-testnet/tools/faucet
+
+Select receive in the Nami wallet to get an address to send the funds to.   Use that address in the test faucet page and make sure you select preprod network.
+
+Once you have some funds in the Admin account, you can proceed.
+
+#### Demeter Run Setup
+Demeter Run is a fully hosted provider that creates workspaces where you can interact with the cardano node and build and launch web3 applications.  You will need to create a workspace (for free) for the steps below.
+1.) Go to https://demeter.run/ 
+2.) Sign in and create a New Project
+3.) Create or use an existing Organization
+4.) Select a cluster (US or Europe)
+5.) Select a plan Discover (free)
+6.) Select the Preprod Network
+7.) Enter a project name
+8.) Select Create Project
+9.) Select Open Project to go to the project console
+10.) On the Dashboard tab, select Setup a Dev Workspace
+11.) Make sure clone an existing repository is on
+12.) Use the following github URL: https://github.com/lley154/littercoin.git
+13.) Select your coding stack as Typescript
+14.) Select the small workspace size
+15.) Scroll to the bottom of the page and select "Create Workspace"
+16.) Wait for the workspace to be created
+17.) Select on the Exposed Ports tab
+18.) Select Exposed Port
+19.) Enter Port Name as Next.js
+20.) Enter Port Numer as 3000
+21.) Select Expose
+22.) Now select the Open VSCode button (top right)
+This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
+
+#### Determine your PKH & UTXO
+#### Compile Smart Contract Code and Deploy 
+#### Threadtoken and Littercoin Initialization
+#### Update Environment variables and Start Next.js
+## The Application
+#### Application Design
 
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
 ![Littercoin High Level Design](/images/littercoin_design.png)
+
+##### Adding Ada
+##### Minting Littercoin
+##### Burning Littercoin
+## Why Helios
+#### Performance Benchmarks
+
+
+
 
 
 ## The Littercoin Smart Contract 
