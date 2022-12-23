@@ -8,8 +8,6 @@
 # Step 2.   Update src/deploy.js with that UTXO (and admin pkh) 
 # Step 3.   deno run --allow-read --allow-write src/deploy.js
 # Step 4.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
-# Step 5.   Update scripts/[devnet|testnet|mainnet]/global-export-variables.sh
-#           with the UTXO to be used for admin collateral
 ##############################################################
 
 
@@ -58,13 +56,10 @@ thread_token_script="$BASE/scripts/$ENV/data/tt-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/$ENV/data/tt-minting-policy.hash)
 thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.bytes')
 threat_token_redeemer_file_path="$BASE/scripts/$ENV/data/tt-redeemer-init.json"
-
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
-
 lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
 lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
-#lc_token_mph=$(cat $BASE/scripts/$ENV/data/lc-minting-policy.hash)
 lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
 lc_redeemer_file_path="$BASE/scripts/$ENV/data/lc-redeemer-init.json"
 
@@ -75,7 +70,8 @@ echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
 
 
 ################################################################
-# Mint the threadtoken and attach it to the littercoin contract
+# Mint the threadtoken and littercoins and lock it
+# to the littercoin smart contract
 ################################################################
 
 # Step 1: Get UTXOs from admin
@@ -114,8 +110,6 @@ $CARDANO_CLI transaction build \
   --tx-out-inline-datum-file "$WORK/lc-datum-out.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
-  --tx-out "$lc_mint_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
-  --tx-out-reference-script-file "$lc_mint_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/init-tx-alonzo.body
 

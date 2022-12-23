@@ -287,7 +287,7 @@ const Home: NextPage = (props) => {
         const req = new XMLHttpRequest();
         req.onload = (_e) => {
             if (req.status == 200) {
-                resolve(req.responseText);
+                resolve(req.responseText.replaceAll('"',''));
             } else {
                 reject(new Error(req.responseText));
             }
@@ -650,12 +650,11 @@ const Home: NextPage = (props) => {
     console.log("tx after final", tx.dump());
     console.log("Waiting for wallet signature...");
     const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
-    console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
     console.log("Verifying signature...");
     const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
     tx.addSignatures(signatures)
     console.log("Submitting transaction...");
-    console.log("signed tx: ", bytesToHex(tx.toCbor()));
+
     //const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
     const txHash = await submitTx(tx);
     console.log("txHash", txHash);

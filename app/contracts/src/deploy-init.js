@@ -1,6 +1,6 @@
 import * as helios from "./helios.js"
 
-const simplify = true;
+const simplify = false;
 
 // Thread Token
 

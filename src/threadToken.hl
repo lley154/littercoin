@@ -7,7 +7,7 @@ enum Redeemer {
 const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin 
 
 // Define the UTXO to be spent
-const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
+const TX_ID: ByteArray = #ac3f52b1f714a28ecc5a84f151dd1d76e8654faa534a3a6d22f4c7b3a09ac08f
 const txId: TxId = TxId::new(TX_ID)
 const outputId: TxOutputId = TxOutputId::new(txId, 0)
 
