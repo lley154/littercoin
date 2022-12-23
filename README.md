@@ -288,7 +288,7 @@ export NEXT_PUBLIC_MERCH_TOKEN_NAME="4d65726368616e7420546f6b656e204c69747465726
 source ~/.bashrc
 ```
 4. cd app
-5. npm install --global yarn
+5. npm install yarn
 6. npm install
 7. yarn dev
 ```
