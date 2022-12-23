@@ -73,9 +73,10 @@ To initialize the littercoin smart contract, we will need admin keys that is use
 14. more ~/.local/keys/key.addr 
 
 You will see something similar to the following:
-```abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ more ~/.local/keys/key.addr
-addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4```
-
+```
+abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ more ~/.local/keys/key.addr
+addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4
+```
 
 ##### Send Ada To The Admin Address
 You need need to send 2 transactions to this address from your Nami wallet.
@@ -91,7 +92,8 @@ Transaction #2 - 45 Ada
 ##### Determine The Admin UTXO
 Now to see the UTXOs at your admin address, you can execute the following command
 
-```cardano-cli query utxo --address addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
+```
+cardano-cli query utxo --address addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
                            TxHash                                 TxIx        Amount
 --------------------------------------------------------------------------------------
 d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        45000000 lovelace + TxOutDatumNone
@@ -102,9 +104,9 @@ Note: 1 Ada = 1,000,000 lovelace.
 
 
 #### Determine The Owner PKH
-The Owner is the business owner and does not have to the be same person as the admin.  The Owner is the only one who can mint littercoin and mint merchant tokens.   We need to obtain the owner key so it can be hard coded into the smart contract.
+The Owner is the business owner and does not have to the be same person as the admin.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
 
-A Cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from the owner's wallet is to use the cardano-address command.   Open the Nami wallet and copy a receiving address to your clipboard which we will use later.  Next follow these steps:
+A Cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from the owner's wallet is to use the cardano-address command.   Open the Nami wallet and copy the receiving address to your clipboard.  Then, follow these steps:
 
 1. Go to your Web VS Code in your browser
 2. Select the hamburger menu (top left) and Terminal -> New Terminal
@@ -113,8 +115,8 @@ A Cardano address is derived by the public key hash (PKH) that was created when 
 ```echo "paste-the-owner-address-from-nami-here" | ./cardano-address address inspect```
 Note: Please grant Web VS Code permission to access your clipboard
 
-You will see the something like the following, and the value of the spending_key_hash without the quotes is your pkh that we will need.
-
+You will see the something like the following, and the value of the spending_key_hash without the quotes and is your pkh that we will need.
+```
 abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n" | ./cardano-address address inspect
 {
     "address_style": "Shelley",
@@ -126,6 +128,7 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
     "stake_key_hash_bech32": "stake_vkh179a30u23rr0vdc6vrsf8fz95l50xh8umdy9c9s798wjdv8f4pge",
     "stake_reference": "by value"
 }
+```
 
 #### Compile Smart Contract Code and Deploy 
 #### Threadtoken and Littercoin Initialization
