@@ -53,7 +53,7 @@ Since I initially wrote the littercoin smart contract using Haskell Plutus Tx, I
 
 ![image](https://user-images.githubusercontent.com/7105016/209332105-bd872821-3120-46a7-89d0-d97aa0210f56.png)
 
-Baseline results for Littercoin validator script
+Baseline results for Littercoin validator script:
 
 Helios Plutus V2 baseline testing log: https://github.com/lley154/littercoin/blob/preprod-5.0/testing/baseline.log
 
