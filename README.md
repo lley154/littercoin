@@ -14,7 +14,7 @@ For testing, it is recommended to setup 2 accounts.
 
 Follow the instructions to create a new wallet and a seed phase for the 1st user we will call the Admin.   Select the profile image to get to the account detail view, and from there you can create another account called User.
 
-You will need some Cardano, so you can go to the preprod test faucet page here:  
+You will need some Ada, so you can go to the preprod test faucet page here:  
 
 https://docs.cardano.org/cardano-testnet/tools/faucet
 
@@ -48,14 +48,43 @@ Demeter Run is a fully hosted provider that creates workspaces where you can int
 22. Now select the Open VSCode button (top right)
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
-#### Determine your PKH & UTXO
+#### Determine The Admin UTXO
+To initialize the littercoin smart contract, we will need admin keys that is used one time to run the init-tx.sh bash shell script.  To determin the UTXO will require 3 main steps
+1. Create the admin keys and address
+2. Send funds to the admin address
+3. Identify the UTXOs at the admin address
+
+##### Create The Admin Keys And Address
+
+1. mkdir ~/.local/keys
+2. cd ~/workspace
+3. wget https://github.com/input-output-hk/cardano-wallet/releases/download/v2022-12-14/cardano-wallet-v2022-12-14-linux64.tar.gz
+4. tar -xvzf cardano-wallet-v2022-12-14-linux64.tar.gz
+5. cd cardano-wallet-v2022-12-14-linux64
+7. ./cardano-address recovery-phrase generate --size 24 > ~/.local/keys/key.prv
+8. ./cardano-address key from-recovery-phrase Shelley < ~/.local/keys/key.prv > ~/.local/keys/key.xprv
+9. ./cardano-address key child 1852H/1815H/0H/0/0 < ~/.local/keys/key.xprv > ~/.local/keys/key.xsk
+10. ./cardano-cli key convert-cardano-address-key --shelley-payment-key --signing-key-file ~/.local/keys/key.xsk --out-file ~/.local/keys/key.skey
+11. ./cardano-cli key verification-key --signing-key-file ~/.local/keys/key.skey --verification-key-file ~/.local/keys/key.vkey
+12. ./cardano-cli address key-hash --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.pkh
+13. ./cardano-cli address build --mainnet --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.addr
+
+
+1. Go to your Web VS Code in your browser
+2. Select the hamburger menu (top left) and Terminal -> New Terminal
+3. cd utils
+
+You will need to have one UTXO for 5,000,000 lovelace and another UTXO that is greater than 40,000,000 lovelace for.   1 Ada = 1,000,000 lovelace.   Y
+
+
+#### Determine The Owner PKH
 Your cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from you wallet is to use the cardano-address command.   Open your Nami wallet and copy a receiving address to your clipboard which we will use later.  Next follow these steps:
 
 1. Go to your Web VS Code in your browser
 2. Select the hamburger menu (top left) and Terminal -> New Terminal
 3. cd utils
 4. Execute the following command to get your pkh
-```echo "paste-your-address-from-nami-here" | ./cardano-address address inspect
+```echo "paste-your-address-from-nami-here" | ./cardano-address address inspect```
 Note: Please grant Web VS Code permission to access your clipboard
 
 You will see the something like the following, and the value of the spending_key_hash is your pkh that we will need.
@@ -72,18 +101,6 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
     "stake_reference": "by value"
 }
 
-5. Next we need to find a UTXO at your root wallet address.   You can find this be doing the command.   
-
-```
-
-You will need to have one UTXO for 5,000,000 lovelace and another UTXO that is greater than 40,000,000 lovelace for.   1 Ada = 1,000,000 lovelace.   Y
-
-
-
-
-
-
-
 #### Compile Smart Contract Code and Deploy 
 #### Threadtoken and Littercoin Initialization
 #### Update Environment variables and Start Next.js
@@ -93,6 +110,7 @@ You will need to have one UTXO for 5,000,000 lovelace and another UTXO that is g
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
 ![Littercoin High Level Design](/images/littercoin_design.png)
+
 
 ##### Adding Ada
 ##### Minting Littercoin
