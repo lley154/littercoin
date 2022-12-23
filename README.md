@@ -266,8 +266,9 @@ cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc
 ```
 
 #### Update Environment variables and Start Next.js
-1. Using Web VS Code explorer, navigate to the .bashrc file located in your home directory (cd ~).
-2. Add the following lines at the end of it, and use the correct values obtained from the above steps.
+1. Using Web VS Code explorer, select the hamburger menu top left, File -> Open File
+2. Enter /config/.bashrc and select Ok
+3. Add the following lines at the end of it, and use the correct values obtained from the above steps.
 ```
 export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
 export NEXT_PUBLIC_BLOCKFROST_API="https://cardano-preprod.blockfrost.io/api/v0"
