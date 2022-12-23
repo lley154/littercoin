@@ -61,6 +61,8 @@ Haskell Plutus V2 baseline testing log: https://github.com/lley154/littercoin/bl
 
 ## Getting Started
 To setup your own incentivized token economy, you can follow the steps below and use this as  a template.
+
+A technical deep dive demo video is located here [Littercoin Smart Contract V2 Demo](https://youtu.be/Ikfx4etGbVg)
 #### Nami Wallet Setup
 You will need to use a Cardano wallet and using the Nami wallet is a good wallet for new and experienced users alike.   Nami wallet is a Chrome browser extension wallet and can be found on the Chrome extension page here: 
 
