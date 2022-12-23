@@ -228,7 +228,7 @@ merchant token mph:  10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 merchant token name:  #4d65726368616e7420546f6b656e204c6974746572636f696e
 ```
 9. Using the Web VS Code explorer, select the lcValidator.hl file
-10. Replace the threadtoken mph and the merchant PKH with the threadtoken mph and merchant PKH output from step 8 above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
+10. Replace the threadtoken mph and the merchant PKH with the threadtoken mph and merchant mph & owner PKH output from above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
 ```
 // Define thread token value
 const TT_MPH: ByteArray = #87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
@@ -237,6 +237,11 @@ const TT_MPH: ByteArray = #87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91
 // Define the merchant token
 const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
 ```
+```
+// Define the pkh of the owner
+const OWNER_PKH: ByteArray = #b68cf82d0cf89438a84bbf5506801e5a9372c3bcc7cfb7fb59b8d901 
+```
+
 11. Save the file and then run deno again
 ```
 npx deno-bin run --allow-read --allow-write src/deploy-val.js 
