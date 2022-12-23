@@ -104,7 +104,7 @@ Note: 1 Ada = 1,000,000 lovelace.
 
 
 #### Determine The Owner PKH
-The Owner is the business owner and does not have to the be same person as the admin.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
+The Owner is a business owner and does not have to the be same person as the admin and does not require a technical background.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
 
 A Cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from the owner's wallet is to use the cardano-address command.   Open the Nami wallet and copy the receiving address to your clipboard.  Then, follow these steps:
 
@@ -112,10 +112,12 @@ A Cardano address is derived by the public key hash (PKH) that was created when 
 2. Select the hamburger menu (top left) and Terminal -> New Terminal
 3. cd ~/workspace/cardano-wallet-v2022-12-14-linux64
 4. Execute the following command to get your pkh
-```echo "paste-the-owner-address-from-nami-here" | ./cardano-address address inspect```
+```
+echo "paste-the-owner-address-from-nami-here" | ./cardano-address address inspect
+```
 Note: Please grant Web VS Code permission to access your clipboard
 
-You will see the something like the following, and the value of the spending_key_hash without the quotes and is your pkh that we will need.
+You will see the something like the following, and the value of the spending_key_hash without the quotes and is the pkh that we will need.
 ```
 abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n" | ./cardano-address address inspect
 {
@@ -131,7 +133,72 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
 ```
 
 #### Compile Smart Contract Code and Deploy 
+1. Open the Web VS Code editor and open the explorer tab on the left.  
+2. Navigate to the src directory and select the threadToken.hl file.
+3. Find and replace the UTXO that you identified in finding the UTXO step above
+```
+const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
+```
+4. Using the Web VS Code explorer, open merchToken.hl
+5. Find and replace the PKH of the owner that was obatin above.
+```
+const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
+```
+
+7. Save the file
+8. In a terminal window, go to the project root directory by typing 
+```
+cd ~/workspace/repo
+```
+7. Install deno testing a simple welcom typescript program
+```
+npx deno-bin run https://deno.land/std/examples/welcome.ts
+```
+8. The execute the following compand to compile the threadToken.hl file
+```
+npx deno-bin run --allow-read --allow-write ./src/deploy-init.js
+thread token mph:  87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
+thread token name:  #54687265616420546f6b656e204c6974746572636f696e
+littercoin token name:  #4c6974746572636f696e
+merchant token mph:  10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
+merchant token name:  #4d65726368616e7420546f6b656e204c6974746572636f696e
+```
+9. Using the Web VS Code explorer, select the lcValidator.hl file
+10. Replace the threadtoken mph and the merchant PKH with the threadtoken mph and merchant PKH output from step 8 above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
+```
+// Define thread token value
+const TT_MPH: ByteArray = #87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
+```
+```
+// Define the merchant token
+const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
+```
+11. Save the file and then run deno again
+```
+npx deno-bin run --allow-read --allow-write src/deploy-val.js 
+littercoin validator hash:  1289f3bf1ffb1a1dd43f590dd641d85c3dc4f97bd60510216388a8d3
+```
+12.  Now copy the source and generated files in the deploy directory
+```
+cp deploy/* scripts/preprod/data
+cp src/* app/contracts/src
+```
+
 #### Threadtoken and Littercoin Initialization
+1. Next we are going to intialize the smart contract
+```
+cd scripts
+./init-tx.sh preprod
+```
+2. After waiting 10-60 seconds, you should be able to query the blockchain and see the threadtoken and littercoin locked at the smart contract.
+```
+cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44gdt8aldqp9hr70 --cardano-mode --testnet-magic 1
+                           TxHash                                 TxIx        Amount
+--------------------------------------------------------------------------------------
+2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     1        2000000 lovelace + 1000000000 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.4c6974746572636f696e + 1 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.54687265616420546f6b656e204c6974746572636f696e + TxOutDatumInline ReferenceTxInsScriptsInlineDatumsInBabbageEra (ScriptDataList [ScriptDataNumber 0,ScriptDataNumber 0])
+2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     2        30000000 lovelace + TxOutDatumNone
+```
+
 #### Update Environment variables and Start Next.js
 ## The Application
 #### Application Design
@@ -178,53 +245,6 @@ event - compiled client and server successfully in 1702 ms (173 modules)
 Now you can access the preview testnet interfaces and testing the smart contracts by
 going to the URL http://localhost:3000
 
-
-
-## Setting up to re-build the plutus scripts
-
-### Cabal+Nix build
-
-Use the Cabal+Nix build if you want to develop with incremental builds, but also have it automatically download all dependencies.
-
-Set up your machine to build things with `Nix`, following the [Plutus README](https://github.com/input-output-hk/plutus/blob/master/README.adoc) (make sure to set up the binary cache!).
-
-To enter a development environment, simply open a terminal on the project's root and use `nix-shell` to get a bash shell:
-
-```
-$ nix-shell
-```
-
-and you'll have a working development environment for now and the future whenever you enter this directory.
-
-The build should not take too long if you correctly set up the binary cache. If it starts building GHC, stop and setup the binary cache.
-
-Afterwards, the command `cabal build` from the terminal should work (if `cabal` couldn't resolve the dependencies, run `cabal update` and then `cabal build`).
-
-Also included in the environment is a working [Haskell Language Server](https://github.com/haskell/haskell-language-server) you can integrate with your editor.
-See [here](https://github.com/haskell/haskell-language-server#configuring-your-editor) for instructions.
-
-### Run cabal repl to generate the plutus scripts
-
-```
-[nix-shell:~/src/littercoin]$ cabal repl
-...
-[1 of 3] Compiling Littercoin.Types ( src/Littercoin/Types.hs, /home/lawrence/src/littercoin/dist-newstyle/build/x86_64-linux/ghc-8.10.7/littercoin-0.1.0.0/build/Littercoin/Types.o )
-[2 of 3] Compiling Littercoin.OnChain ( src/Littercoin/OnChain.hs, /home/lawrence/src/littercoin/dist-newstyle/build/x86_64-linux/ghc-8.10.7/littercoin-0.1.0.0/build/Littercoin/OnChain.o )
-[3 of 3] Compiling Littercoin.Deploy ( src/Littercoin/Deploy.hs, /home/lawrence/src/littercoin/dist-newstyle/build/x86_64-linux/ghc-8.10.7/littercoin-0.1.0.0/build/Littercoin/Deploy.o )
-Ok, three modules loaded.
-Prelude Littercoin.Deploy> main
-Prelude Littercoin.Deploy> :q
-Leaving GHCi.
-```
-The new plutus scripts will be created in the littercoin/deploy directory
-
-```
-[nix-shell:~/src/littercoin]$ ls -l deploy/*.plutus
--rw-rw-r-- 1 lawrence lawrence 6767 Oct 16 20:32 deploy/lc-minting-policy.plutus
--rw-rw-r-- 1 lawrence lawrence 8539 Oct 16 20:32 deploy/lc-validator.plutus
--rw-rw-r-- 1 lawrence lawrence 5073 Oct 16 20:32 deploy/nft-minting-policy.plutus
--rw-rw-r-- 1 lawrence lawrence 5499 Oct 16 20:32 deploy/thread-token-minting-policy.plutus
-```
 
 
 ## Support/Issues/Community
