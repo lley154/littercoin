@@ -240,11 +240,11 @@ https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 
 ## The Application
 #### Application Design
-The following diagrams depicts the typical user journey for littercoin.
+The following diagram depicts the typical user journey for littercoin.
 
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
-The high level design was used to create a model of the sequence of transactions, the state data and the inputs and outputs.
+The high level design was used to create a model of the sequence of transactions, the datum state data and the inputs and outputs.
 
 ![Littercoin High Level Design](/images/littercoin_design.png)
 
@@ -253,43 +253,27 @@ Any user with a Nami wallet can go the web application and add Ada to the smart 
 ##### Minting Littercoin
 Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the user who will receive the littercoin and the amount of littercoin to mint.
 ##### Minting Merchant Token
-Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the merchant who will receive the littercoin and the amount of littercoin to mint.  
+Only the owner using the owner's wallet can mint a merchant token.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the merchant who will receive the merchant token. 
 ##### Burning Littercoin
-Only a wallet with a merchant token is able to burn littercoin and receive Ada.   The Merchant simply enters the total amount of littercoin they have in their wallet that they want to burn.   The Smart Contract will then "burn" the littercoin and send them the amount of Ada corresponding to the current Ada:Littercoin price ratio.
+Only a wallet with a merchant token is able to burn littercoin and receive Ada.   The Merchant enters the total amount of littercoin they have in their wallet that they will burn.   The Smart Contract will then "burn" the littercoin and send them the amount of Ada corresponding to the current Ada:Littercoin price ratio.
 
 ## Why Helios
-#### Performance Benchmarks
+Helios is an fantastic alternative language for writing plutus smart contracts.   No nix, no cabal and no haskell yet a strongly typed, functional programming language!   The excellent documentation and well designed language and syntax is very intuiative and easy to learn.  Find out more info here: [https://github.com/Hyperion-BT/Helios](https://github.com/Hyperion-BT/Helios)
+#### Baseline Comparison
+Since I initially wrote the littercoin smart contract using Haskell Plutus Tx, I was able to compare a baseline, so here are the results.
+
+![image](https://user-images.githubusercontent.com/7105016/209332105-bd872821-3120-46a7-89d0-d97aa0210f56.png)
+
+Baseline results for Littercoin validator script
+
+Helios Littercoin validation script: https://github.com/lley154/littercoin/blob/preprod-5.0/src/lcValidator.cs
+
+PlutusV2 Littercoin validator script: https://github.com/lley154/littercoin/blob/baseline/src/Littercoin/OnChain.hs
 
 
+Helios baseline testing log: https://github.com/lley154/littercoin/blob/preprod-5.0/testing/baseline.log
 
-
-
-## The Littercoin Smart Contract 
-
-The Littercoin smart contract can be tested directly on the hosted site [here](https://littercoin-smart-contract.vercel.app/)
-or it can be downloaded and follow setup steps below.
-
-
-## Clone the repository
-```
-git clone https://github.com/lley154/littercoin.git
-```
-
-## Setting up to test the littercoin smart contracts
-```
-export NEXT_PUBLIC_BLOCKFROST_API_KEY=>>>Your API Key Here <<<
-sudo npm install --global yarn
-cd littercoin/app
-[littercoin/app]$ npm install
-[littercoin/app]$ yarn dev
-yarn run v1.22.19
-$ next dev
-ready - started server on 0.0.0.0:3000, url: http://localhost:3000
-event - compiled client and server successfully in 1702 ms (173 modules)
-```
-
-Now you can access the preview testnet interfaces and testing the smart contracts by
-going to the URL http://localhost:3000
+Plutus V2 baseline testing log: https://github.com/lley154/littercoin/blob/baseline/testing/baseline.log
 
 
 
