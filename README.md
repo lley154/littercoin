@@ -72,7 +72,7 @@ To initialize the littercoin smart contract, we will need admin keys that is use
 13. ./cardano-cli address build --mainnet --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.addr
 14. more ~/.local/keys/key.addr 
 
-You will see something similar to the followin:
+You will see something similar to the following:
 ```abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ more ~/.local/keys/key.addr
 addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4```
 
