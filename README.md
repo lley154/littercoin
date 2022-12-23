@@ -137,8 +137,8 @@ addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4
 ##### Send Ada To The Admin Address
 You need to send 2 transactions to this address from your Nami wallet.
 
-- Transaction #1 - 5 Ada
-- Transaction #2 - 45 Ada
+- Transaction #1 - 5 tAda
+- Transaction #2 - 35 tAda
 
 1. Open your Nami wallet and select Send
 2. Copy and paste the admin address you created above as the receiving address
