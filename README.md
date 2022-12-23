@@ -68,13 +68,27 @@ To initialize the littercoin smart contract, we will need admin keys that is use
 11. ./cardano-cli key verification-key --signing-key-file ~/.local/keys/key.skey --verification-key-file ~/.local/keys/key.vkey
 12. ./cardano-cli address key-hash --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.pkh
 13. ./cardano-cli address build --mainnet --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.addr
+14. more ~/.local/keys/key.addr 
 
+You will see something similar to the followin:
+```abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ more ~/.local/keys/key.addr
+addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4```
 
-1. Go to your Web VS Code in your browser
-2. Select the hamburger menu (top left) and Terminal -> New Terminal
-3. cd utils
+You need need to send 2 transactions to this address from your Nami wallet.
 
-You will need to have one UTXO for 5,000,000 lovelace and another UTXO that is greater than 40,000,000 lovelace for.   1 Ada = 1,000,000 lovelace.   Y
+Transaction #1 - 5 Ada
+Transaction #2 - 45 Ada
+
+Now to see the UTXOs at your admin address, you can execute the following command
+
+```cardano-cli query utxo --address addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
+                           TxHash                                 TxIx        Amount
+--------------------------------------------------------------------------------------
+d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        45000000 lovelace + TxOutDatumNone
+ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382     0        5000000 lovelace + TxOutDatumNone
+```
+
+Note: 1 Ada = 1,000,000 lovelace.
 
 
 #### Determine The Owner PKH
