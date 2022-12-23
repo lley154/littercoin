@@ -233,23 +233,30 @@ $ next dev
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
 event - compiled client and server successfully in 1702 ms (173 modules)
 ```
-8. Now go to the proxy URL which was obatined when we exposed the port 3000 in the Demeter setup steps above.  Eg. 
+8. Now go to the proxy URL which was obatined when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
 ```
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
 
-
 ## The Application
 #### Application Design
+The following diagrams depicts the typical user journey for littercoin.
 
 ![Littercoin User Journey](/images/littercoin_user_journey.png)
 
+The high level design was used to create a model of the sequence of transactions, the state data and the inputs and outputs.
+
 ![Littercoin High Level Design](/images/littercoin_design.png)
 
-
 ##### Adding Ada
+Any user with a Nami wallet can go the web application and add Ada to the smart contract. Please make sure there is only Ada in the wallet and avoid including other native tokens at for this testing phase.
 ##### Minting Littercoin
+Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the user who will receive the littercoin and the amount of littercoin to mint.
+##### Minting Merchant Token
+Only the owner using the owner's wallet can mint littercoins.   This must match the PKH that was dervived in the steps above.   On the web application, the owner enters the address of the merchant who will receive the littercoin and the amount of littercoin to mint.  
 ##### Burning Littercoin
+Only a wallet with a merchant token is able to burn littercoin and receive Ada.   The Merchant simply enters the total amount of littercoin they have in their wallet that they want to burn.   The Smart Contract will then "burn" the littercoin and send them the amount of Ada corresponding to the current Ada:Littercoin price ratio.
+
 ## Why Helios
 #### Performance Benchmarks
 
