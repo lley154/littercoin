@@ -101,7 +101,8 @@ Demeter Run is a fully hosted provider that creates workspaces where you can int
 19. Enter Port Name as Next.js
 20. Enter Port Number as 3000
 21. Select Expose
-22. Now select the Open VSCode button (top right)
+22. Copy and bookmark the URL that maps to the exposed port
+23. Now select the Open VSCode button (top right)
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
 #### Determine The Admin UTXO
