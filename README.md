@@ -126,7 +126,7 @@ To initialize the littercoin smart contract, we will need admin keys that are us
 10. ./cardano-cli key convert-cardano-address-key --shelley-payment-key --signing-key-file ~/.local/keys/key.xsk --out-file ~/.local/keys/key.skey
 11. ./cardano-cli key verification-key --signing-key-file ~/.local/keys/key.skey --verification-key-file ~/.local/keys/key.vkey
 12. ./cardano-cli address key-hash --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.pkh
-13. ./cardano-cli address build --mainnet --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.addr
+13. ./cardano-cli address build --testnet-magic 1 --payment-verification-key-file ~/.local/keys/key.vkey --out-file ~/.local/keys/key.addr
 14. more ~/.local/keys/key.addr 
 
 You will see something similar to the following:
