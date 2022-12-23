@@ -216,9 +216,12 @@ cd ~/workspace/repo
 ```
 npx deno-bin run https://deno.land/std/examples/welcome.ts
 ```
-8. The execute the following command to compile the threadToken.hl file
+8. The execute the following command to compile the threadToken.hl and merchToken.hl file
 ```
 npx deno-bin run --allow-read --allow-write ./src/deploy-init.js
+```
+The output will be similiar to the following:
+```
 thread token mph:  87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
 thread token name:  #54687265616420546f6b656e204c6974746572636f696e
 littercoin token name:  #4c6974746572636f696e
