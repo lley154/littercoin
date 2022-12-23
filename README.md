@@ -24,31 +24,66 @@ Once you have some funds in the Admin account, you can proceed.
 
 #### Demeter Run Setup
 Demeter Run is a fully hosted provider that creates workspaces where you can interact with the cardano node and build and launch web3 applications.  You will need to create a workspace (for free) for the steps below.
-1.) Go to https://demeter.run/ 
-2.) Sign in and create a New Project
-3.) Create or use an existing Organization
-4.) Select a cluster (US or Europe)
-5.) Select a plan Discover (free)
-6.) Select the Preprod Network
-7.) Enter a project name
-8.) Select Create Project
-9.) Select Open Project to go to the project console
-10.) On the Dashboard tab, select Setup a Dev Workspace
-11.) Make sure clone an existing repository is on
-12.) Use the following github URL: https://github.com/lley154/littercoin.git
-13.) Select your coding stack as Typescript
-14.) Select the small workspace size
-15.) Scroll to the bottom of the page and select "Create Workspace"
-16.) Wait for the workspace to be created
-17.) Select on the Exposed Ports tab
-18.) Select Exposed Port
-19.) Enter Port Name as Next.js
-20.) Enter Port Numer as 3000
-21.) Select Expose
-22.) Now select the Open VSCode button (top right)
+1. Go to https://demeter.run/ 
+2. Sign in and create a New Project
+3. Create or use an existing Organization
+4. Select a cluster (US or Europe)
+5. Select a plan Discover (free)
+6. Select the Preprod Network
+7. Enter a project name
+8. Select Create Project
+9. Select Open Project to go to the project console
+10. On the Dashboard tab, select Setup a Dev Workspace
+11. Make sure clone an existing repository is on
+12. Use the following github URL: https://github.com/lley154/littercoin.git
+13. Select your coding stack as Typescript
+14. Select the small workspace size
+15. Scroll to the bottom of the page and select "Create Workspace"
+16. Wait for the workspace to be created
+17. Select on the Exposed Ports tab
+18. Select Exposed Port
+19. Enter Port Name as Next.js
+20. Enter Port Numer as 3000
+21. Select Expose
+22. Now select the Open VSCode button (top right)
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
 #### Determine your PKH & UTXO
+Your cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from you wallet is to use the cardano-address command.   Open your Nami wallet and copy a receiving address to your clipboard which we will use later.  Next follow these steps:
+
+1. Go to your Web VS Code in your browser
+2. Select the hamburger menu (top left) and Terminal -> New Terminal
+3. cd utils
+4. Execute the following command to get your pkh
+```echo "paste-your-address-from-nami-here" | ./cardano-address address inspect
+Note: Please grant Web VS Code permission to access your clipboard
+
+You will see the something like the following, and the value of the spending_key_hash is your pkh that we will need.
+
+abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n" | ./cardano-address address inspect
+{
+    "address_style": "Shelley",
+    "address_type": 0,
+    "network_tag": 0,
+    "spending_key_hash": "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682",
+    "spending_key_hash_bech32": "addr_vkh1hx4u76r82x0zsppqfz4pzgrjzjjjum2ax2ytw5k3cfmgymje4ul",
+    "stake_key_hash": "f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+    "stake_key_hash_bech32": "stake_vkh179a30u23rr0vdc6vrsf8fz95l50xh8umdy9c9s798wjdv8f4pge",
+    "stake_reference": "by value"
+}
+
+5. Next we need to find a UTXO at your root wallet address.   You can find this be doing the command.   
+
+```
+
+You will need to have one UTXO for 5,000,000 lovelace and another UTXO that is greater than 40,000,000 lovelace for.   1 Ada = 1,000,000 lovelace.   Y
+
+
+
+
+
+
+
 #### Compile Smart Contract Code and Deploy 
 #### Threadtoken and Littercoin Initialization
 #### Update Environment variables and Start Next.js
