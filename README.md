@@ -297,7 +297,8 @@ $ next dev
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
 event - compiled client and server successfully in 1702 ms (173 modules)
 ```
-8. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
+8. There will be a small popup indicating that port forwarding is enabled with a link to go to it.  You can ignore this and instead use the URL that was setup with Demeter that will proxy a web request to port 3000.
+9. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
 ```
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
