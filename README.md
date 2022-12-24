@@ -38,7 +38,7 @@ The high level design was used to create a model of the sequence of transactions
 ![Littercoin High Level Design](/images/littercoin_design.png)
 
 ##### Adding Ada
-Any user with a Nami wallet can go the web application and add Ada to the smart contract. Please make sure there is only Ada in the wallet and avoid including other native tokens at for this testing phase.
+Any user with a Nami wallet can go the web application and add Ada to the smart contract. Please make sure there is only Ada in the wallet and avoid including other native tokens for this testing phase.
 ##### Minting Littercoin
 Only the owner using the owner's wallet can mint littercoins.  This must match the PKH that will be derived in the steps below.  On the web application, the owner enters the address of the user who will receive the littercoin and the amount of littercoin to mint.
 ##### Minting Merchant Token
