@@ -20,6 +20,7 @@
   - [Determine The Owner PKH](#determine-the-owner-pkh) 
   - [Compile Smart Contract Code and Deploy](#compile-smart-contract-code-and-deploy)
   - [Threadtoken and Littercoin Initialization](#threadtoken-and-littercoin-initialization)
+- [Starting The Web App](#starting-the-web-app)
   - [Update Environment variables and Start Next.js](#update-environment-variables-and-start-nextjs)
   - [Support/Issues/Community](#supportissuescommunity)   
 
@@ -270,7 +271,7 @@ cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc
 2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     1        2000000 lovelace + 1000000000 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.4c6974746572636f696e + 1 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.54687265616420546f6b656e204c6974746572636f696e + TxOutDatumInline ReferenceTxInsScriptsInlineDatumsInBabbageEra (ScriptDataList [ScriptDataNumber 0,ScriptDataNumber 0])
 2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     2        30000000 lovelace + TxOutDatumNone
 ```
-
+## Starting The Web App
 #### Update Environment variables and Start Next.js
 1. Using Web VS Code explorer, navigate to the .bashrc file located in your home directory (cd ~).
 2. Add the following lines at the end of it, and use the correct values obtained from the above steps.
