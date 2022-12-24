@@ -220,7 +220,7 @@ cd ~/workspace/repo
 ```
 npx deno-bin run https://deno.land/std/examples/welcome.ts
 ```
-8. The execute the following command to compile the threadToken.hl file
+8. Then execute the following command to compile the threadToken.hl file
 ```
 npx deno-bin run --allow-read --allow-write ./src/deploy-init.js
 thread token mph:  87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
