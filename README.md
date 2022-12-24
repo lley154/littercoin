@@ -198,7 +198,7 @@ abc@hallowed-birthday-3qoq5k-0:~/workspace/repo/utils$ echo "addr_test1qzu6hnmgv
 
 #### Compile Smart Contract Code and Deploy 
 1. Open the Web VS Code editor and open the explorer tab on the left.  
-2. Navigate to the src directory and select the threadToken.hl file.
+2. Navigate to the src directory and open threadToken.hl file.
 3. Find and replace the UTXO that you identified in finding the UTXO step above
 ```
 // Define the UTXO to be spent
