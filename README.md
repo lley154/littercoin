@@ -13,7 +13,7 @@
 - [Getting Started](#getting-started)
   - [Nami Wallet Setup](#nami-wallet-setup)
   - [Demeter Run Setup](#demeter-run-setup)
-  - [Determine The Admin UTXO](#determine-the-admin-utxo)
+- [Initialize The Smart Contract](#initialize-the-smart-contract)
   - [Create The Admin Keys And Address](#create-the-admin-keys-and-address)
   - [Send Ada To The Admin Address](#send-ada-to-the-admin-address)
   - [Determine The Admin UTXO](#determine-the-admin-utxo)
@@ -112,7 +112,7 @@ Demeter Run is a fully hosted provider that creates workspaces where you can int
 22. Now select the Open VSCode button (top right)
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
-#### Determine The Admin UTXO
+## Initialize The Smart Contract
 To initialize the littercoin smart contract, we will need admin keys that are used one time to run the init-tx.sh bash shell script.  To determine the UTXO will require 3 main steps
 1. Create the admin keys and address
 2. Send funds to the admin address
