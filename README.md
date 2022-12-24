@@ -303,7 +303,7 @@ $ next dev
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
 event - compiled client and server successfully in 1702 ms (173 modules)
 ```
-8. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  As an example: 
+8. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  The URL will look like the following:
 ```
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
