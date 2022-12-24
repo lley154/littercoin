@@ -308,7 +308,7 @@ event - compiled client and server successfully in 1702 ms (173 modules)
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
 
-You should now have access to the web app interface for adding Ada, minting merchant tokens and minting and burning littercoin.
+You should now have access to the basic web app for testing adding Ada, minting merchant tokens and minting and burning littercoin.
 
 Enjoy!
 
