@@ -114,10 +114,7 @@ Demeter Run is a fully hosted provider that creates workspaces where you can int
 This will start a web based vscode instance.   You will need to authorize access when requested by vscode.  This is the way you will edit code and run commands in your workspace.
 
 ## Initialize The Smart Contract
-To initialize the littercoin smart contract, we will need admin keys that are used one time to run the init-tx.sh bash shell script.  To determine the UTXO will require 3 main steps
-1. Create the admin keys and address
-2. Send funds to the admin address
-3. Identify the UTXOs at the admin address
+To initialize the littercoin smart contract, we will need the admin UTXOs and the owner PKH.   This is used only once to run the init-tx.sh bash shell script.  
 
 ##### Create The Admin Keys And Address
 
