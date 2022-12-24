@@ -160,7 +160,7 @@ Now to see the UTXOs at your admin address, you can execute the following comman
 cardano-cli query utxo --address addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
                            TxHash                                 TxIx        Amount
 --------------------------------------------------------------------------------------
-d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        45000000 lovelace + TxOutDatumNone
+d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        35000000 lovelace + TxOutDatumNone
 ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382     0        5000000 lovelace + TxOutDatumNone
 ```
 
