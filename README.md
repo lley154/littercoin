@@ -139,7 +139,7 @@ To initialize the littercoin smart contract, we will need admin keys that are us
 You will see something similar to the following:
 ```
 abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ more ~/.local/keys/key.addr
-addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4
+addr_test1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4
 ```
 
 ##### Send Ada To The Admin Address
@@ -157,7 +157,7 @@ You need to send 2 transactions to this address from your Nami wallet.
 Now to see the UTXOs at your admin address, you can execute the following command
 
 ```
-cardano-cli query utxo --address addr1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
+cardano-cli query utxo --address addr_test1v83ynr979e4xpjj28922y4t3sh84d0n08juy58am7jxmp4g6cgxr4 --cardano-mode --testnet-magic 1
                            TxHash                                 TxIx        Amount
 --------------------------------------------------------------------------------------
 d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8     0        35000000 lovelace + TxOutDatumNone
