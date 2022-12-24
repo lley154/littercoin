@@ -229,7 +229,7 @@ littercoin token name:  #4c6974746572636f696e
 merchant token mph:  10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 merchant token name:  #4d65726368616e7420546f6b656e204c6974746572636f696e
 ```
-9. Using the Web VS Code explorer, select the lcValidator.hl file
+9. Using the Web VS Code explorer, open the lcValidator.hl file
 10. Replace the threadtoken mph, the merchant mph and owner pkh with the output from above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
 ```
 // Define thread token value
@@ -250,10 +250,10 @@ npx deno-bin run --allow-read --allow-write src/deploy-val.js
 littercoin validator hash:  1289f3bf1ffb1a1dd43f590dd641d85c3dc4f97bd60510216388a8d3
 littercoin validator address:  addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44gdt8aldqp9hr70
 ```
-12.  Now copy the source and generated files in the deploy directory
+12.  Now copy the source and generated files in the src and deploy directories respectively
 ```
-cp deploy/* scripts/preprod/data
 cp src/* app/contracts/src
+cp deploy/* scripts/preprod/data
 ```
 
 #### Threadtoken and Littercoin Initialization
