@@ -1,258 +1,249 @@
 //@ts-check
-///////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////    Helios   //////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////      Helios      /////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Author:      Christian Schmitz
-// Email:       cschmitz398@gmail.com
-// Website:     github.com/hyperion-bt/helios
-// Version:     0.10.1
-// Last update: December 2022
-// License:     Unlicense
+// Author:        Christian Schmitz
+// Email:         cschmitz398@gmail.com
+// Website:       https://www.hyperion-bt.org
+// Repository:    https://github.com/hyperion-bt/helios
+// Version:       0.10.15
+// Last update:   January 2023
+// License:       Unlicense
 //
 //
-// About: Helios is a smart contract DSL for Cardano. 
+// About: Helios is a smart contract DSL for Cardano.
 //     This Javascript library contains functions to compile Helios sources into Plutus-core.
-//     Transactions can also be generated using Helios.
+//     Transactions can also be built using Helios.
 //
-//     
+//
 // Dependencies: none
 //
 //
-// Disclaimer: I made Helios available as FOSS so that the Cardano community can test 
-//     it extensively. I don't guarantee the library is bug-free, 
-//     nor do I guarantee backward compatibility with future versions.
+// Disclaimer: I made Helios available as FOSS so that the Cardano community can test it 
+//     extensively. I don't guarantee the library is bug-free, nor do I guarantee
+//     backward compatibility with future versions.
 //
 //
 // Example usage:
 //     > import * as helios from "helios.js";
-//     > console.log(helios.Program.new("validator my_validator ...").compile().serialize());
-//
+//     > console.log(helios.Program.new("spending my_validator ...").compile().serialize());
+//     
 //
 // Documentation: https://www.hyperion-bt.org/Helios-Book
 //
 //
-// Note: the Helios library is a single file, doesn't use TypeScript, and should stay 
-//     unminified (so that a unique git commit of this repo is directly related to a unique IPFS 
-//     address of 'helios.js').
+// Note: I recommend keeping the Helios library as a single unminified file for optimal 
+//     auditability.
 //
-//
+// 
 // Overview of internals:
-//     1. Global constants and vars         VERSION, DEBUG, debug, STRICT_BABBAGE, 
-//                                          BLAKE2B_DIGEST_SIZE, setBlake2bDigestSize, 
-//                                          TAB, ScriptPurpose, 
-//                                          UPLC_VERSION_COMPONENTS, UPLC_VERSION, 
-//                                          PLUTUS_SCRIPT_VERSION, UPLC_TAG_WIDTH, 
-//                                          UPLC_DATA_NODE_MEM_SIZE
+//    Section 1: Global constants            VERSION, DEBUG, debug, STRICT_BABBAGE, TAB, IS_TESTNET
 //
-//     2. Utilities                         assert, assertDefined, equals, assertEq, idiv, ipow2, 
-//                                          imask, imod32, imod8, posMod, irotr, bigIntToBytes, 
-//                                          bytesToBigInt, padZeroes, byteToBitString, hexToBytes, 
-//                                          bytesToHex, textToBytes, bytesToText, replaceTabs,
-//                                          BitReader, BitWriter, 
-//                                          UInt64, DEFAULT_BASE32_ALPHABET, BECH32_BASE32_ALPHABET, 
-//                                          Crypto, IR, Source, UserError, Site, hl
+//    Section 2: Utilities                   assert, assertDefined, assertClass, assertNumber, eq, 
+//                                           assertEq, idiv, ipow2, imask, imod8, bigIntToBytes, 
+//                                           bytesToBigInt, padZeroes, byteToBitString, 
+//                                           hexToBytes, bytesToHex, textToBytes, bytesToText, 
+//                                           replaceTabs, BitReader, BitWriter, Source, hl
 //
-//     3. Plutus-core builtins              NetworkParams, CostModel, ConstCost, LinearCost, 
-//                                          ArgSizeCost, MinArgSizeCost, MaxArgSizeCost, 
-//                                          SumArgSizesCost, ArgSizeDiffCost, ArgSizeProdCost, 
-//                                          ArgSizeDiagCost, UplcBuiltinInfo, UPLC_BUILTINS
+//    Section 3: Tokens                      Site, RuntimeError, Token, Word, SymbolToken, Group, 
+//                                           PrimitiveLiteral, IntLiteral, BoolLiteral, 
+//                                           ByteArrayLiteral, StringLiteral
 //
-//     4. Plutus-core AST objects           UplcValue, DEFAULT_UPLC_RTE_CALLBACKS,
-//                                          UplcRte, UplcStack, UplcAnon, UplcInt, UplcByteArray, 
-//                                          UplcString, UplcUnit, UplcBool, UplcPair, UplcMapItem, UplcList, 
-//                                          UplcMap, UplcDataValue, UplcTerm, UplcVariable, UplcDelay, 
-//                                          UplcLambda, UplcCall, UplcConst, UplcForce, UplcError, 
-//                                          UplcBuiltin, UplcProgram
+//    Section 4: Cryptography functions      BLAKE2B_DIGEST_SIZE, setBlake2bDigestSize, 
+//                                           DEFAULT_BASE32_ALPHABET, BECH32_BASE32_ALPHABET, 
+//                                           imod32, irotr, posMod, UInt64, Crypto
 //
-//     5. Plutus-core data objects          CborData, UplcData, IntData, ByteArrayData, 
-//                                          ListData, MapData, ConstrData
+//    Section 5: Cbor encoder/decoder        CborData
 //
-//     6. Token objects                     Token, Word, Symbol, Group, 
-//                                          PrimitiveLiteral, IntLiteral, BoolLiteral, 
-//                                          ByteArrayLiteral, StringLiteral, UnitLiteral
+//    Section 6: Uplc data types             UPLC_DATA_NODE_MEM_SIZE, UplcData, IntData, 
+//                                           ByteArrayData, ListData, MapData, ConstrData
 //
-//     7. Tokenization                      Tokenizer, tokenize, tokenizeIR, getPurposeName,
-//                                          extractScriptPurposeAndName, SyntaxCategory, highlight
+//    Section 7: Helios data objects         HeliosData, Int, Time, Duration, Bool, HeliosString, 
+//                                           ByteArray, List, HeliosMap, Option, Hash, DatumHash, 
+//                                           PubKeyHash, ScriptHash, MintingPolicyHash, 
+//                                           StakeKeyHash, StakingValidatorHash, ValidatorHash, 
+//                                           TxId, TxOutputId, Address, Assets, Value
 //
-//     8. Type evaluation entities          EvalEntity, Type, AnyType, DataType, AnyDataType, 
-//                                          BuiltinType, BuiltinEnumMember, 
-//                                          StatementType, FuncType, Instance, DataInstance, 
-//                                          FuncInstance, FuncStatementInstance, MultiInstance
+//    Section 8: Uplc cost-models            NetworkParams, CostModel, ConstCost, LinearCost, 
+//                                           ArgSizeCost, Arg0SizeCost, Arg1SizeCost, 
+//                                           Arg2SizeCost, MinArgSizeCost, MaxArgSizeCost, 
+//                                           SumArgSizesCost, ArgSizeDiffCost, ArgSizeProdCost, 
+//                                           ArgSizeDiagCost
 //
-//     9. Scopes                            GlobalScope, Scope, TopScope, FuncStatementScope
+//    Section 9: Uplc built-in functions     UPLC_BUILTINS, dumpCostModels, findUplcBuiltin, 
+//                                           isUplcBuiltin
 //
-//    10. AST expression objects            Expr, TypeExpr, TypeRefExpr, TypePathExpr, 
-//                                          ListTypeExpr, MapTypeExpr, OptionTypeExpr, 
-//                                          FuncTypeExpr, ValueExpr, AssignExpr, PrintExpr, 
-//                                          PrimitiveLiteralExpr, StructLiteralField, 
-//                                          StructLiteralExpr, ListLiteralExpr, MapLiteralExpr, 
-//                                          NameTypePair, FuncArg, FuncLiteralExpr, ValueRefExpr, 
-//                                          ValuePathExpr, UnaryExpr, BinaryExpr, ParensExpr, 
-//                                          CallExpr, MemberExpr, IfElseExpr, SwitchCase, 
-//                                          SwitchDefault, EnumSwitchExpr, DataSwitchExpr
+//    Section 10: Uplc AST                   ScriptPurpose, UplcValue, DEFAULT_UPLC_RTE_CALLBACKS, 
+//                                           UplcRte, UplcStack, UplcAnon, UplcDelayedValue, 
+//                                           UplcInt, UplcByteArray, UplcString, UplcUnit, 
+//                                           UplcBool, UplcPair, UplcMapItem, UplcList, UplcMap, 
+//                                           UplcDataValue, UplcTerm, UplcVariable, UplcDelay, 
+//                                           UplcLambda, UplcCall, UplcConst, UplcForce, 
+//                                           UplcError, UplcBuiltin
 //
-//    11. AST statement objects             Statement, ConstStatement, DataField, 
-//                                          DataDefinition, StructStatement, FuncStatement, 
-//                                          EnumMember, EnumStatement, ImplDefinition,
-//                                          Program, RedeemerProgram, DatumRedeemerProgram,
-//                                          TestingProgram, SpendingProgram, MintingProgram,
-//                                          StakingProgram
+//    Section 11: Uplc program               UPLC_VERSION_COMPONENTS, UPLC_VERSION, 
+//                                           PLUTUS_SCRIPT_VERSION, deserializeUplcBytes, 
+//                                           deserializeUplc
 //
-//    12. AST build functions               buildProgramStatements, buildScriptPurpose, 
-//                                          buildConstStatement, 
-//                                          splitDataImpl, buildStructStatement, buildDataFields,
-//                                          buildFuncStatement, buildFuncLiteralExpr, buildFuncArgs,
-//                                          buildEnumStatement, buildEnumMember, 
-//                                          buildImplDefinition, buildImplMembers, buildTypeExpr, 
-//                                          buildListTypeExpr, buildMapTypeExpr, 
-//                                          buildOptionTypeExpr, buildFuncTypeExpr, buildFuncRetTypeExprs,
-//                                          buildTypePathExpr, buildTypeRefExpr, buildParensExpr,
-//                                          buildValueExpr, buildMaybeAssignOrPrintExpr, buildAssignLhs,
-//                                          makeBinaryExprBuilder, makeUnaryExprBuilder, 
-//                                          buildChainedValueExpr, buildChainStartValueExpr, 
-//                                          buildCallArgs, buildIfElseExpr, buildSwitchExpr, 
-//                                          buildSwitchCaseName, buildSwitchCase, buildSwitchDefault, 
-//                                          buildListLiteralExpr, buildMapLiteralExpr, 
-//                                          buildStructLiteralExpr, buildStructLiteralField, 
-//                                          buildValuePathExpr, buildLiteralExprFromJson,
-//                                          buildLiteralExprFromValue
+//    Section 12: Tokenization               Tokenizer, tokenize, tokenizeIR
 //
-//    13. Builtin types                     IntType, BoolType, StringType, ByteArrayType, 
-//                                          ListType, MapType, ParamType, ParamFuncValue,
-//                                          OptionType, OptionSomeType, OptionNoneType,
-//                                          HashType, PubKeyHashType, ValidatorHashType, 
-//                                          MintingPolicyHashType, DatumHashType, 
-//                                          ScriptContextType, StakingPurposeType, ScriptPurposeType,
-//                                          StakingRewardingPurposeType, StakingCertifyingPurposeType,
-//                                          DCertType, RegisterDCertType, DeregisterDCertType,
-//                                          DelegateDCertType, RegisterPoolDCertType,
-//                                          RetirePoolDCertType, TxType, TxIdType, TxInputType, 
-//                                          TxOutputType, OutputDatumType, NoOutputDatumType,
-//                                          HashedOutputDatumType, InlineOutputDatumType,
-//                                          RawDataType, TxOutputIdType, AddressType, 
-//                                          CredentialType, CredentialPubKeyType, 
-//                                          CredentialValidatorType, StakingCredentialType, 
-//                                          StakingHashCredentialType, StakingPtrCredentialType, 
-//                                          TimeType, DurationType, TimeRangeType, 
-//                                          AssetClassType, ValueType
+//    Section 13: Helios eval entities       EvalEntity, Type, AnyType, DataType, AnyDataType, 
+//                                           BuiltinType, BuiltinEnumMember, StatementType, 
+//                                           StructStatementType, EnumStatementType, 
+//                                           EnumMemberStatementType, FuncType, NotType, Instance, 
+//                                           DataInstance, ConstStatementInstance, FuncInstance, 
+//                                           FuncStatementInstance, MultiInstance, VoidInstance, 
+//                                           ErrorInstance, BuiltinFuncInstance, PrintFunc, 
+//                                           VoidType, ErrorType, IntType, BoolType, StringType, 
+//                                           ByteArrayType, ParamType, ParamFuncValue, ListType, 
+//                                           MapType, OptionType, OptionSomeType, OptionNoneType, 
+//                                           HashType, PubKeyHashType, StakeKeyHashType, 
+//                                           PubKeyType, ScriptHashType, ValidatorHashType, 
+//                                           MintingPolicyHashType, StakingValidatorHashType, 
+//                                           DatumHashType, ScriptContextType, ScriptPurposeType, 
+//                                           MintingScriptPurposeType, SpendingScriptPurposeType, 
+//                                           RewardingScriptPurposeType, 
+//                                           CertifyingScriptPurposeType, StakingPurposeType, 
+//                                           StakingRewardingPurposeType, 
+//                                           StakingCertifyingPurposeType, DCertType, 
+//                                           RegisterDCertType, DeregisterDCertType, 
+//                                           DelegateDCertType, RegisterPoolDCertType, 
+//                                           RetirePoolDCertType, TxType, TxIdType, TxInputType, 
+//                                           TxOutputType, OutputDatumType, NoOutputDatumType, 
+//                                           HashedOutputDatumType, InlineOutputDatumType, 
+//                                           RawDataType, TxOutputIdType, AddressType, 
+//                                           CredentialType, CredentialPubKeyType, 
+//                                           CredentialValidatorType, StakingHashType, 
+//                                           StakingHashStakeKeyType, StakingHashValidatorType, 
+//                                           StakingCredentialType, StakingHashCredentialType, 
+//                                           StakingPtrCredentialType, TimeType, DurationType, 
+//                                           TimeRangeType, AssetClassType, ValueType
 //
-//    14. Builtin low-level functions       onNotifyRawUsage, setRawUsageNotifier, 
-//                                          RawFunc, makeRawFunctions, wrapWithRawFunctions
+//    Section 14: Scopes                     GlobalScope, Scope, TopScope, ModuleScope, 
+//                                           FuncStatementScope
 //
-//    15. IR AST objects                    IRScope, IRExprStack, IRValue, IRFuncValue, 
-//                                          IRLiteralValue, IRCallStack, IRVariable, IRExpr,
-//                                          IRNameExpr, IRLiteral, IRFuncExpr, IRCallExpr, 
-//                                          IRUserCallExpr, IRCoreCallExpr, IRErrorCallExpr,
-//                                          IRProgram
+//    Section 15: Helios AST expressions     Expr, TypeExpr, TypeRefExpr, TypePathExpr, 
+//                                           ListTypeExpr, MapTypeExpr, OptionTypeExpr, 
+//                                           VoidTypeExpr, FuncTypeExpr, ValueExpr, AssignExpr, 
+//                                           PrintExpr, VoidExpr, ChainExpr, PrimitiveLiteralExpr, 
+//                                           LiteralDataExpr, StructLiteralField, 
+//                                           StructLiteralExpr, ListLiteralExpr, MapLiteralExpr, 
+//                                           NameTypePair, FuncArg, FuncLiteralExpr, ValueRefExpr, 
+//                                           ValuePathExpr, UnaryExpr, BinaryExpr, ParensExpr, 
+//                                           CallExpr, MemberExpr, IfElseExpr, SwitchCase, 
+//                                           UnconstrDataSwitchCase, SwitchDefault, SwitchExpr, 
+//                                           EnumSwitchExpr, DataSwitchExpr
 //
-//    16. IR AST build functions            buildIRExpr, buildIRFuncExpr
-//     
-//    17. Plutus-core deserialization       UplcDeserializer, deserializeUplcBytes, 
-//                                          deserializeUplc
+//    Section 16: Literal functions          buildLiteralExprFromJson, buildLiteralExprFromValue
 //
-//    18. Transaction objects               Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput,
-//                                          TxOutput, DCert, 
-//                                          Address, Assets, Value, Hash, PubKeyHash, 
-//                                          ValidatorHash, MintingPolicyHash, TxId, Signature, 
-//                                          RedeemerCostTracker,
-//                                          Redeemer, SpendingRedeemer, MintingRedeemer, 
-//                                          Datum, HashedDatum, InlineDatum, 
-//                                          encodeMetadata, decodeMetadata, TxMetadata
+//    Section 17: Helios AST statements      Statement, ImportStatement, ConstStatement, 
+//                                           DataField, DataDefinition, StructStatement, 
+//                                           FuncStatement, EnumMember, EnumStatement, 
+//                                           ImplDefinition
 //
-//    19. Property test framework           FuzzyTest
+//    Section 18: Helios AST building        buildProgramStatements, buildScriptPurpose, 
+//                                           extractScriptPurposeAndName, buildConstStatement, 
+//                                           splitDataImpl, buildStructStatement, buildDataFields, 
+//                                           buildFuncStatement, buildFuncLiteralExpr, 
+//                                           buildFuncArgs, buildEnumStatement, 
+//                                           buildImportStatements, buildEnumMember, 
+//                                           buildImplDefinition, buildImplMembers, buildTypeExpr, 
+//                                           buildListTypeExpr, buildMapTypeExpr, 
+//                                           buildOptionTypeExpr, buildFuncTypeExpr, 
+//                                           buildFuncRetTypeExprs, buildTypePathExpr, 
+//                                           buildTypeRefExpr, buildValueExpr, 
+//                                           buildMaybeAssignOrPrintExpr, buildAssignLhs, 
+//                                           makeBinaryExprBuilder, makeUnaryExprBuilder, 
+//                                           buildChainedValueExpr, buildChainStartValueExpr, 
+//                                           buildParensExpr, buildCallArgs, buildIfElseExpr, 
+//                                           buildSwitchExpr, buildSwitchCaseName, 
+//                                           buildSwitchCase, buildSwitchCaseNameType, 
+//                                           buildMultiArgSwitchCase, buildSingleArgSwitchCase, 
+//                                           buildSwitchCaseBody, buildSwitchDefault, 
+//                                           buildListLiteralExpr, buildMapLiteralExpr, 
+//                                           buildStructLiteralExpr, buildStructLiteralField, 
+//                                           buildValuePathExpr
+//
+//    Section 19: IR definitions             onNotifyRawUsage, setRawUsageNotifier, RawFunc, 
+//                                           makeRawFunctions, wrapWithRawFunctions
+//
+//    Section 20: IR AST objects             IRScope, IRExprStack, IRValue, IRFuncValue, 
+//                                           IRLiteralValue, IRCallStack, IRVariable, IRExpr, 
+//                                           IRNameExpr, IRLiteral, IRFuncExpr, IRCallExpr, 
+//                                           IRUserCallExpr, IRCoreCallExpr, IRErrorCallExpr
+//
+//    Section 21: IR AST build functions     buildIRExpr, buildIRFuncExpr
+//
+//    Section 22: IR Program                 IRProgram, IRParametricProgram
+//
+//    Section 23: Helios program             Module, MainModule, RedeemerProgram, 
+//                                           DatumRedeemerProgram, TestingProgram, 
+//                                           SpendingProgram, MintingProgram, StakingProgram
+//
+//    Section 24: Tx types                   Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput, 
+//                                           TxOutput, ChangeTxOutput, DCert, StakeAddress, 
+//                                           Signature, RedeemerCostTracker, Redeemer, 
+//                                           SpendingRedeemer, MintingRedeemer, Datum, 
+//                                           HashedDatum, InlineDatum, encodeMetadata, 
+//                                           decodeMetadata, TxMetadata
+//
+//    Section 25: Highlighting function      SyntaxCategory, highlight
+//
+//    Section 26: Fuzzy testing framework    FuzzyTest
+//
+//    Section 27: CoinSelection              CoinSelection
+//
+//    Section 28: Wallets                    Cip30Wallet, WalletHelper
+//
+//    Section 29: Network                    BlockfrostV0
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-///////////////////////////////////////
-// Section 1: Global constants and vars
-///////////////////////////////////////
+//////////////////////////////
+// Section 1: Global constants
+//////////////////////////////
 
-export const VERSION = "0.10.1"; // don't forget to change to version number at the top of this file, and in package.json
+/**
+ * Version of the Helios library.
+ */
+export const VERSION = "0.10.15";
 
+/**
+ * Global debug flag. Not currently used for anything though.
+ * @package
+ */
 var DEBUG = false;
 
 /**
  * Changes the value of DEBUG
+ * @package
  * @param {boolean} b
  */
 function debug(b) { DEBUG = b };
 
 /**
- * Set this to true if you want to experiment with Tx serialized using the strict babbage cddl format
+ * Set this to true if you want to experiment with transactions serialized using the strict babbage cddl format
+ * @package
  */
-var STRICT_BABBAGE = true;
-
-var BLAKE2B_DIGEST_SIZE = 32; // bytes
-
-/**
- * Changes the value of BLAKE2B_DIGEST_SIZE (because nodjes crypto module only supports blake2b-512 and not blake2b-256, 
- *  and we want to avoid non-standard dependencies in the test-suite)
- * @param {number} s - 32 or 64
- */
-function setBlake2bDigestSize(s) {
-	BLAKE2B_DIGEST_SIZE = s;
-}
+var STRICT_BABBAGE = false;
 
 /**
  * A tab used for indenting of the IR.
  * 2 spaces.
+ * @package
  * @type {string}
  */
 const TAB = "  ";
 
-/**
- * A Helios Program can have different purposes
- */
-const ScriptPurpose = {
-	Testing: -1,
-	Minting: 0,
-	Spending: 1,
-	Staking: 2,
-	Module: 3,
-};
 
 /**
- * This library uses version "1.0.0" of Plutus-core
+ * Set to false if using the library for mainnet (impacts Addresses)
+ * @type {boolean}
  */
-const UPLC_VERSION_COMPONENTS = [1n, 0n, 0n];
-
-/**
- * i.e. "1.0.0"
- * @type {string}
- */
-const UPLC_VERSION = UPLC_VERSION_COMPONENTS.map(c => c.toString()).join(".");
-
-/**
- * This library uses V2 of the Plutus Ledger API, and is no longer compatible with V1
- */
-const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
-
-/**
- * @type {Object.<string, number>}
- */
-const UPLC_TAG_WIDTHS = {
-	term:      4,
-	type:      3,
-	constType: 4,
-	builtin:   7,
-	constant:  4,
-	kind:      1,
-};
-
-/**
- * @typedef {Object} Cost
- * @property {bigint} mem
- * @property {bigint} cpu
- */
-
-/**
- * Min memory used by a UplcData value during validation
- * @type {number}
- */
-const UPLC_DATA_NODE_MEM_SIZE = 4;
+export var IS_TESTNET = true;
 
 
 ///////////////////////
@@ -261,6 +252,7 @@ const UPLC_DATA_NODE_MEM_SIZE = 4;
 
 /**
  * Throws an error if 'cond' is false.
+ * @package
  * @param {boolean} cond 
  * @param {string} msg 
  */
@@ -272,8 +264,9 @@ function assert(cond, msg = "unexpected") {
 
 /**
  * Throws an error if 'obj' is undefined. Returns 'obj' itself (for chained application).
+ * @package
  * @template T
- * @param {T | undefined} obj 
+ * @param {T | undefined | null} obj 
  * @param {string} msg 
  * @returns {T}
  */
@@ -286,6 +279,22 @@ function assertDefined(obj, msg = "unexpected undefined value") {
 }
 
 /**
+ * @package
+ * @template Tin, Tout
+ * @param {Tin} obj
+ * @param {{new(...any): Tout}} C
+ * @returns {Tout}
+ */
+function assertClass(obj, C, msg = "unexpected class") {
+	if (obj instanceof C) {
+		return obj;
+	} else {
+		throw new Error(msg);
+	}
+}
+
+/**
+ * @package
  * @param {any} obj 
  * @param {string} msg 
  * @returns {number}
@@ -302,6 +311,7 @@ function assertNumber(obj, msg = "expected a number") {
 
 /**
  * Compares two objects (deep recursive comparison)
+ * @package
  * @template T
  * @param {T} a 
  * @param {T} b 
@@ -338,6 +348,7 @@ function eq(a, b) {
 /**
  * Throws an error if two object aren't equal (deep comparison).
  * Used by unit tests that are autogenerated from JSDoc inline examples.
+ * @package
  * @template T
  * @param {T} a
  * @param {T} b
@@ -355,9 +366,10 @@ function assertEq(a, b, msg) {
  * Divides two integers. Assumes a and b are whole numbers. Rounds down the result.
  * @example
  * idiv(355, 113) => 3
+ * @package
  * @param {number} a
  * @param {number} b 
- * */
+ */
 function idiv(a, b) {
 	return Math.floor(a / b);
 	// alternatively: (a - a%b)/b
@@ -365,6 +377,7 @@ function idiv(a, b) {
 
 /**
  * 2 to the power 'p' for bigint.
+ * @package
  * @param {bigint} p
  * @returns {bigint}
  */
@@ -376,8 +389,10 @@ function ipow2(p) {
  * Masks bits of 'b' by setting bits outside the range ['i0', 'i1') to 0. 
  * 'b' is an 8 bit integer (i.e. number between 0 and 255).
  * The return value is also an 8 bit integer, shift right by 'i1'.
+ 
  * @example
  * imask(0b11111111, 1, 4) => 0b0111 // (i.e. 7)
+ * @package
  * @param {number} b 
  * @param {number} i0 
  * @param {number} i1 
@@ -401,15 +416,8 @@ function imask(b, i0, i1) {
 }
 
 /**
- * Make sure resulting number fits in uint32
- * @param {number} x
- */
-function imod32(x) {
-	return x >>> 0;
-}
-
-/**
  * Make sure resulting number fits in uint8
+ * @package
  * @param {number} x
  */
 function imod8(x) {
@@ -417,32 +425,9 @@ function imod8(x) {
 }
 
 /**
- * @param {bigint} x 
- * @param {bigint} n 
- * @returns {bigint}
- */
-function posMod(x, n) {
-	let res = x % n;
-	if (res < 0n) {
-		return res + n;
-	} else {
-		return res;
-	}
-}
-
-/**
- * 32 bit number rotation
- * @param {number} x - originally uint32
- * @param {number} n
- * @returns {number} - originally uint32
- */
-function irotr(x, n) {
-	return imod32((x >>> n) | (x << (32 - n)));
-}
-
-/**
  * Converts an unbounded integer into a list of uint8 numbers (big endian)
  * Used by the CBOR encoding of data structures, and by Ed25519
+ * @package
  * @param {bigint} x
  * @returns {number[]}
  */
@@ -453,7 +438,7 @@ function bigIntToBytes(x) {
 		/**
 		 * @type {number[]}
 		 */
-		let res = [];
+		const res = [];
 
 		while (x > 0n) {
 			res.unshift(Number(x%256n));
@@ -468,13 +453,14 @@ function bigIntToBytes(x) {
 /**
  * Converts a list of uint8 numbers into an unbounded int (big endian)
  * Used by the CBOR decoding of data structures.
+ * @package
  * @param {number[]} b
  * @return {bigint}
  */
 function bytesToBigInt(b) {
 	let s = 1n;
-
 	let total = 0n;
+
 	while (b.length > 0) {
 		total += BigInt(assertDefined(b.pop()))*s;
 
@@ -488,6 +474,7 @@ function bytesToBigInt(b) {
  * Prepends zeroes to a bit-string so that 'result.length == n'.
  * @example
  * padZeroes("1111", 8) => "00001111"
+ * @package
  * @param {string} bits
  * @param {number} n 
  * @returns {string}
@@ -495,7 +482,8 @@ function bytesToBigInt(b) {
 function padZeroes(bits, n) {
 	// padded to multiple of n
 	if (bits.length % n != 0) {
-		let nPad = n - bits.length % n;
+		const nPad = n - bits.length % n;
+
 		bits = (new Array(nPad)).fill('0').join('') + bits;
 	}
 
@@ -507,12 +495,13 @@ function padZeroes(bits, n) {
  * The result is padded with leading zeroes to become 'n' chars long ('2 + n' chars long if you count the "0b" prefix). 
  * @example
  * byteToBitString(7) => "0b00000111"
+ * @package
  * @param {number} b 
  * @param {number} n 
  * @returns {string}
  */
 function byteToBitString(b, n = 8) {
-	let s = padZeroes(b.toString(2), n);
+	const s = padZeroes(b.toString(2), n);
 
 	return "0b" + s;
 }
@@ -525,7 +514,9 @@ function byteToBitString(b, n = 8) {
  * @returns {number[]}
  */
 export function hexToBytes(hex) {
-	let bytes = [];
+	hex = hex.trim();
+	
+	const bytes = [];
 
 	for (let i = 0; i < hex.length; i += 2) {
 		bytes.push(parseInt(hex.slice(i, i + 2), 16));
@@ -542,7 +533,8 @@ export function hexToBytes(hex) {
  * @returns {string}
  */
 export function bytesToHex(bytes) {
-	let parts = [];
+	const parts = [];
+
 	for (let b of bytes) {
 		parts.push(padZeroes(b.toString(16), 2));
 	}
@@ -577,6 +569,7 @@ export function bytesToText(bytes) {
  * This is used to create a prettier IR (which is built-up from many template js strings in this file, which might contain tabs depending on the editor used)
  * @example
  * replaceTabs("\t\t\t") => [TAB, TAB, TAB].join("")
+ * @package
  * @param {string} str 
  * @returns {string}
  */
@@ -586,10 +579,22 @@ function replaceTabs(str) {
 
 /**
  * Read non-byte aligned numbers
+ * @package
  */
- class BitReader {
+class BitReader {
+    /**
+     * @type {Uint8Array}
+     */
 	#view;
+
+    /**
+     * @type {number}
+     */
 	#pos;
+
+    /**
+     * @type {boolean}
+     */
 	#truncate;
 
 	/**
@@ -603,6 +608,7 @@ function replaceTabs(str) {
 	}
 
 	/**
+     * @package
 	 * @returns {boolean}
 	 */
 	eof() {
@@ -611,6 +617,7 @@ function replaceTabs(str) {
 
 	/**
 	 * Reads a number of bits (<= 8) and returns the result as an unsigned number
+     * @package
 	 * @param {number} n - number of bits to read
 	 * @returns {number}
 	 */
@@ -619,7 +626,7 @@ function replaceTabs(str) {
 
 		let leftShift = 0;
 		if (this.#pos + n > this.#view.length * 8) {
-			let newN = (this.#view.length*8 - this.#pos);
+			const newN = (this.#view.length*8 - this.#pos);
 
 			if (!this.#truncate) {
 				leftShift = n - newN;
@@ -637,7 +644,7 @@ function replaceTabs(str) {
 
 		for (let i = this.#pos + 1; i <= this.#pos + n; i++) {
 			if (i % 8 == 0) {
-				let nPart = i - i0;
+				const nPart = i - i0;
 
 				res += imask(this.#view[idiv(i, 8) - 1], i0 % 8, 8) << (n - nPart);
 
@@ -653,6 +660,7 @@ function replaceTabs(str) {
 
 	/**
 	 * Moves position to next byte boundary
+     * @package
 	 * @param {boolean} force - if true then move to next byte boundary if already at byte boundary
 	 */
 	moveToByteBoundary(force = false) {
@@ -667,6 +675,7 @@ function replaceTabs(str) {
 
 	/**
 	 * Reads 8 bits
+     * @package
 	 * @returns {number}
 	 */
 	readByte() {
@@ -676,6 +685,7 @@ function replaceTabs(str) {
 	/**
 	 * Dumps remaining bits we #pos isn't yet at end.
 	 * This is intended for debugging use.
+     * @package
 	 */
 	dumpRemainingBits() {
 		if (!this.eof()) {
@@ -696,8 +706,9 @@ function replaceTabs(str) {
 /**
  * BitWriter turns a string of '0's and '1's into a list of bytes.
  * Finalization pads the bits using '0*1' if not yet aligned with the byte boundary.
+ * @package
  */
- class BitWriter {
+class BitWriter {
 	/**
 	 * Concatenated and padded upon finalization
 	 * @type {string[]}
@@ -716,6 +727,7 @@ function replaceTabs(str) {
 	}
 
 	/**
+     * @package
 	 * @type {number}
 	 */
 	get length() {
@@ -723,7 +735,8 @@ function replaceTabs(str) {
 	}
 
 	/**
-	 * Write a string of '0's and '1's to the BitWriter. 
+	 * Write a string of '0's and '1's to the BitWriter.
+     * @package
 	 * @param {string} bitChars
 	 */
 	write(bitChars) {
@@ -738,6 +751,7 @@ function replaceTabs(str) {
 	}
 
 	/**
+     * @package
 	 * @param {number} byte
 	 */
 	writeByte(byte) {
@@ -747,6 +761,7 @@ function replaceTabs(str) {
 	/**
 	 * Add padding to the BitWriter in order to align with the byte boundary.
 	 * If 'force == true' then 8 bits are added if the BitWriter is already aligned.
+     * @package
 	 * @param {boolean} force 
 	 */
 	padToByteBoundary(force = false) {
@@ -769,6 +784,7 @@ function replaceTabs(str) {
 
 	/**
 	 * Pads the BitWriter to align with the byte boundary and returns the resulting bytes.
+     * @package
 	 * @param {boolean} force - force padding (will add one byte if already aligned)
 	 * @returns {number[]}
 	 */
@@ -791,7 +807,1381 @@ function replaceTabs(str) {
 }
 
 /**
+ * Function that generates a random number between 0 and 1
+ * @typedef {() => number} NumberGenerator
+ */
+
+/**
+ * A Source instance wraps a string so we can use it cheaply as a reference inside a Site.
+ * @package
+ */
+class Source {
+	#raw;
+	#fileIndex;
+
+	/**
+	 * @param {string} raw 
+	 * @param {?number} fileIndex
+	 */
+	constructor(raw, fileIndex = null) {
+		this.#raw = assertDefined(raw);
+		this.#fileIndex = fileIndex;
+	}
+
+    /**
+     * @package
+     * @type {string}
+     */
+	get raw() {
+		return this.#raw;
+	}
+
+    /**
+     * @package
+     * @type {?number}
+     */
+	get fileIndex() {
+		return this.#fileIndex;
+	}
+
+	/**
+	 * Get char from the underlying string.
+	 * Should work fine utf-8 runes.
+     * @package
+	 * @param {number} pos
+	 * @returns {string}
+	 */
+	getChar(pos) {
+		return this.#raw[pos];
+	}
+	
+	/**
+	 * Returns word under pos
+     * @package
+	 * @param {number} pos 
+	 * @returns {?string}
+	 */
+	getWord(pos) {
+		/** @type {string[]} */
+		const chars = [];
+
+		/**
+		 * @param {string | undefined} c 
+		 * @returns {boolean}
+		 */
+		function isWordChar(c) {
+			if (c === undefined) {
+				return false;
+			} else {
+				return (c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
+			}
+		}
+
+		let c = this.#raw[pos];
+		while (isWordChar(c)) {
+			chars.push(c);
+			pos += 1;
+			c = this.#raw[pos];
+		}
+
+		if (chars.length == 0) {
+			return null;
+		} else {
+			return chars.join("");
+		}
+	}
+
+    /**
+     * @package
+     * @type {number}
+     */
+	get length() {
+		return this.#raw.length;
+	}
+
+	/**
+	 * Calculates the line number of the line where the given character is located (0-based).
+     * @package
+	 * @param {number} pos 
+	 * @returns {number}
+	 */
+	posToLine(pos) {
+		let line = 0;
+		for (let i = 0; i < pos; i++) {
+			if (this.#raw[i] == '\n') {
+				line += 1;
+			}
+		}
+
+		return line;
+	}
+
+	/**
+	 * Calculates the column and line number where the given character is located (0-based).
+     * @package
+	 * @param {number} pos
+	 * @returns {[number, number]}
+	 */
+	// returns [col, line]
+	posToColAndLine(pos) {
+		let col = 0;
+		let line = 0;
+		for (let i = 0; i < pos; i++) {
+			if (this.#raw[i] == '\n') {
+				col = 0;
+				line += 1;
+			} else {
+				col += 1;
+			}
+		}
+
+		return [col, line];
+	}
+
+	/**
+	 * Creates a more human-readable version of the source by prepending the line-numbers to each line.
+	 * The line-numbers are at least two digits.
+	 * @example
+	 * (new Source("hello\nworld")).pretty() => "01  hello\n02  world"
+     * @package
+	 * @returns {string}
+	 */
+	pretty() {
+		const lines = this.#raw.split("\n");
+
+		const nLines = lines.length;
+		const nDigits = Math.max(Math.ceil(Math.log10(nLines)), 2); // line-number is at least two digits
+
+		for (let i = 0; i < nLines; i++) {
+			lines[i] = String(i + 1).padStart(nDigits, '0') + "  " + lines[i];
+		}
+
+		return lines.join("\n");
+	}
+}
+
+/**
+ * A tag function for a helios source.
+ * Is just a marker so IDE support can work on literal helios sources inside javascript/typescript files.
+ * @example
+ * hl`hello ${"world"}!` => "hello world!"
+ * @param {string[]} a 
+ * @param  {...any} b 
+ * @returns {string}
+ */
+export function hl(a, ...b) {
+	return a.map((part, i) => {
+		if (i < b.length) {
+			return part + b[i].toString();
+		} else {
+			return part;
+		}
+	}).join("");
+}
+
+
+////////////////////
+// Section 3: Tokens
+////////////////////
+
+/**
+ * Each Token/Expression/Statement has a Site, which encapsulates a position in a Source
+ * @package
+ */
+class Site {
+	#src;
+	#pos;
+
+	/** @type {?Site} - end of token, exclusive */
+	#endSite;
+
+	/**@type {?Site} */
+	#codeMapSite;
+
+	/**
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 */
+	constructor(src, pos) {
+		this.#src = src;
+		this.#pos = pos;
+		this.#endSite = null;
+		this.#codeMapSite = null;
+	}
+
+	static dummy() {
+		return new Site(new Source(""), 0);
+	}
+
+	get src() {
+		return this.#src;
+	}
+
+	get pos() {
+		return this.#pos;
+	}
+
+	get line() {
+		return this.#src.posToLine(this.#pos);
+	}
+	
+	get endSite() {
+		return this.#endSite;
+	}
+
+	/**
+	 * @param {?Site} site
+	 */
+	setEndSite(site) {
+		this.#endSite = site;
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get part() {
+		if (this.#endSite === null) {
+			return this.#src.raw.slice(this.#pos);
+		} else {
+			return this.#src.raw.slice(this.#pos, this.#endSite.pos);
+		}
+	}
+
+	/**
+	 * @type {?Site} 
+	 */
+	get codeMapSite() {
+		return this.#codeMapSite;
+	}
+
+	/**
+	 * @param {Site} site 
+	 */
+	setCodeMapSite(site) {
+		this.#codeMapSite = site;
+	}
+
+	/**
+	 * Returns a SyntaxError
+	 * @param {string} info 
+	 * @returns {UserError}
+	 */
+	syntaxError(info = "") {
+		return UserError.syntaxError(this.#src, this.#pos, info);
+	}
+
+	/**
+	 * Returns a TypeError
+	 * @param {string} info
+	 * @returns {UserError}
+	 */
+	typeError(info = "") {
+		return UserError.typeError(this.#src, this.#pos, info);
+	}
+
+	/**
+	 * Returns a ReferenceError
+	 * @param {string} info 
+	 * @returns {UserError}
+	 */
+	referenceError(info = "") {
+		return UserError.referenceError(this.#src, this.#pos, info);
+	}
+
+	/**
+	 * Returns a RuntimeError
+	 * @param {string} info
+	 * @returns {UserError}
+	 */
+	runtimeError(info = "") {
+		if (this.#codeMapSite !== null) {
+			let site = this.#codeMapSite;
+			return RuntimeError.newRuntimeError(site.#src, site.#pos, false, info);
+		} else {
+			return RuntimeError.newRuntimeError(this.#src, this.#pos, true, info);
+		}
+	}
+
+	/**
+	 * Calculates the column,line position in 'this.#src'
+	 * @returns {[number, number]}
+	 */
+	getFilePos() {
+		return this.#src.posToColAndLine(this.#pos);
+	}
+}
+
+
+/**
+ * UserErrors are generated when the user of Helios makes a mistake (eg. a syntax error),
+ * or when the user of Helios throws an explicit error inside a script (eg. division by zero).
+ */
+ export class UserError extends Error {
+	#pos;
+	#src;
+
+	/**
+	 * @param {string} msg
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 */
+	constructor(msg, src, pos) {
+		super(msg);
+		this.#pos = pos;
+		this.#src = src;
+	}
+
+	/**
+	 * @param {string} type
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {string} info 
+	 */
+	static new(type, src, pos, info = "") {
+		let line = src.posToLine(pos);
+
+		let msg = `${type} on line ${line + 1}`;
+		if (info != "") {
+			msg += `: ${info}`;
+		}
+
+		return new UserError(msg, src, pos);
+	}
+
+	/**
+	 * @type {Source}
+	 */
+	get src() {
+		return this.#src;
+	}
+
+	/**
+	 * Constructs a SyntaxError
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {string} info 
+	 * @returns {UserError}
+	 */
+	static syntaxError(src, pos, info = "") {
+		return UserError.new("SyntaxError", src, pos, info);
+	}
+
+	/**
+	 * Constructs a TypeError
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {string} info 
+	 * @returns {UserError}
+	 */
+	static typeError(src, pos, info = "") {
+		return UserError.new("TypeError", src, pos, info);
+	}
+
+	/**
+	 * @param {Error} e 
+	 * @returns {boolean}
+	 */
+	static isTypeError(e) {
+		return (e instanceof UserError) && e.message.startsWith("TypeError");
+	}
+
+	/**
+	 * Constructs a ReferenceError (i.e. name undefined, or name unused)
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {string} info 
+	 * @returns {UserError}
+	 */
+	static referenceError(src, pos, info = "") {
+		return UserError.new("ReferenceError", src, pos, info);
+	}
+
+	/**
+	 * @param {Error} e 
+	 * @returns {boolean}
+	 */
+	static isReferenceError(e) {
+		return (e instanceof UserError) && e.message.startsWith("ReferenceError");
+	}
+
+	get data() {
+		throw new Error("is error");
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get pos() {
+		return this.#pos;
+	}
+
+	/**
+	 * Calculates column/line position in 'this.src'.
+	 * @returns {[number, number]}
+	 */
+	getFilePos() {
+		return this.#src.posToColAndLine(this.#pos);
+	}
+
+	/**
+	 * Dumps the error without throwing.
+	 * If 'verbose == true' the Source is also pretty printed with line-numbers.
+	 * @param {boolean} verbose 
+	 */
+	dump(verbose = false) {
+		if (verbose) {
+			console.error(this.#src.pretty());
+		}
+
+		console.error("\n" + this.message);
+	}
+
+	/**
+	 * Returns the error message (alternative to e.message)
+	 * @returns {string}
+	 */
+	toString() {
+		return this.message;
+	}
+
+	/**
+	 * Catches any UserErrors thrown inside 'fn()`.
+	 * Dumps the error
+	 * @template T
+	 * @param {() => T} fn 
+	 * @param {boolean} verbose 
+	 * @returns {T | undefined}	
+	 */
+	static catch(fn, verbose = false) {
+		try {
+			return fn();
+		} catch (error) {
+			if (error instanceof UserError) {
+				error.dump(verbose);
+			} else {
+				throw error;
+			}
+		}
+	}
+}
+
+/**
+ * @package
+ */
+class RuntimeError extends UserError {
+	#isIR; // last trace added
+
+	/**
+	 * @param {string} msg 
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {boolean} isIR 
+	 */
+	constructor(msg, src, pos, isIR) {
+		super(msg, src, pos);
+		this.#isIR = isIR;
+	}
+
+	/**
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {boolean} isIR
+	 * @param {string} info
+	 * @returns {RuntimeError}
+	 */
+	static newRuntimeError(src, pos, isIR, info = "") {
+		let line = src.posToLine(pos);
+
+		let msg = `RuntimeError on line ${line + 1}${isIR ? " of IR" : ""}`;
+		if (info != "") {
+			msg += `: ${info}`;
+		}
+
+		return new RuntimeError(msg, src, pos, isIR);
+	}
+
+	/**
+	 * @param {Source} src 
+	 * @param {number} pos 
+	 * @param {boolean} isIR 
+	 * @param {string} info 
+	 * @returns {RuntimeError}
+	 */
+	addTrace(src, pos, isIR, info = "") {
+		if (isIR && !this.#isIR) {
+			return this;
+		}
+
+		let line = src.posToLine(pos);
+
+		let msg = `Trace${info == "" ? ":" : ","} line ${line + 1}`;
+		if (isIR) {
+			msg += " of IR";
+		} 
+
+		let word = src.getWord(pos);
+		if (word !== null && word !== "print") {
+			msg += ` in '${word}'`;
+		}
+
+		if (info != "") {
+			msg += `: ${info}`;
+		}
+
+		
+		msg += "\n" + this.message;
+
+		return new RuntimeError(msg, this.src, this.pos, isIR);
+	}
+	
+	/**
+	 * @param {Site} site 
+	 * @param {string} info 
+	 * @returns {RuntimeError}
+	 */
+	addTraceSite(site, info = "") {
+		if (site.codeMapSite === null) {
+			return this.addTrace(site.src, site.pos, true, info);
+		} else {
+			return this.addTrace(site.codeMapSite.src, site.codeMapSite.pos, false, info);
+		}
+	}
+}
+
+/**
+ * Token is the base class of all Expressions and Statements
+ */
+export class Token {
+	#site;
+
+	/**
+	 * @param {Site} site 
+	 */
+	constructor(site) {
+		this.#site = assertDefined(site); // position in source of start of token
+	}
+
+	get site() {
+		return this.#site;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * Returns 'true' if 'this' is a literal primitive, a literal struct constructor, or a literal function expression.
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		return false;
+	}
+
+	/**
+	 * Returns 'true' if 'this' is a Word token.
+	 * @param {?(string | string[])} value
+	 * @returns {boolean}
+	 */
+	isWord(value = null) {
+		return false;
+	}
+
+	/**
+	 * Returns 'true' if 'this' is a Symbol token (eg. '+', '(' etc.)
+	 * @param {?(string | string[])} value
+	 * @returns {boolean}
+	 */
+	isSymbol(value = null) {
+		return false;
+	}
+
+	/**
+	 * Returns 'true' if 'this' is a group (eg. '(...)').
+	 * @param {?string} value
+	 * @returns {boolean}
+	 */
+	isGroup(value) {
+		return false;
+	}
+
+	/**
+	 * Returns a SyntaxError at the current Site.
+	 * @param {string} msg 
+	 * @returns {UserError}
+	 */
+	syntaxError(msg) {
+		return this.#site.syntaxError(msg);
+	}
+
+	/**
+	 * Returns a TypeError at the current Site.
+	 * @param {string} msg
+	 * @returns {UserError}
+	 */
+	typeError(msg) {
+		return this.#site.typeError(msg);
+	}
+
+	/**
+	 * Returns a ReferenceError at the current Site.
+	 * @param {string} msg
+	 * @returns {UserError}
+	 */
+	referenceError(msg) {
+		return this.#site.referenceError(msg);
+	}
+
+	/**
+	 * Throws a SyntaxError if 'this' isn't a Word.
+	 * @param {?(string | string[])} value 
+	 * @returns {Word}
+	 */
+	assertWord(value = null) {
+		if (value !== null) {
+			throw this.syntaxError(`expected \'${value}\', got \'${this.toString()}\'`);
+		} else {
+			throw this.syntaxError(`expected word, got ${this.toString()}`);
+		}
+	}
+
+	/**
+	 * Throws a SyntaxError if 'this' isn't a Symbol.
+	 * @param {?(string | string[])} value 
+	 * @returns {SymbolToken}
+	 */
+	assertSymbol(value = null) {
+		if (value !== null) {
+			throw this.syntaxError(`expected '${value}', got '${this.toString()}'`);
+		} else {
+			throw this.syntaxError(`expected symbol, got '${this.toString()}'`);
+		}
+	}
+
+	/**
+	 * Throws a SyntaxError if 'this' isn't a Group.
+	 * @param {?string} type 
+	 * @param {?number} nFields
+	 * @returns {Group}
+	 */
+	assertGroup(type = null, nFields = null) {
+		if (type !== null) {
+			throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}'`)
+		} else {
+			throw this.syntaxError(`invalid syntax: expected group`);
+		}
+	}
+}
+
+/**
+ * A Word token represents a token that matches /[A-Za-z_][A-Za-z_0-9]/
+ * @package
+ */
+class Word extends Token {
+	#value;
+
+	/**
+	 * @param {Site} site 
+	 * @param {string} value 
+	 */
+	constructor(site, value) {
+		super(site);
+		this.#value = value;
+	}
+
+	/**
+	 * @param {string} value 
+	 * @returns {Word}
+	 */
+	static new(value) {
+		return new Word(Site.dummy(), value);
+	}
+
+	get value() {
+		return this.#value;
+	}
+
+	/**
+	 * @param {?(string | string[])} value 
+	 * @returns {boolean}
+	 */
+	isWord(value = null) {
+		if (value !== null) {
+			if (value instanceof Array) {
+				return value.lastIndexOf(this.#value) != -1;
+			} else {
+				return value == this.#value;
+			}
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * @param {?(string | string[])} value 
+	 * @returns {Word}
+	 */
+	assertWord(value = null) {
+		if (!this.isWord(value)) {
+			super.assertWord(value);
+		}
+
+		return this;
+	}
+
+	/**
+	 * @returns {Word}
+	 */
+	assertNotInternal() {
+		if (this.#value == "_") {
+			throw this.syntaxError("_ is reserved");
+		} else if (this.#value.startsWith("__")) {
+			throw this.syntaxError("__ prefix is reserved");
+		} else if (this.#value.endsWith("__")) {
+			throw this.syntaxError("__ suffix is reserved");
+		}
+
+		return this;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isKeyword() {
+		switch (this.#value) {
+			case "const":
+			case "func":
+			case "struct":
+			case "enum":
+			case "import":
+			case "if":
+			case "else":
+			case "switch":
+			case "self":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * @returns {Word}
+	 */
+	assertNotKeyword() {
+		this.assertNotInternal();
+
+		if (this.isKeyword()) {
+			throw this.syntaxError(`'${this.#value}' is a reserved word`);
+		}
+
+		return this;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#value;
+	}
+
+	/**
+	 * Finds the index of the first Word(value) in a list of tokens
+	 * Returns -1 if none found
+	 * @param {Token[]} ts 
+	 * @param {string | string[]} value 
+	 * @returns {number}
+	 */
+	static find(ts, value) {
+		return ts.findIndex(item => item.isWord(value));
+	}
+}
+
+/**
+ * Symbol token represent anything non alphanumeric
+ * @package
+ */
+class SymbolToken extends Token {
+	#value;
+
+	/**
+	 * @param {Site} site
+	 * @param {string} value
+	 */
+	constructor(site, value) {
+		super(site);
+		this.#value = value;
+	}
+
+	get value() {
+		return this.#value;
+	}
+
+	/**
+	 * @param {?(string | string[])} value 
+	 * @returns {boolean}
+	 */
+	isSymbol(value = null) {
+		if (value !== null) {
+			if (value instanceof Array) {
+				return value.lastIndexOf(this.#value) != -1;
+			} else {
+				return value == this.#value;
+			}
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * @param {?(string | string[])} value 
+	 * @returns {SymbolToken}
+	 */
+	assertSymbol(value) {
+		if (!this.isSymbol(value)) {
+			super.assertSymbol(value);
+		}
+
+		return this;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#value;
+	}
+
+	/**
+	 * Finds the index of the first Symbol(value) in a list of tokens.
+	 * Returns -1 if none found.
+	 * @param {Token[]} ts
+	 * @param {string | string[]} value
+	 * @returns {number}
+	 */
+	static find(ts, value) {
+		return ts.findIndex(item => item.isSymbol(value));
+	}
+
+	/**
+	 * Finds the index of the last Symbol(value) in a list of tokens.
+	 * Returns -1 if none found.
+	 * @param {Token[]} ts 
+	 * @param {string | string[]} value 
+	 * @returns {number}
+	 */
+	static findLast(ts, value) {
+		for (let i = ts.length - 1; i >= 0; i--) {
+			if (ts[i].isSymbol(value)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+}
+
+/**
+ * Group token can '(...)', '[...]' or '{...}' and can contain comma separated fields.
+ * @package
+ */
+class Group extends Token {
+	#type;
+	#fields;
+	#firstComma;
+
+	/**
+	 * @param {Site} site 
+	 * @param {string} type - "(", "[" or "{"
+	 * @param {Token[][]} fields 
+	 * @param {?SymbolToken} firstComma
+	 */
+	constructor(site, type, fields, firstComma = null) {
+		super(site);
+		this.#type = type;
+		this.#fields = fields; // list of lists of tokens
+		this.#firstComma = firstComma;
+
+		assert(fields.length < 2 || firstComma !== null);
+	}
+
+	get fields() {
+		return this.#fields.slice(); // copy, so fields_ doesn't get mutated
+	}
+
+	/**
+	 * @param {?string} type 
+	 * @returns {boolean}
+	 */
+	isGroup(type = null) {
+		if (type !== null) {
+			return this.#type == type;
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * @param {?string} type 
+	 * @param {?number} nFields 
+	 * @returns {Group}
+	 */
+	assertGroup(type = null, nFields = null) {
+		if (type !== null && this.#type != type) {
+			throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}', got '${this.#type}...${Group.matchSymbol(this.#type)}'`);
+		} else if (type !== null && nFields !== null && nFields != this.#fields.length) {
+			if (this.#fields.length > 1 && nFields <= 1 && this.#firstComma !== null) {
+				throw this.#firstComma.syntaxError(`invalid syntax, unexpected ','`);
+			} else {
+				throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}' with ${nFields} field(s), got '${type}...${Group.matchSymbol(type)}' with ${this.#fields.length} fields`);
+			}
+		}
+
+		return this;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		let s = this.#type;
+
+		let parts = [];
+		for (let f of this.#fields) {
+			parts.push(f.map(t => t.toString()).join(" "));
+		}
+
+		s += parts.join(", ") + Group.matchSymbol(this.#type);
+
+		return s;
+	}
+
+	/**
+	 * @param {Token} t 
+	 * @returns {boolean}
+	 */
+	static isOpenSymbol(t) {
+		return t.isSymbol("{") || t.isSymbol("[") || t.isSymbol("(");
+	}
+
+	/**
+	 * @param {Token} t 
+	 * @returns {boolean}
+	 */
+	static isCloseSymbol(t) {
+		return t.isSymbol("}") || t.isSymbol("]") || t.isSymbol(")");
+	}
+
+	/**
+	 * Returns the corresponding closing bracket, parenthesis or brace.
+	 * Throws an error if not a group symbol.
+	 * @example
+	 * Group.matchSymbol("(") => ")"
+	 * @param {string | SymbolToken} t
+	 * @returns {string}
+	 */
+	static matchSymbol(t) {
+		if (t instanceof SymbolToken) {
+			t = t.value;
+		}
+
+		if (t == "{") {
+			return "}";
+		} else if (t == "[") {
+			return "]";
+		} else if (t == "(") {
+			return ")";
+		} else if (t == "}") {
+			return "{";
+		} else if (t == "]") {
+			return "[";
+		} else if (t == ")") {
+			return "(";
+		} else {
+			throw new Error("not a group symbol");
+		}
+	}
+
+	/**
+	 * Finds the index of first Group(type) in list of tokens
+	 * Returns -1 if none found.
+	 * @param {Token[]} ts 
+	 * @param {string} type 
+	 * @returns {number}
+	 */
+	static find(ts, type) {
+		return ts.findIndex(item => item.isGroup(type));
+	}
+}
+
+/**
+ * Base class of literal tokens
+ * @package
+ */
+class PrimitiveLiteral extends Token {
+	/**
+	 * @param {Site} site 
+	 */
+	constructor(site) {
+		super(site);
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		return true;
+	}
+}
+
+/**
+ * Signed int literal token
+ * @package
+ */
+class IntLiteral extends PrimitiveLiteral {
+	#value;
+
+	/**
+	 * @param {Site} site 
+	 * @param {bigint} value 
+	 */
+	constructor(site, value) {
+		super(site);
+		this.#value = value;
+	}
+
+	get value() {
+		return this.#value;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#value.toString();
+	}
+}
+
+/**
+ * Bool literal token
+ * @package
+ */
+class BoolLiteral extends PrimitiveLiteral {
+	#value;
+
+	/**
+	 * @param {Site} site 
+	 * @param {boolean} value 
+	 */
+	constructor(site, value) {
+		super(site);
+		this.#value = value;
+	}
+
+	get value() {
+		return this.#value;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#value ? "true" : "false";
+	}
+}
+
+/**
+ * ByteArray literal token
+ * @package
+ */
+class ByteArrayLiteral extends PrimitiveLiteral {
+	#bytes;
+
+	/**
+	 * @param {Site} site 
+	 * @param {number[]} bytes 
+	 */
+	constructor(site, bytes) {
+		super(site);
+		this.#bytes = bytes;
+	}
+
+	get bytes() {
+		return this.#bytes;
+	}
+
+	toString() {
+		return `#${bytesToHex(this.#bytes)}`;
+	}
+}
+
+/**
+ * String literal token (utf8)
+ * @package
+ */
+class StringLiteral extends PrimitiveLiteral {
+	#value;
+
+	/**
+	 * @param {Site} site 
+	 * @param {string} value 
+	 */
+	constructor(site, value) {
+		super(site);
+		this.#value = value;
+	}
+
+	get value() {
+		return this.#value;
+	}
+
+	toString() {
+		return `"${this.#value.toString()}"`;
+	}
+}
+
+/**
+ * @package
+ * @typedef {[number, Site][]} CodeMap
+ */
+
+/**
+ * @package
+ * @typedef {Map<string, IR>} IRDefinitions
+ */
+
+/**
+ * The IR class combines a string of intermediate representation sourcecode with an optional site.
+ * The site is used for mapping IR code to the original source code.
+ * @package
+ */
+ class IR {
+	#content;
+	#site;
+
+	/**
+	 * @param {string | IR[]} content 
+	 * @param {?Site} site 
+	 */
+	constructor(content, site = null) {
+		this.#content = content;
+		this.#site = site;
+	}
+
+    /**
+     * @package
+     * @type {string | IR[]}
+     */
+	get content() {
+		return this.#content;
+	}
+
+    /**
+     * @package
+     * @type {?Site}
+     */
+	get site() {
+		return this.#site;
+	}
+
+	/**
+	 * Returns a list containing IR instances that themselves only contain strings
+     * @package
+	 * @returns {IR[]}
+	 */
+	flatten() {
+		if (typeof this.#content == "string") {
+			return [this];
+		} else {
+			/**
+			 * @type {IR[]}
+			 */
+			let result = [];
+
+			for (let item of this.#content) {
+				result = result.concat(item.flatten());
+			}
+
+			return result;
+		}
+	}
+
+	/**
+	 * Intersperse nested IR content with a separator
+     * @package
+	 * @param {string} sep
+	 * @returns {IR}
+	 */
+	join(sep) {
+		if (typeof this.#content == "string") {
+			return this;
+		} else {
+			/** @type {IR[]} */
+			const result = [];
+
+			for (let i = 0; i < this.#content.length; i++) {
+				result.push(this.#content[i]);
+
+				if (i < this.#content.length - 1) {
+					result.push(new IR(sep))
+				}
+			}
+
+			return new IR(result);
+		}
+	}
+
+    /**
+     * @package
+	 * @returns {[string, CodeMap]}
+	 */
+	generateSource() {
+		const parts = this.flatten();
+
+		/** @type {string[]} */
+		const partSrcs = [];
+
+		/** @type {CodeMap} */
+		const codeMap = [];
+
+		let pos = 0;
+		for (let part of parts) {
+			const rawPartSrc = part.content;
+
+			if (typeof rawPartSrc == "string") {
+				const origSite = part.site;
+				if (origSite !== null) {
+					/** @type {[number, Site]} */
+					const pair = [pos, origSite];
+
+					codeMap.push(pair);
+				}
+
+				const partSrc = replaceTabs(rawPartSrc);
+
+				pos += partSrc.length;
+				partSrcs.push(partSrc);
+			} else {
+				throw new Error("expected IR to contain only strings after flatten");
+			}
+		}
+
+		return [partSrcs.join(""), codeMap];
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	pretty() {
+		const [src, _] = this.generateSource();
+
+		return (new Source(src)).pretty();
+	}
+
+	/**
+	 * Wraps 'inner' IR source with some definitions (used for top-level statements and for builtins)
+     * @package
+	 * @param {IR} inner 
+	 * @param {IRDefinitions} definitions - name -> definition
+	 * @returns {IR}
+	 */
+	static wrapWithDefinitions(inner, definitions) {
+		const keys = Array.from(definitions.keys()).reverse();
+
+		let res = inner;
+		for (let key of keys) {
+			const definition = definitions.get(key);
+
+			if (definition === undefined) {
+				throw new Error("unexpected");
+			} else {
+
+				res = new IR([new IR("("), new IR(key), new IR(") -> {\n"),
+					res, new IR(`\n}(\n${TAB}/*${key}*/\n${TAB}`), definition,
+				new IR("\n)")]);
+			}
+		}
+
+		return res;
+	}
+}
+
+
+////////////////////////////////////
+// Section 4: Cryptography functions
+////////////////////////////////////
+/**
+ * Size of default Blake2b digest
+ * @package
+ */
+var BLAKE2B_DIGEST_SIZE = 32; // bytes
+
+/**
+ * Changes the value of BLAKE2B_DIGEST_SIZE 
+ *  (because the nodejs crypto module only supports 
+ *   blake2b-512 and not blake2b-256, and we want to avoid non-standard dependencies in the 
+ *   test-suite)
+ * @package
+ * @param {number} s - 32 or 64
+ */
+function setBlake2bDigestSize(s) {
+    BLAKE2B_DIGEST_SIZE = s;
+}
+
+/**
+ * Rfc 4648 base32 alphabet
+ * @package
+ * @type {string}
+ */
+const DEFAULT_BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+
+/**
+ * Bech32 base32 alphabet
+ * @package
+ * @type {string}
+ */
+const BECH32_BASE32_ALPHABET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+ 
+/**
+ * Make sure resulting number fits in uint32
+ * @package
+ * @param {number} x
+ */
+function imod32(x) {
+	return x >>> 0;
+}
+
+/**
+ * 32 bit number rotation
+ * @package
+ * @param {number} x - originally uint32
+ * @param {number} n
+ * @returns {number} - originally uint32
+ */
+function irotr(x, n) {
+	return imod32((x >>> n) | (x << (32 - n)));
+}
+
+/**
+ * @package
+ * @param {bigint} x 
+ * @param {bigint} n 
+ * @returns {bigint}
+ */
+function posMod(x, n) {
+	const res = x % n;
+
+	if (res < 0n) {
+		return res + n;
+	} else {
+		return res;
+	}
+}
+
+/**
  * UInt64 number (represented by 2 UInt32 numbers)
+ * @package
  */
 class UInt64 {
 	#high;
@@ -807,6 +2197,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @returns {UInt64}
 	 */
 	static zero() {
@@ -814,6 +2205,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {number[]} bytes - 8 uint8 numbers
 	 * @param {boolean} littleEndian
 	 * @returns {UInt64}
@@ -837,31 +2229,41 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {string} str 
 	 * @returns {UInt64}
 	 */
 	static fromString(str) {
-		let high = parseInt(str.slice(0,  8), 16);
-		let low  = parseInt(str.slice(8, 16), 16);
+		const high = parseInt(str.slice(0,  8), 16);
+		const low  = parseInt(str.slice(8, 16), 16);
 
 		return new UInt64(high, low);
 	}
 
+    /**
+     * @package
+     * @type {number}
+     */
 	get high() {
 		return this.#high;
 	}
 
+    /**
+     * @package
+     * @type {number}
+     */
 	get low() {
 		return this.#low;
 	}
 
 	/**
 	 * Returns [low[0], low[1], low[2], low[3], high[0], high[1], high[2], high[3]] if littleEndian==true
+     * @package
 	 * @param {boolean} littleEndian
 	 * @returns {number[]}
 	 */
 	toBytes(littleEndian = true) {
-		let res = [
+		const res = [
 			(0x000000ff & this.#low),
 			(0x0000ff00 & this.#low) >>> 8,
 			(0x00ff0000 & this.#low) >>> 16,
@@ -880,6 +2282,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {UInt64} other 
 	 * @returns {boolean}
 	 */
@@ -888,6 +2291,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @returns {UInt64} 
 	 */
 	not() {
@@ -895,6 +2299,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {UInt64} other
 	 * @returns {UInt64}
 	 */
@@ -903,6 +2308,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {UInt64} other 
 	 * @returns {UInt64}
 	 */
@@ -911,11 +2317,13 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {UInt64} other 
 	 * @returns {UInt64}
 	 */
 	add(other) {
-		let low = this.#low + other.#low;
+		const low = this.#low + other.#low;
+
 		let high = this.#high + other.#high;
 
 		if (low >= 0x100000000) {
@@ -926,6 +2334,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {number} n 
 	 * @returns {UInt64}
 	 */
@@ -943,6 +2352,7 @@ class UInt64 {
 	}
 
 	/**
+     * @package
 	 * @param {number} n
 	 * @returns {UInt64}
 	 */
@@ -956,33 +2366,18 @@ class UInt64 {
 }
 
 /**
- * Rfc 4648 base32 alphabet
- * @type {string}
- */
-const DEFAULT_BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
-
-/**
- * Bech32 base32 alphabet
- * @type {string}
- */
-const BECH32_BASE32_ALPHABET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-
-/**
- * Function that generates a random number between 0 and 1
- * @typedef {() => number} NumberGenerator
- */
-
-/**
  * A collection of cryptography primitives are included here in order to avoid external dependencies
  *     mulberry32: random number generator
  *     base32 encoding and decoding
  *     bech32 encoding, checking, and decoding
  *     sha2_256, sha2_512, sha3 and blake2b hashing
  *     ed25519 pubkey generation, signing, and signature verification (NOTE: the current implementation is very slow)
+ * @package
  */
 class Crypto {
 	/**
 	 * Returns a simple random number generator
+     * @package
 	 * @param {number} seed
 	 * @returns {NumberGenerator} - a random number generator
 	 */
@@ -1000,6 +2395,7 @@ class Crypto {
 
 	/**
 	 * Alias for rand generator of choice
+     * @package
 	 * @param {number} seed
 	 * @returns {NumberGenerator} - the random number generator function
 	 */
@@ -1021,6 +2417,7 @@ class Crypto {
 	 * Crypto.encodeBase32(textToBytes("fooba")) => "mzxw6ytb"
 	 * @example
 	 * Crypto.encodeBase32(textToBytes("foobar")) => "mzxw6ytboi"
+     * @package
 	 * @param {number[]} bytes - uint8 numbers
 	 * @param {string} alphabet - list of chars
 	 * @return {string}
@@ -1031,13 +2428,14 @@ class Crypto {
 
 	/**
 	 * Internal method
+     * @package
 	 * @param {number[]} bytes 
 	 * @returns {number[]} - list of numbers between 0 and 32
 	 */
 	static encodeBase32Bytes(bytes)  {
-		let result = [];
+		const result = [];
 
-		let reader = new BitReader(bytes, false);
+		const reader = new BitReader(bytes, false);
 
 		while (!reader.eof()) {
 			result.push(reader.readBits(5));
@@ -1060,34 +2458,36 @@ class Crypto {
 	 * bytesToText(Crypto.decodeBase32("mzxw6ytb")) => "fooba"
 	 * @example
 	 * bytesToText(Crypto.decodeBase32("mzxw6ytboi")) => "foobar"
+     * @package
 	 * @param {string} encoded
 	 * @param {string} alphabet
 	 * @return {number[]}
 	 */
 	static decodeBase32(encoded, alphabet = DEFAULT_BASE32_ALPHABET) {
-		let writer = new BitWriter();
+		const writer = new BitWriter();
 
-		let n = encoded.length;
+		const n = encoded.length;
+
 		for (let i = 0; i < n; i++) {
-			let c = encoded[i];
-			let code = alphabet.indexOf(c.toLowerCase());
+			const c = encoded[i];
+			const code = alphabet.indexOf(c.toLowerCase());
 
 			if (i == n - 1) {
 				// last, make sure we align to byte
 
-				let nCut = n*5 - 8*Math.floor(n*5/8);
+				const nCut = n*5 - 8*Math.floor(n*5/8);
 
-				let bits = padZeroes(code.toString(2), 5)
+				const bits = padZeroes(code.toString(2), 5)
 
 				writer.write(bits.slice(0, 5 - nCut));
 			} else {
-				let bits = padZeroes(code.toString(2), 5);
+				const bits = padZeroes(code.toString(2), 5);
 
 				writer.write(bits);
 			}
 		}
 
-		let result = writer.finalize(false);
+		const result = writer.finalize(false);
 
 		return result;
 	}
@@ -1095,11 +2495,12 @@ class Crypto {
 	/**
 	 * Expand human readable prefix of the bech32 encoding so it can be used in the checkSum
 	 * Internal method.
+     * @package
 	 * @param {string} hrp
 	 * @returns {number[]}
 	 */
 	static expandBech32HumanReadablePart(hrp) {
-		let bytes = [];
+		const bytes = [];
 		for (let c of hrp) {
 			bytes.push(c.charCodeAt(0) >> 5);
 		}
@@ -1116,6 +2517,7 @@ class Crypto {
 	/**
 	 * Used as part of the bech32 checksum.
 	 * Internal method.
+     * @package
 	 * @param {number[]} bytes 
 	 * @returns {number}
 	 */
@@ -1124,7 +2526,7 @@ class Crypto {
 
 		let chk = 1;
 		for (let b of bytes) {
-			let c = (chk >> 25);
+			const c = (chk >> 25);
 			chk = (chk & 0x1fffffff) << 5 ^ b;
 
 			for (let i = 0; i < 5; i++) {
@@ -1140,16 +2542,17 @@ class Crypto {
 	/**
 	 * Generate the bech32 checksum
 	 * Internal method
+     * @package
 	 * @param {string} hrp 
 	 * @param {number[]} data - numbers between 0 and 32
 	 * @returns {number[]} - 6 numbers between 0 and 32
 	 */
 	static calcBech32Checksum(hrp, data) {
-		let bytes = Crypto.expandBech32HumanReadablePart(hrp).concat(data);
+		const bytes = Crypto.expandBech32HumanReadablePart(hrp).concat(data);
 
-		let chk = Crypto.calcBech32Polymod(bytes.concat([0,0,0,0,0,0])) ^ 1;
+		const chk = Crypto.calcBech32Polymod(bytes.concat([0,0,0,0,0,0])) ^ 1;
 
-		let chkSum = [];
+		const chkSum = [];
 		for (let i = 0; i < 6; i++) {
 			chkSum.push((chk >> 5 * (5 - i)) & 31);
 		}
@@ -1163,6 +2566,7 @@ class Crypto {
 	 * Crypto.encodeBech32("foo", textToBytes("foobar")) => "foo1vehk7cnpwgry9h96"
 	 * @example
 	 * Crypto.encodeBech32("addr_test", hexToBytes("70a9508f015cfbcffc3d88ac4c1c934b5b82d2bb281d464672f6c49539")) => "addr_test1wz54prcptnaullpa3zkyc8ynfddc954m9qw5v3nj7mzf2wggs2uld"
+     * @package
 	 * @param {string} hrp 
 	 * @param {number[]} data - uint8 0 - 256
 	 * @returns {string}
@@ -1172,7 +2576,7 @@ class Crypto {
 
 		data = Crypto.encodeBase32Bytes(data);
 
-		let chkSum = Crypto.calcBech32Checksum(hrp, data);
+		const chkSum = Crypto.calcBech32Checksum(hrp, data);
 
 		return hrp + "1" + data.concat(chkSum).map(i => BECH32_BASE32_ALPHABET[i]).join("");
 	}
@@ -1182,21 +2586,22 @@ class Crypto {
 	 * Throws an error if checksum is invalid.
 	 * @example
 	 * bytesToHex(Crypto.decodeBech32("addr_test1wz54prcptnaullpa3zkyc8ynfddc954m9qw5v3nj7mzf2wggs2uld")[1]) => "70a9508f015cfbcffc3d88ac4c1c934b5b82d2bb281d464672f6c49539"
+     * @package
 	 * @param {string} addr 
 	 * @returns {[string, number[]]}
 	 */
 	static decodeBech32(addr) {
 		assert(Crypto.verifyBech32(addr), "invalid bech32 addr");
 
-		let i = addr.indexOf("1");
+		const i = addr.indexOf("1");
 
 		assert(i != -1);
 
-		let hrp = addr.slice(0, i);
+		const hrp = addr.slice(0, i);
 
 		addr = addr.slice(i+1);
 
-		let data = Crypto.decodeBase32(addr.slice(0, addr.length - 6), BECH32_BASE32_ALPHABET);
+		const data = Crypto.decodeBase32(addr.slice(0, addr.length - 6), BECH32_BASE32_ALPHABET);
 
 		return [hrp, data];
 	}
@@ -1219,23 +2624,25 @@ class Crypto {
 	 * Crypto.verifyBech32("?1ezyfcl") => true
 	 * @example
 	 * Crypto.verifyBech32("addr_test1wz54prcptnaullpa3zkyc8ynfddc954m9qw5v3nj7mzf2wggs2uld") => true
+     * @package
 	 * @param {string} addr
 	 * @returns {boolean}
 	 */
 	static verifyBech32(addr) {
-		let data =[];
+		const data =[];
 
-		let i = addr.indexOf("1");
+		const i = addr.indexOf("1");
+        
 		if (i == -1 || i == 0) {
 			return false;
 		}
 
-		let hrp = addr.slice(0, i);
+		const hrp = addr.slice(0, i);
 
 		addr = addr.slice(i + 1);
 
 		for (let c of addr) {
-			let j = BECH32_BASE32_ALPHABET.indexOf(c);
+			const j = BECH32_BASE32_ALPHABET.indexOf(c);
 			if (j == -1) {
 				return false;
 			}
@@ -1243,12 +2650,12 @@ class Crypto {
 			data.push(j);
 		}
 
-		let chkSumA = data.slice(data.length - 6);
+		const chkSumA = data.slice(data.length - 6);
 
-		let chkSumB = Crypto.calcBech32Checksum(hrp, data.slice(0, data.length - 6));
+		const chkSumB = Crypto.calcBech32Checksum(hrp, data.slice(0, data.length - 6));
 
-		for (let i = 0; i < 6; i++) {
-			if (chkSumA[i] != chkSumB[i]) {
+		for (let j = 0; j < 6; j++) {
+			if (chkSumA[j] != chkSumB[j]) {
 				return false;
 			}
 		}
@@ -1263,6 +2670,7 @@ class Crypto {
 	 * bytesToHex(Crypto.sha2_256([0x61, 0x62, 0x63])) => "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 	 * @example
 	 * Crypto.sha2_256(textToBytes("Hello, World!")) => [223, 253, 96, 33, 187, 43, 213, 176, 175, 103, 98, 144, 128, 158, 195, 165, 49, 145, 221, 129, 199, 247, 10, 75, 40, 104, 138, 54, 33, 130, 152, 111]
+     * @package
 	 * @param {number[]} bytes - list of uint8 numbers
 	 * @returns {number[]} - list of uint8 numbers
 	 */
@@ -1274,9 +2682,9 @@ class Crypto {
 		 * @returns {number[]}
 		 */
 		function pad(src) {
-			let nBits = src.length*8;
+			const nBits = src.length*8;
 
-			let dst = src.slice();
+			const dst = src.slice();
 
 			dst.push(0x80);
 
@@ -1360,9 +2768,9 @@ class Crypto {
 
 		// break message in successive 64 byte chunks
 		for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += 64) {
-			let chunk = bytes.slice(chunkStart, chunkStart + 64);
+			const chunk = bytes.slice(chunkStart, chunkStart + 64);
 
-			let w = (new Array(64)).fill(0); // array of 32 bit numbers!
+			const w = (new Array(64)).fill(0); // array of 32 bit numbers!
 
 			// copy chunk into first 16 positions of w
 			for (let i = 0; i < 16; i++) {
@@ -1389,12 +2797,12 @@ class Crypto {
 
 			// compression function main loop
 			for (let i = 0; i < 64; i++) {
-				let S1 = irotr(e, 6) ^ irotr(e, 11) ^ irotr(e, 25);
-				let ch = (e & f) ^ ((~e) & g);
-				let temp1 = imod32(h + S1 + ch + k[i] + w[i]);
-				let S0 = irotr(a, 2) ^ irotr(a, 13) ^ irotr(a, 22);
-				let maj = (a & b) ^ (a & c) ^ (b & c);
-				let temp2 = imod32(S0 + maj);
+				const S1 = irotr(e, 6) ^ irotr(e, 11) ^ irotr(e, 25);
+				const ch = (e & f) ^ ((~e) & g);
+				const temp1 = imod32(h + S1 + ch + k[i] + w[i]);
+				const S0 = irotr(a, 2) ^ irotr(a, 13) ^ irotr(a, 22);
+				const maj = (a & b) ^ (a & c) ^ (b & c);
+				const temp2 = imod32(S0 + maj);
 
 				h = g;
 				g = f;
@@ -1418,9 +2826,9 @@ class Crypto {
 		}
 
 		// produce the final digest of uint8 numbers
-		let result = [];
+		const result = [];
 		for (let i = 0; i < 8; i++) {
-			let item = hash[i];
+			const item = hash[i];
 
 			result.push(imod8(item >> 24));
 			result.push(imod8(item >> 16));
@@ -1438,6 +2846,7 @@ class Crypto {
 	 * bytesToHex(Crypto.sha2_512([0x61, 0x62, 0x63])) => "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"
 	 * @example 
 	 * bytesToHex(Crypto.sha2_512([])) => "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+     * @package
 	 * @param {number[]} bytes - list of uint8 numbers
 	 * @returns {number[]} - list of uint8 numbers
 	 */
@@ -1449,9 +2858,9 @@ class Crypto {
 		 * @returns {number[]}
 		 */
 		function pad(src) {
-			let nBits = src.length*8;
+			const nBits = src.length*8;
 
-			let dst = src.slice();
+			const dst = src.slice();
 
 			dst.push(0x80);
 
@@ -1559,9 +2968,9 @@ class Crypto {
 
 		// break message in successive 64 byte chunks
 		for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += 128) {
-			let chunk = bytes.slice(chunkStart, chunkStart + 128);
+			const chunk = bytes.slice(chunkStart, chunkStart + 128);
 
-			let w = (new Array(80)).fill(UInt64.zero()); // array of 32 bit numbers!
+			const w = (new Array(80)).fill(UInt64.zero()); // array of 32 bit numbers!
 
 			// copy chunk into first 16 hi/lo positions of w (i.e. into first 32 uint32 positions)
 			for (let i = 0; i < 16; i++) {
@@ -1585,12 +2994,12 @@ class Crypto {
 
 			// compression function main loop
 			for (let i = 0; i < 80; i++) {
-				let S1 = e.rotr(14).xor(e.rotr(18)).xor(e.rotr(41));
-				let ch = e.and(f).xor(e.not().and(g));
-				let temp1 = h.add(S1).add(ch).add(k[i]).add(w[i]);
-				let S0 = a.rotr(28).xor(a.rotr(34)).xor(a.rotr(39));
-				let maj = a.and(b).xor(a.and(c)).xor(b.and(c));
-				let temp2 = S0.add(maj);
+				const S1 = e.rotr(14).xor(e.rotr(18)).xor(e.rotr(41));
+				const ch = e.and(f).xor(e.not().and(g));
+				const temp1 = h.add(S1).add(ch).add(k[i]).add(w[i]);
+				const S0 = a.rotr(28).xor(a.rotr(34)).xor(a.rotr(39));
+				const maj = a.and(b).xor(a.and(c)).xor(b.and(c));
+				const temp2 = S0.add(maj);
 
 				h = g;
 				g = f;
@@ -1616,9 +3025,9 @@ class Crypto {
 		// produce the final digest of uint8 numbers
 		let result = [];
 		for (let i = 0; i < 8; i++) {
-			let item = hash[i];
+			const item = hash[i];
 
-			result = result.concat(hash[i].toBytes(false));
+			result = result.concat(item.toBytes(false));
 		}
 	
 		return result;
@@ -1638,6 +3047,7 @@ class Crypto {
 	 * bytesToHex(Crypto.sha3((new Array(134)).fill(3))) => "8e6575663dfb75a88f94a32c5b363c410278b65020734560d968aadd6896a621"
 	 * @example
 	 * bytesToHex(Crypto.sha3((new Array(137)).fill(4))) => "f10b39c3e455006aa42120b9751faa0f35c821211c9d086beb28bf3c4134c6c6"
+     * @package
 	 * @param {number[]} bytes - list of uint8 numbers
 	 * @returns {number[]} - list of uint8 numbers
 	 */
@@ -1664,7 +3074,7 @@ class Crypto {
 		 * @returns {number[]} - list of uint8 numbers
 		 */
 		function pad(src) {
-			let dst = src.slice();
+			const dst = src.slice();
 
 			/** @type {number} */
 			let nZeroes = RATE - 2 - (dst.length%RATE);
@@ -1739,12 +3149,12 @@ class Crypto {
 			/**
 			 * @type {UInt64[]}
 			 */		
-			let c = new Array(5);
+			const c = new Array(5);
 
 			/**
 			 * @type {UInt64[]}
 			 */
-			let b = new Array(25);
+			const b = new Array(25);
 			
 			for (let round = 0; round < 24; round++) {
 				for (let i = 0; i < 5; i++) {
@@ -1752,10 +3162,10 @@ class Crypto {
 				}
 
 				for (let i = 0; i < 5; i++) {
-					let i1 = (i+1)%5;
-					let i2 = (i+4)%5;
+					const i1 = (i+1)%5;
+					const i2 = (i+4)%5;
 
-					let tmp = c[i2].xor(c[i1].rotr(63));
+					const tmp = c[i2].xor(c[i1].rotr(63));
 
 					for (let j = 0; j < 5; j++) {
 						s[i+5*j] = s[i+5*j].xor(tmp);
@@ -1765,10 +3175,10 @@ class Crypto {
 				b[0] = s[0];
 
 				for(let i = 1; i < 25; i++) {
-					let offset = OFFSETS[i-1];
+					const offset = OFFSETS[i-1];
 
-					let left = Math.abs(SHIFTS[i-1]);
-					let right = 32 - left;
+					const left = Math.abs(SHIFTS[i-1]);
+					const right = 32 - left;
 
 					if (SHIFTS[i-1] < 0) {
 						b[i] = s[offset].rotr(right);
@@ -1793,18 +3203,17 @@ class Crypto {
 		/**
 		 * @type {UInt64[]}
 		 */
-		let state = (new Array(WIDTH/8)).fill(UInt64.zero());
+		const state = (new Array(WIDTH/8)).fill(UInt64.zero());
 
 		for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += RATE) {
 			// extend the chunk to become length WIDTH
-			let chunk = bytes.slice(chunkStart, chunkStart + RATE).concat((new Array(CAP)).fill(0));
+			const chunk = bytes.slice(chunkStart, chunkStart + RATE).concat((new Array(CAP)).fill(0));
 
 			// element-wise xor with 'state'
 			for (let i = 0; i < WIDTH; i += 8) {
 				state[i/8] = state[i/8].xor(UInt64.fromBytes(chunk.slice(i, i+8)));
 
 				// beware: a uint32 is stored as little endian, but a pair of uint32s that form a uin64 are stored in big endian format!
-				//state[i/4] ^= (chunk[i] << 0) | (chunk[i+1] << 8) | (chunk[i+2] << 16) | (chunk[i+3] << 24);
 			}
 
 			// apply block permutations
@@ -1828,6 +3237,7 @@ class Crypto {
 	 * bytesToHex(Crypto.blake2b([0, 1])) => "01cf79da4945c370c68b265ef70641aaa65eaa8f5953e3900d97724c2c5aa095"
 	 * @example
 	 * bytesToHex(Crypto.blake2b(textToBytes("abc"), 64)) => "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
+     * @package
 	 * @param {number[]} bytes 
 	 * @param {number} digestSize - 32 or 64
 	 * @returns {number[]}
@@ -1871,9 +3281,9 @@ class Crypto {
 		 * @returns {number[]} - list of uint8 bytes
 		 */
 		function pad(src) {
-			let dst = src.slice();
+			const dst = src.slice();
 
-			let nZeroes = dst.length == 0 ? WIDTH : (WIDTH - dst.length%WIDTH)%WIDTH;
+			const nZeroes = dst.length == 0 ? WIDTH : (WIDTH - dst.length%WIDTH)%WIDTH;
 
 			// just padding with zeroes, the actual message length is used during compression stage of final block in order to uniquely hash messages of different lengths
 			for (let i = 0; i < nZeroes; i++) {
@@ -1894,8 +3304,8 @@ class Crypto {
 		 * @param {number} j - index in chunk for low word 2
 		 */
 		function mix(v, chunk, a, b, c, d, i, j) {
-			let x = chunk[i];
-			let y = chunk[j];
+			const x = chunk[i];
+			const y = chunk[j];
 
 			v[a] = v[a].add(v[b]).add(x);
 			v[d] = v[d].xor(v[a]).rotr(32);
@@ -1915,7 +3325,7 @@ class Crypto {
 		 */
 		function compress(h, chunk, t, last) {
 			// work vectors
-			let v = h.slice().concat(IV.slice());
+			const v = h.slice().concat(IV.slice());
 
 			v[12] = v[12].xor(new UInt64(0, imod32(t))); // v[12].high unmodified
 			// v[13] unmodified
@@ -1925,7 +3335,7 @@ class Crypto {
 			}
 
 			for (let round = 0; round < 12; round++) {
-				let s = SIGMA[round%10];
+				const s = SIGMA[round%10];
 
 				for (let i = 0; i < 4; i++) {
 					mix(v, chunk, i, i+4, i+8, i+12, s[i*2], s[i*2+1]);
@@ -1941,23 +3351,23 @@ class Crypto {
 			}		
 		}
  
-		let nBytes = bytes.length;
+		const nBytes = bytes.length;
 
 		bytes = pad(bytes);
 
 		// init hash vector
-		let h = IV.slice();
+		const h = IV.slice();
 		
 
 		// setup the param block
-		let paramBlock = new Uint8Array(64);
+		const paramBlock = new Uint8Array(64);
 		paramBlock[0] = digestSize; // n output  bytes
 		paramBlock[1] = 0; // key-length (always zero in our case) 
 		paramBlock[2] = 1; // fanout
 		paramBlock[3] = 1; // depth
 
 		//mix in the parameter block
-		let paramBlockView = new DataView(paramBlock.buffer);
+		const paramBlockView = new DataView(paramBlock.buffer);
 		for (let i = 0; i < 8; i++) {
 			h[i] = h[i].xor(new UInt64(
 				paramBlockView.getUint32(i*8+4, true),
@@ -1967,10 +3377,10 @@ class Crypto {
 		
 		// loop all chunks
 		for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += WIDTH) {
-			let chunkEnd = chunkStart + WIDTH; // exclusive
-			let chunk = bytes.slice(chunkStart, chunkStart + WIDTH);
+			const chunkEnd = chunkStart + WIDTH; // exclusive
+			const chunk = bytes.slice(chunkStart, chunkStart + WIDTH);
 
-			let chunk64 = new Array(WIDTH/8);
+			const chunk64 = new Array(WIDTH/8);
 			for (let i = 0; i < WIDTH; i += 8) {
 				chunk64[i/8] = UInt64.fromBytes(chunk.slice(i, i+8));
 			}
@@ -2003,6 +3413,7 @@ class Crypto {
 	 * This is implementation is slow (~0.5s per verification), but should be good enough for simple client-side usage
 	 * 
 	 * Ported from: https://ed25519.cr.yp.to/python/ed25519.py
+     * @package
 	 */
 	static get Ed25519() {
 		const Q = 57896044618658097711785492504343953926634992332820282019728792003956564819949n; // ipowi(255n) - 19n
@@ -2020,7 +3431,6 @@ class Crypto {
 		];
 
 		/**
-		 * 
 		 * @param {bigint} b 
 		 * @param {bigint} e 
 		 * @param {bigint} m 
@@ -2133,7 +3543,7 @@ class Crypto {
 		 * @returns {number[]}
 		 */
 		function encodeInt(y) {
-			let bytes = bigIntToBytes(y).reverse();
+			const bytes = bigIntToBytes(y).reverse();
 			
 			while (bytes.length < 32) {
 				bytes.push(0);
@@ -2157,7 +3567,7 @@ class Crypto {
 		function encodePoint(point) {
 			const [x, y] = point;
 
-			let bytes = encodeInt(y);
+			const bytes = encodeInt(y);
 
 			// last bit is determined by x
 
@@ -2193,7 +3603,7 @@ class Crypto {
 		function decodePoint(s) {
 			assert(s.length == 32);
 
-			let bytes = s.slice();
+			const bytes = s.slice();
 			bytes[31] = bytes[31] & 0b01111111;
 
 			const y = decodeInt(bytes);
@@ -2223,11 +3633,11 @@ class Crypto {
 		function calca(h) {
 			const a = 28948022309329048855892746252171976963317496166410141009864396001978282409984n; // ipow2(253)
 
-			let bytes = h.slice(0, 32);
+			const bytes = h.slice(0, 32);
 			bytes[0] = bytes[0] & 0b11111000;
 			bytes[31] = bytes[31] & 0b00111111;
 
-			let x = bytesToBigInt(bytes.reverse());
+			const x = bytesToBigInt(bytes.reverse());
 			return a + x;
 		}
 
@@ -2302,656 +3712,3566 @@ class Crypto {
 	}
 }
 
+
+//////////////////////////////////
+// Section 5: Cbor encoder/decoder
+//////////////////////////////////
+
 /**
- * The IR class combines a string of intermediate representation sourcecode with an optional site.
- * The site is used for mapping IR code to the original source code.
+ * @typedef {(bytes: number[]) => void} Decoder
  */
-class IR {
-	#content;
-	#site;
 
-	/**
-	 * @param {string | IR[]} content 
-	 * @param {?Site} site 
-	 */
-	constructor(content, site = null) {
-		this.#content = content;
-		this.#site = site;
-	}
+/**
+ * @typedef {(i: number, bytes: number[]) => void} IDecoder
+ */
 
-	get content() {
-		return this.#content;
-	}
-
-	get site() {
-		return this.#site;
+/**
+ * Base class of any Cbor serializable data class
+ * Also contains helper methods for (de)serializing data to/from Cbor
+ */
+export class CborData {
+	constructor() {
 	}
 
 	/**
-	 * Returns a list containing IR instances that themselves only contain strings
-	 * @returns {IR[]}
+	 * @returns {number[]}
 	 */
-	flatten() {
-		if (typeof this.#content == "string") {
-			return [this];
-		} else {
-			/**
-			 * @type {IR[]}
-			 */
-			let result = [];
+	toCbor() {
+		throw new Error("not yet implemented");
+	}
 
-			for (let item of this.#content) {
-				result = result.concat(item.flatten());
+	/**
+	 * @param {number} m - major type
+	 * @param {bigint} n - size parameter
+	 * @returns {number[]} - uint8 bytes
+	 */
+	static encodeHead(m, n) {
+		if (n <= 23n) {
+			return [32*m + Number(n)];
+		} else if (n >= 24n && n <= 255n) {
+			return [32*m + 24, Number(n)];
+		} else if (n >= 256n && n <= 256n*256n - 1n) {
+			return [32*m + 25, Number((n/256n)%256n), Number(n%256n)];
+		} else if (n >= 256n*256n && n <= 256n*256n*256n*256n - 1n) {
+			let e4 = bigIntToBytes(n);
+
+			while (e4.length < 4) {
+				e4.unshift(0);
 			}
+			return [32*m + 26].concat(e4);
+		} else if (n >= 256n*256n*256n*256n && n <= 256n*256n*256n*256n*256n*256n*256n*256n - 1n) {
+			let e8 = bigIntToBytes(n);
+
+			while(e8.length < 8) {
+				e8.unshift(0);
+			}
+			return [32*m + 27].concat(e8);
+		} else {
+			throw new Error("n out of range");
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes - mutated to contain the rest
+	 * @returns {[number, bigint]} - [majorType, n]
+	 */
+	static decodeHead(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor head");
+		}
+
+		let first = assertDefined(bytes.shift());
+
+		if (first%32 <= 23) {
+			return [idiv(first, 32), BigInt(first%32)];
+		} else if (first%32 == 24) {
+			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 1))];
+		} else if (first%32 == 25) {
+			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 2))];
+		} else if (first%32 == 26) {
+			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 4))];
+		} else if (first%32 == 27) {
+			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 8))];
+		} else {
+			throw new Error("bad header");
+		}
+	}
+
+	/**
+	 * @param {number} m
+	 * @returns {number[]}
+	 */
+	static encodeIndefHead(m) {
+		return [32*m + 31];
+	}
+
+	/**
+	 * @param {number[]} bytes - cbor bytes
+	 * @returns {number} - majorType
+	 */
+	static decodeIndefHead(bytes) {
+		let first = assertDefined(bytes.shift());
+
+		let m = idiv(first - 31, 32);
+
+		return m;
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isNull(bytes) {
+		return bytes[0] == 246;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	static encodeNull() {
+		return [246];
+	}
+
+	/**
+	 * Throws error if not null
+	 * @param {number[]} bytes
+	 */
+	static decodeNull(bytes) {
+		let b = assertDefined(bytes.shift());
+
+		if (b != 246) {
+			throw new Error("not null");
+		}
+	}
+
+	/**
+	 * @param {boolean} b
+	 * @returns {number[]}
+	 */
+	static encodeBool(b) {
+		if (b) {
+			return [245];
+		} else {
+			return [244];
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static decodeBool(bytes) {
+		let b = assertDefined(bytes.shift());
+
+		if (b == 245) {
+			return true;
+		} else if (b == 244) {
+			return false;
+		} else {
+			throw new Error("unexpected non-boolean cbor object");
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isDefBytes(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor bytes");
+		}
+
+		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
+
+		return m == 2;
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isIndefBytes(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor bytes");
+		}
+
+		return 2*32 + 31 == bytes[0];
+	}
+
+	/**
+	 * @example
+	 * bytesToHex(CborData.encodeBytes(hexToBytes("4d01000033222220051200120011"))) => "4e4d01000033222220051200120011"
+	 * @param {number[]} bytes
+	 * @param {boolean} splitInChunks
+	 * @returns {number[]} - cbor bytes
+	 */
+	static encodeBytes(bytes, splitInChunks = false) {
+		bytes = bytes.slice();
+
+		if (bytes.length <= 64 || !splitInChunks) {
+			let head = CborData.encodeHead(2, BigInt(bytes.length));
+			return head.concat(bytes);
+		} else {
+			let res = CborData.encodeIndefHead(2);
+
+			while (bytes.length > 0) {
+				let chunk = bytes.splice(0, 64);
+
+				res = res.concat(CborData.encodeHead(2, BigInt(chunk.length))).concat(chunk);
+			}
+
+			res.push(255);
+
+			return res;
+		}
+	}
+
+	/**
+	 * Decodes both an indef array of bytes, and a bytearray of specified length
+	 * @example
+	 * bytesToHex(CborData.decodeBytes(hexToBytes("4e4d01000033222220051200120011"))) => "4d01000033222220051200120011"
+	 * @param {number[]} bytes - cborbytes, mutated to form remaining
+	 * @returns {number[]} - byteArray
+	 */
+	static decodeBytes(bytes) {
+		// check header type
+		assert(bytes.length > 0);
+
+		if (CborData.isIndefBytes(bytes)) {
+			// multiple chunks
+			void bytes.shift();
+
+			/**
+			 * @type {number[]}
+			 */
+			let res = [];
+
+			while(bytes[0] != 255) {
+				let [_, n] = CborData.decodeHead(bytes);
+				if (n > 64n) {
+					throw new Error("bytearray chunk too large");
+				}
+
+				res = res.concat(bytes.splice(0, Number(n)));
+			}
+
+			assert(bytes.shift() == 255);
+
+			return res;
+		} else {
+			let [_, n] = CborData.decodeHead(bytes);
+
+			return bytes.splice(0, Number(n));
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isUtf8(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor bytes");
+		}
+
+		return bytes[0] === 120;
+	}
+
+	/**
+	 * Encodes a Utf8 string into Cbor bytes.
+	 * Strings longer than 64 bytes are split into lists with 64 byte chunks
+	 * Note: string splitting isn't reversible
+	 * @param {string} str
+	 * @param {boolean} split
+	 * @returns {number[]}
+	 */
+	static encodeUtf8(str, split = false) {
+		const bytes = textToBytes(str);
+
+		if (split && bytes.length > 64) {
+			/** @type {number[][]} */
+			const chunks = [];
+
+			for (let i = 0; i < bytes.length; i += 64) {
+				const chunk = bytes.slice(i, i + 64);
+
+				chunks.push([120, chunk.length].concat(chunk));
+			}
+
+			return CborData.encodeDefList(chunks);
+		} else {
+			return [120, bytes.length].concat(bytes);
+		}
+	}
+
+	/**
+	* @param {number[]} bytes
+	* @returns {string}
+	*/
+	static decodeUtf8Internal(bytes) {
+		assert(bytes.shift() === 120);
+
+		const length = bytes.shift();
+
+		return bytesToText(bytes.splice(0, length));
+	}
+
+	/**
+	* @param {number[]} bytes
+	* @returns {string}
+	*/
+	static decodeUtf8(bytes) {
+		assert(bytes.length > 0);
+
+		if (CborData.isDefList(bytes)) {
+			let result = "";
+
+			CborData.decodeList(bytes, itemBytes => {
+				result += CborData.decodeUtf8Internal(itemBytes);
+			});
 
 			return result;
-		}
-	}
-
-	/**
-	 * Intersperse nested IR content with a separator
-	 * @param {string} sep
-	 * @returns {IR}
-	 */
-	join(sep) {
-		if (typeof this.#content == "string") {
-			return this;
 		} else {
-			/** @type {IR[]} */
-			let result = [];
-
-			for (let i = 0; i < this.#content.length; i++) {
-				result.push(this.#content[i]);
-
-				if (i < this.#content.length - 1) {
-					result.push(new IR(sep))
-				}
-			}
-
-			return new IR(result);
+			return CborData.decodeUtf8Internal(bytes);
 		}
 	}
 
 	/**
-	 * @typedef {[number, Site][]} CodeMap
-	 * @returns {[string, CodeMap]}
+	 * @param {bigint} n
+	 * @returns {number[]} - cbor bytes
 	 */
-	generateSource() {
-		let parts = this.flatten();
-
-		/** @type {string[]} */
-		let partSrcs = [];
-
-		/** @type {CodeMap} */
-		let codeMap = [];
-
-		let pos = 0;
-		for (let part of parts) {
-			let rawPartSrc = part.content;
-
-			if (typeof rawPartSrc == "string") {
-				let origSite = part.site;
-				if (origSite !== null) {
-					/** @type {[number, Site]} */
-					let pair = [pos, origSite];
-					codeMap.push(pair);
-				}
-
-				let partSrc = replaceTabs(rawPartSrc);
-
-				pos += partSrc.length;
-				partSrcs.push(partSrc);
-			} else {
-				throw new Error("expected IR to contain only strings after flatten");
-			}
+	static encodeInteger(n) {
+		if (n >= 0n && n <= (2n << 63n) - 1n) {
+			return CborData.encodeHead(0, n);
+		} else if (n >= (2n << 63n)) {
+			return CborData.encodeHead(6, 2n).concat(CborData.encodeBytes(bigIntToBytes(n)));
+		} else if (n <= -1n && n >= -(2n << 63n)) {
+			return CborData.encodeHead(1, -n - 1n);
+		} else {
+			return CborData.encodeHead(6, 3n).concat(CborData.encodeBytes(bigIntToBytes(-n - 1n)));
 		}
-
-		return [partSrcs.join(""), codeMap];
 	}
 
 	/**
-	 * Wraps 'inner' IR source with some definitions (used for top-level statements and for builtins)
-	 * @param {IR} inner 
-	 * @param {IRDefinitions} definitions - name -> definition
-	 * @returns {IR}
+	 * @param {number[]} bytes
+	 * @returns {bigint}
 	 */
-	static wrapWithDefinitions(inner, definitions) {
-		let keys = Array.from(definitions.keys()).reverse();
+	static decodeInteger(bytes) {
+		let [m, n] = CborData.decodeHead(bytes);
 
-		let res = inner;
-		for (let key of keys) {
-			let definition = definitions.get(key);
+		if (m == 0) {
+			return n;
+		} else if (m == 1) {
+			return -n - 1n;
+		} else if (m == 6) {
+			if (n == 2n) {
+				let b = CborData.decodeBytes(bytes);
 
-			if (definition === undefined) {
-				throw new Error("unexpected");
+				return bytesToBigInt(b);
+			} else if (n == 3n) {
+				let b = CborData.decodeBytes(bytes);
+
+				return -bytesToBigInt(b) - 1n;
 			} else {
+				throw new Error(`unexpected tag n:${n}`);
+			}
+		} else {
+			throw new Error(`unexpected tag m:${m}`);
+		}
+	}
 
-				res = new IR([new IR("("), new IR(key), new IR(") -> {\n"),
-					res, new IR(`\n}(\n${TAB}/*${key}*/\n${TAB}`), definition,
-				new IR("\n)")]);
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isIndefList(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor bytes");
+		}
+
+		return 4*32 + 31 == bytes[0];
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	static encodeIndefListStart() {
+		return CborData.encodeIndefHead(4);
+	}
+
+	/**
+	 * @param {CborData[] | number[][]} list
+	 * @returns {number[]}
+	 */
+	static encodeListInternal(list) {
+		/**
+		 * @type {number[]}
+		 */
+		let res = [];
+		for (let item of list) {
+			if (item instanceof CborData) {
+				res = res.concat(item.toCbor());
+			} else {
+				res = res.concat(item);
 			}
 		}
 
 		return res;
 	}
-}
-
-/**
- * A Source instance wraps a string so we can use it cheaply as a reference inside a Site.
- */
-class Source {
-	#raw;
-	#fileIndex;
 
 	/**
-	 * @param {string} raw 
-	 * @param {?number} fileIndex
+	 * @returns {number[]}
 	 */
-	constructor(raw, fileIndex = null) {
-		this.#raw = assertDefined(raw);
-		this.#fileIndex = fileIndex;
-	}
-
-	get raw() {
-		return this.#raw;
-	}
-
-	get fileIndex() {
-		return this.#fileIndex;
+	static encodeIndefListEnd() {
+		return [255];
 	}
 
 	/**
-	 * Get char from the underlying string.
-	 * Should work fine utf-8 runes.
-	 * @param {number} pos
-	 * @returns {string}
+	 * @param {CborData[] | number[][]} list
+	 * @returns {number[]}
 	 */
-	getChar(pos) {
-		return this.#raw[pos];
+	static encodeList(list) {
+		// This follows the serialization format that the Haskell input-output-hk/plutus UPLC evaluator
+		// https://github.com/well-typed/cborg/blob/4bdc818a1f0b35f38bc118a87944630043b58384/serialise/src/Codec/Serialise/Class.hs#L181
+		return list.length ? CborData.encodeIndefList(list) : CborData.encodeDefList(list);
 	}
-	
-	/**
-	 * Returns word under pos
-	 * @param {number} pos 
-	 * @returns {?string}
-	 */
-	getWord(pos) {
-		/** @type {string[]} */
-		let chars = [];
 
+	/**
+	 * @param {CborData[] | number[][]} list
+	 * @returns {number[]}
+	 */
+	static encodeIndefList(list) {
+		return CborData.encodeIndefListStart().concat(CborData.encodeListInternal(list)).concat(CborData.encodeIndefListEnd());
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isDefList(bytes) {
+		try {
+			let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
+			return m == 4;
+		} catch (error) {
+			if (error.message.includes("bad header")) return false;
+			throw error;
+		}
+	}
+
+	/**
+	 * @param {bigint} n
+	 * @returns {number[]}
+	 */
+	static encodeDefListStart(n) {
+		return CborData.encodeHead(4, n);
+	}
+
+	/**
+	 * @param {CborData[] | number[][]} list
+	 * @returns {number[]}
+	 */
+	static encodeDefList(list) {
+		return CborData.encodeDefListStart(BigInt(list.length)).concat(CborData.encodeListInternal(list));
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isList(bytes) {
+		return CborData.isIndefList(bytes) || CborData.isDefList(bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @param {Decoder} itemDecoder
+	 */
+	static decodeList(bytes, itemDecoder) {
+		if (CborData.isIndefList(bytes)) {
+			assert(CborData.decodeIndefHead(bytes) == 4);
+
+			while(bytes[0] != 255) {
+				itemDecoder(bytes);
+			}
+
+			assert(bytes.shift() == 255);
+		} else {
+			let [m, n] = CborData.decodeHead(bytes);
+
+			assert(m == 4);
+
+			for (let i = 0; i < Number(n); i++) {
+				itemDecoder(bytes);
+			}
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isTuple(bytes) {
+		return CborData.isIndefList(bytes) || CborData.isDefList(bytes);
+	}
+
+	/**
+	 * @param {number[][]} tuple
+	 * @returns {number[]}
+	 */
+	static encodeTuple(tuple) {
+		return CborData.encodeDefList(tuple);
+	}
+
+
+	/**
+	 * @param {number[]} bytes
+	 * @param {IDecoder} tupleDecoder
+	 * @returns {number} - returns the size of the tuple
+	 */
+	static decodeTuple(bytes, tupleDecoder) {
+		let count = 0;
+
+		CborData.decodeList(bytes, (itemBytes) => {
+			tupleDecoder(count, itemBytes);
+			count++;
+		});
+
+		return count;
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isMap(bytes) {
+		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
+
+		return m == 5;
+	}
+
+	/**
+	 * @param {[CborData | number[], CborData | number[]][]} pairList
+	 * @returns {number[]}
+	 */
+	static encodeMapInternal(pairList) {
 		/**
-		 * @param {string | undefined} c 
-		 * @returns {boolean}
+		 * @type {number[]}
 		 */
-		function isWordChar(c) {
-			if (c === undefined) {
-				return false;
+		let res = [];
+
+		for (let pair of pairList) {
+			let key = pair[0];
+			let value = pair[1];
+
+			if (key instanceof CborData) {
+				res = res.concat(key.toCbor());
 			} else {
-				return (c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
+				res = res.concat(key);
+			}
+
+			if (value instanceof CborData) {
+				res = res.concat(value.toCbor());
+			} else {
+				res = res.concat(value);
 			}
 		}
 
-		let c = this.#raw[pos];
-		while (isWordChar(c)) {
-			chars.push(c);
-			pos += 1;
-			c = this.#raw[pos];
-		}
-
-		if (chars.length == 0) {
-			return null;
-		} else {
-			return chars.join("");
-		}
-	}
-
-	get length() {
-		return this.#raw.length;
+		return res;
 	}
 
 	/**
-	 * Calculates the line number of the line where the given character is located (0-based).
-	 * @param {number} pos 
+	 * A decode map method doesn't exist because it specific for the requested type
+	 * @param {[CborData | number[], CborData | number[]][]} pairList
+	 * @returns {number[]}
+	 */
+	static encodeMap(pairList) {
+		return CborData.encodeHead(5, BigInt(pairList.length)).concat(CborData.encodeMapInternal(pairList));
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @param {Decoder} pairDecoder
+	 */
+	static decodeMap(bytes, pairDecoder) {
+		let [m, n] = CborData.decodeHead(bytes);
+
+		assert(m == 5);
+
+		for (let i = 0; i < n; i++) {
+			pairDecoder(bytes);
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isObject(bytes) {
+		return CborData.isMap(bytes);
+	}
+
+	/**
+	 * @param {Map<number, CborData | number[]>} object
+	 * @returns {number[]}
+	 */
+	static encodeObject(object) {
+		return CborData.encodeMap(Array.from(object.entries()).map(pair => [
+			CborData.encodeInteger(BigInt(pair[0])),
+			pair[1]
+		]));
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @param {IDecoder} fieldDecoder
+	 * @returns {Set<number>}
+	 */
+	static decodeObject(bytes, fieldDecoder) {
+		/** @type {Set<number>} */
+		let done = new Set();
+
+		CborData.decodeMap(bytes, pairBytes => {
+			let i = Number(CborData.decodeInteger(pairBytes));
+
+			fieldDecoder(i, pairBytes);
+			done.add(i);
+		});
+
+		return done;
+	}
+
+	/**
+	 * Unrelated to constructor
+	 * @param {bigint} tag
+	 * @returns {number[]}
+	 */
+	static encodeTag(tag) {
+		return CborData.encodeHead(6, tag);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {bigint}
+	 */
+	static decodeTag(bytes) {
+		let [m, n] = CborData.decodeHead(bytes);
+
+		assert(m == 6);
+
+		return n;
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {boolean}
+	 */
+	static isConstr(bytes) {
+		if (bytes.length == 0) {
+			throw new Error("empty cbor bytes");
+		}
+
+		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
+
+		return m == 6;
+	}
+
+	/**
+	 * Encode a constructor tag of a ConstrData type
+	 * @param {number} tag
+	 * @returns {number[]}
+	 */
+	static encodeConstrTag(tag) {
+		if (tag >= 0 && tag <= 6) {
+			return CborData.encodeHead(6, 121n + BigInt(tag));
+		} else if (tag >= 7 && tag <= 127) {
+			return CborData.encodeHead(6, 1280n + BigInt(tag - 7));
+		} else {
+			return CborData.encodeHead(6, 102n).concat(CborData.encodeHead(4, 2n)).concat(CborData.encodeInteger(BigInt(tag)));
+		}
+	}
+
+	/**
+	 * @param {number} tag
+	 * @param {CborData[] | number[][]} fields
+	 * @returns {number[]}
+	 */
+	static encodeConstr(tag, fields) {
+		return CborData.encodeConstrTag(tag).concat(CborData.encodeList(fields));
+	}
+
+	/**
+	 * @param {number[]} bytes
 	 * @returns {number}
 	 */
-	posToLine(pos) {
-		let line = 0;
-		for (let i = 0; i < pos; i++) {
-			if (this.#raw[i] == '\n') {
-				line += 1;
-			}
-		}
+	static decodeConstrTag(bytes) {
+		// constr
+		let [m, n] = CborData.decodeHead(bytes);
 
-		return line;
+		assert(m == 6);
+
+		if (n < 127n) {
+			return Number(n - 121n);
+		} else if (n == 102n) {
+			let [mCheck, nCheck] = CborData.decodeHead(bytes);
+			assert(mCheck == 4 && nCheck == 2n);
+
+			return Number(CborData.decodeInteger(bytes));
+		} else {
+			return Number(n - 1280n + 7n);
+		}
 	}
 
 	/**
-	 * Calculates the column and line number where the given character is located (0-based).
-	 * @param {number} pos
-	 * @returns {[number, number]}
+	 * Returns the tag
+	 * @param {number[]} bytes
+	 * @param {Decoder} fieldDecoder
+	 * @returns {number}
 	 */
-	// returns [col, line]
-	posToColAndLine(pos) {
-		let col = 0;
-		let line = 0;
-		for (let i = 0; i < pos; i++) {
-			if (this.#raw[i] == '\n') {
-				col = 0;
-				line += 1;
-			} else {
-				col += 1;
-			}
-		}
+	static decodeConstr(bytes, fieldDecoder) {
+		let tag = CborData.decodeConstrTag(bytes);
 
-		return [col, line];
-	}
+		CborData.decodeList(bytes, fieldDecoder);
 
-	/**
-	 * Creates a more human-readable version of the source by prepending the line-numbers to each line.
-	 * The line-numbers are at least two digits.
-	 * @example
-	 * (new Source("hello\nworld")).pretty() => "01  hello\n02  world"
-	 * @returns {string}
-	 */
-	pretty() {
-		let lines = this.#raw.split("\n");
-
-		let nLines = lines.length;
-		let nDigits = Math.max(Math.ceil(Math.log10(nLines)), 2); // line-number is at least two digits
-
-		for (let i = 0; i < lines.length; i++) {
-			lines[i] = String(i + 1).padStart(nDigits, '0') + "  " + lines[i];
-		}
-
-		return lines.join("\n");
+		return tag;
 	}
 }
 
+
+
+/////////////////////////////
+// Section 6: Uplc data types
+/////////////////////////////
+
 /**
- * UserErrors are generated when the user of Helios makes a mistake (eg. a syntax error),
- * or when the user of Helios throws an explicit error inside a script (eg. division by zero).
+ * Min memory used by a UplcData value during validation
+ * @package
+ * @type {number}
  */
-export class UserError extends Error {
-	#pos;
-	#src;
+const UPLC_DATA_NODE_MEM_SIZE = 4;
 
-	/**
-	 * @param {string} msg
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 */
-	constructor(msg, src, pos) {
-		super(msg);
-		this.#pos = pos;
-		this.#src = src;
+/**
+ * Base class for Plutus-core data classes (not the same as Plutus-core value classes!)
+ */
+export class UplcData extends CborData {
+	constructor() {
+		super();
 	}
 
 	/**
-	 * @param {string} type
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {string} info 
+	 * Estimate of memory usage during validation
+	 * @type {number}
 	 */
-	static new(type, src, pos, info = "") {
-		let line = src.posToLine(pos);
-
-		let msg = `${type} on line ${line + 1}`;
-		if (info != "") {
-			msg += `: ${info}`;
-		}
-
-		return new UserError(msg, src, pos);
+	get memSize() {
+		throw new Error("not yet implemented");
 	}
 
 	/**
-	 * @type {Source}
-	 */
-	get src() {
-		return this.#src;
-	}
-
-	/**
-	 * Constructs a SyntaxError
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {string} info 
-	 * @returns {UserError}
-	 */
-	static syntaxError(src, pos, info = "") {
-		return UserError.new("SyntaxError", src, pos, info);
-	}
-
-	/**
-	 * Constructs a TypeError
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {string} info 
-	 * @returns {UserError}
-	 */
-	static typeError(src, pos, info = "") {
-		return UserError.new("TypeError", src, pos, info);
-	}
-
-	/**
-	 * @param {Error} e 
+	 * Compares the schema jsons
+	 * @param {UplcData} other
 	 * @returns {boolean}
 	 */
-	static isTypeError(e) {
-		return (e instanceof UserError) && e.message.startsWith("TypeError");
+	isSame(other) {
+		return this.toSchemaJson() == other.toSchemaJson();
 	}
 
 	/**
-	 * Constructs a ReferenceError (i.e. name undefined, or name unused)
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {string} info 
-	 * @returns {UserError}
+	 * @type {number[]}
 	 */
-	static referenceError(src, pos, info = "") {
-		return UserError.new("ReferenceError", src, pos, info);
+	get bytes() {
+		throw new Error("not a bytearray");
 	}
 
 	/**
-	 * @param {Error} e 
-	 * @returns {boolean}
+	 * @type {bigint}
 	 */
-	static isReferenceError(e) {
-		return (e instanceof UserError) && e.message.startsWith("ReferenceError");
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get data() {
-		throw new Error("is error");
+	get int() {
+		throw new Error("not an int");
 	}
 
 	/**
 	 * @type {number}
 	 */
-	get pos() {
-		return this.#pos;
+	get index() {
+		throw new Error("not a constr");
 	}
 
 	/**
-	 * Calculates column/line position in 'this.src'.
-	 * @returns {[number, number]}
+	 * @type {UplcData[]}
 	 */
-	getFilePos() {
-		return this.#src.posToColAndLine(this.#pos);
+	get fields() {
+		throw new Error("not a constr");
 	}
 
 	/**
-	 * Dumps the error without throwing.
-	 * If 'verbose == true' the Source is also pretty printed with line-numbers.
-	 * @param {boolean} verbose 
+	 * @type {UplcData[]}
 	 */
-	dump(verbose = false) {
-		if (verbose) {
-			console.error(this.#src.pretty());
-		}
-
-		console.error("\n" + this.message);
+	get list() {
+		throw new Error("not a list");
 	}
 
 	/**
-	 * Returns the error message (alternative to e.message)
+	 * @type {[UplcData, UplcData][]}
+	 */
+	get map() {
+		throw new Error("not a map");
+	}
+
+	/**
 	 * @returns {string}
 	 */
 	toString() {
-		return this.message;
+		throw new Error("not yet implemented");
 	}
 
 	/**
-	 * Catches any UserErrors thrown inside 'fn()`.
-	 * Dumps the error
-	 * @template T
-	 * @param {() => T} fn 
-	 * @param {boolean} verbose 
-	 * @returns {T | undefined}	
+	 * @returns {IR}
 	 */
-	static catch(fn, verbose = false) {
-		try {
-			return fn();
-		} catch (error) {
-			if (error instanceof UserError) {
-				error.dump(verbose);
+	toIR() {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @param {string | number[]} bytes
+	 * @returns {UplcData}
+	 */
+	static fromCbor(bytes) {
+		if (typeof bytes == "string") {
+			return UplcData.fromCbor(hexToBytes(bytes));
+		} else {
+			if (CborData.isList(bytes)) {
+				return ListData.fromCbor(bytes);
+			} else if (CborData.isIndefBytes(bytes)) {
+				return ByteArrayData.fromCbor(bytes);
 			} else {
-				throw error;
+				if (CborData.isDefBytes(bytes)) {
+					return ByteArrayData.fromCbor(bytes);
+				} else if (CborData.isMap(bytes)) {
+					return MapData.fromCbor(bytes);
+				} else if (CborData.isConstr(bytes)) {
+					return ConstrData.fromCbor(bytes);
+				} else {
+					// int, must come last
+					return IntData.fromCbor(bytes);
+				}
 			}
 		}
 	}
 }
 
-class RuntimeError extends UserError {
-	#isIR; // last trace added
+/**
+ * Plutus-core int data class
+ */
+export class IntData extends UplcData {
+	#value;
 
 	/**
-	 * @param {string} msg 
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {boolean} isIR 
+	 * @param {bigint} value
 	 */
-	constructor(msg, src, pos, isIR) {
-		super(msg, src, pos);
-		this.#isIR = isIR;
+	constructor(value) {
+		super();
+		this.#value = value;
 	}
 
 	/**
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {boolean} isIR
-	 * @param {string} info
-	 * @returns {RuntimeError}
+	 * @type {bigint}
 	 */
-	static newRuntimeError(src, pos, isIR, info = "") {
-		let line = src.posToLine(pos);
-
-		let msg = `RuntimeError on line ${line + 1}${isIR ? " of IR" : ""}`;
-		if (info != "") {
-			msg += `: ${info}`;
-		}
-
-		return new RuntimeError(msg, src, pos, isIR);
+	get value() {
+		return this.#value;
 	}
 
 	/**
-	 * @param {Source} src 
-	 * @param {number} pos 
-	 * @param {boolean} isIR 
-	 * @param {string} info 
-	 * @returns {RuntimeError}
+	 * Alias getter
+	 * @type {bigint}
 	 */
-	addTrace(src, pos, isIR, info = "") {
-		if (isIR && !this.#isIR) {
-			return this;
+	get int() {
+		return this.#value;
+	}
+
+    /**
+     * Calculate the mem size of a integer (without the DATA_NODE overhead)
+     * @param {bigint} value
+     * @returns {number}
+     */
+    static memSizeInternal(value) {
+        if (value == 0n) {
+			return 1;
+		} else {
+			const abs = value > 0n ? value : -value;
+
+			return Math.floor(Math.floor(Math.log2(Number(abs)))/64) + 1;
+		}
+    }
+
+	/**
+	 * @type {number}
+	 */
+	get memSize() {
+		return UPLC_DATA_NODE_MEM_SIZE + IntData.memSizeInternal(this.#value);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#value.toString();
+	}
+
+	/**
+	 * Returns integer literal wrapped with integer data function call.
+	 * @returns {IR}
+	 */
+	toIR() {
+		return new IR(`__core__iData(${this.#value.toString()})`);
+	}
+
+	/**
+	 * Returns string, not js object, because of unbounded integers
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		return `{"int": ${this.#value.toString()}}`;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeInteger(this.#value);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {IntData}
+	 */
+	static fromCbor(bytes) {
+		return new IntData(CborData.decodeInteger(bytes));
+	}
+}
+
+/**
+ * Plutus-core bytearray data class.
+ * Wraps a regular list of uint8 numbers (so not Uint8Array)
+ */
+export class ByteArrayData extends UplcData {
+	#bytes;
+
+	/**
+	 * @param {number[]} bytes
+	 */
+	constructor(bytes) {
+		super();
+		this.#bytes = bytes;
+	}
+
+	/**
+	 * Applies utf-8 encoding
+	 * @param {string} s
+	 * @returns {ByteArrayData}
+	 */
+	static fromString(s) {
+		let bytes = textToBytes(s);
+
+		return new ByteArrayData(bytes);
+	}
+
+	get bytes() {
+		return this.#bytes.slice();
+	}
+
+    /**
+     * Calculates the mem size of a byte array without the DATA_NODE overhead.
+     * @param {number[]} bytes
+     * @returns {number}
+     */
+    static memSizeInternal(bytes) {
+        let n = bytes.length;
+		if (n === 0) {
+			return 1; // this is so annoying: haskell reference implementation says it should be 0, but current (20220925) testnet and mainnet settings say it's 1
+		} else {
+			return Math.floor((bytes.length - 1)/8) + 1;
+		}
+    }
+
+	get memSize() {
+		return UPLC_DATA_NODE_MEM_SIZE + ByteArrayData.memSizeInternal(this.#bytes);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toHex() {
+		return bytesToHex(this.#bytes);
+	}
+
+	toString() {
+		return `#${this.toHex()}`;
+	}
+
+	/**
+	 * Returns bytearray literal wrapped with bytearray data function as IR.
+	 * @returns {IR}
+	 */
+	toIR() {
+		return new IR(`__core__bData(#${this.toHex()})`);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		return `{"bytes": "${this.toHex()}"}`;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeBytes(this.#bytes, true);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {ByteArrayData}
+	 */
+	static fromCbor(bytes) {
+		return new ByteArrayData(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * Bytearray comparison, which can be used for sorting bytearrays
+	 * @param {number[]} a
+	 * @param {number[]} b
+	 * @returns {number} - 0 -> equals, 1 -> gt, -1 -> lt
+	 */
+	static comp(a, b) {
+		/** @return {boolean} */
+		function lessThan() {
+			for (let i = 0; i < Math.min(a.length, b.length); i++) {
+				if (a[i] != b[i]) {
+					return a[i] < b[i];
+				}
+			}
+
+			return a.length < b.length;
 		}
 
-		let line = src.posToLine(pos);
-
-		let msg = `Trace${info == "" ? ":" : ","} line ${line + 1}`;
-		if (isIR) {
-			msg += " of IR";
-		} 
-
-		let word = src.getWord(pos);
-		if (word !== null && word !== "print") {
-			msg += ` in '${word}'`;
+		/** @return {number} */
+		function lessOrGreater() {
+			return lessThan() ? -1 : 1;
 		}
 
-		if (info != "") {
-			msg += `: ${info}`;
+		if (a.length != b.length) {
+			return lessOrGreater();
+		} else {
+			for (let i = 0; i < a.length; i++) {
+				if (a[i] != b[i]) {
+					return lessOrGreater();
+				}
+			}
+
+			return 0;
+		}
+	}
+}
+
+/**
+ * Plutus-core list data class
+ */
+export class ListData extends UplcData {
+	#items;
+
+	/**
+	 * @param {UplcData[]} items
+	 */
+	constructor(items) {
+		super();
+		this.#items = items;
+	}
+
+	/**
+	 * @type {UplcData[]}
+	 */
+	get list() {
+		return this.#items.slice();
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get memSize() {
+		let sum = UPLC_DATA_NODE_MEM_SIZE;
+
+		for (let item of this.#items) {
+			sum += item.memSize;
 		}
 
+		return sum;
+	}
+
+	toString() {
+		return `[${this.#items.map(item => item.toString()).join(", ")}]`;
+	}
+
+	/**
+	 * @returns {IR}
+	 */
+	toIR() {
+		let ir = new IR("__core__mkNilData(())");
+		for (let i = this.#items.length - 1; i >= 0; i--) {
+			ir = new IR([new IR("__core__mkCons("), this.#items[i].toIR(), new IR(", "), ir, new IR(")")]);
+		}
+
+		return new IR([new IR("__core__listData("), ir, new IR(")")]);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		return `{"list":[${this.#items.map(item => item.toSchemaJson()).join(", ")}]}`;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeList(this.#items);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {ListData}
+	 */
+	static fromCbor(bytes) {
+		/**
+		 * @type {UplcData[]}
+		 */
+		let list = [];
+
+		CborData.decodeList(bytes, (itemBytes) => {
+			list.push(UplcData.fromCbor(itemBytes));
+		});
+
+		return new ListData(list);
+	}
+}
+
+/**
+ * Plutus-core map data class
+ */
+export class MapData extends UplcData {
+	#pairs;
+
+	/**
+	 * @param {[UplcData, UplcData][]} pairs
+	 */
+	constructor(pairs) {
+		super();
+		this.#pairs = pairs;
+	}
+
+	/**
+	 * @type {[UplcData, UplcData][]}
+	 */
+	get map() {
+		return this.#pairs.slice();
+	}
+
+	get memSize() {
+		let sum = UPLC_DATA_NODE_MEM_SIZE;
+
+		for (let [k, v] of this.#pairs) {
+			sum += k.memSize + v.memSize;
+		}
+
+		return sum;
+	}
+
+	toString() {
+		return `{${this.#pairs.map(([fst, snd]) => `${fst.toString()}: ${snd.toString()}`).join(", ")}}`;
+	}
+
+	/**
+	 * @returns {IR}
+	 */
+	toIR() {
+		let ir = new IR("__core__mkNilPairData(())");
+
+		for (let i = this.#pairs.length - 1; i >= 0; i--) {
+			let a = this.#pairs[i][0].toIR();
+			let b = this.#pairs[i][1].toIR();
+
+			ir = new IR([new IR("__core__mkCons(__core__mkPairData("), a, new IR(", "), b, new IR(", "), new IR(")"), new IR(", "), ir, new IR(")")]);
+		}
+
+		return new IR([new IR("__core__mapData("), ir, new IR(")")]);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		return `{"map": [${this.#pairs.map(pair => { return "{\"k\": " + pair[0].toSchemaJson() + ", \"v\": " + pair[1].toSchemaJson() + "}" }).join(", ")}]}`;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeMap(this.#pairs);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {MapData}
+	 */
+	static fromCbor(bytes) {
+		/**
+		 * @type {[UplcData, UplcData][]}
+		 */
+		let pairs = [];
+
+		CborData.decodeMap(bytes, pairBytes => {
+			pairs.push([UplcData.fromCbor(pairBytes), UplcData.fromCbor(pairBytes)]);
+		});
+
+		return new MapData(pairs);
+	}
+}
+
+/**
+ * Plutus-core constructed data class
+ */
+export class ConstrData extends UplcData {
+	#index;
+	#fields;
+
+	/**
+	 * @param {number} index
+	 * @param {UplcData[]} fields
+	 */
+	constructor(index, fields) {
+		super();
+		this.#index = index;
+		this.#fields = fields;
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get index() {
+		return this.#index;
+	}
+
+	/**
+	 * @type {UplcData[]}
+	 */
+	get fields() {
+		return this.#fields.slice();
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get memSize() {
+		let sum = UPLC_DATA_NODE_MEM_SIZE;
+
+		for (let field of this.#fields) {
+			sum += field.memSize;
+		}
+
+		return sum;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		let parts = this.#fields.map(field => field.toString());
+		return `${this.#index.toString()}{${parts.join(", ")}}`;
+	}
+
+	/**
+	 * @returns {IR}
+	 */
+	toIR() {
+		let ir = new IR("__core__mkNilData(())");
+		for (let i = this.#fields.length - 1; i >= 0; i--) {
+			ir = new IR([new IR("__core__mkCons("), this.#fields[i].toIR(), new IR(", "), ir, new IR(")")]);
+		}
+
+		return new IR([new IR("__core__constrData("), new IR(this.#index.toString()), new IR(", "), ir, new IR(")")]);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toSchemaJson() {
+		return `{"constructor": ${this.#index.toString()}, "fields": [${this.#fields.map(f => f.toSchemaJson()).join(", ")}]}`;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeConstr(this.#index, this.#fields);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {ConstrData}
+	 */
+	static fromCbor(bytes) {
+		/**
+		 * @type {UplcData[]}
+		 */
+		let fields = [];
+
+		let tag = CborData.decodeConstr(bytes, (fieldBytes) => {
+			fields.push(UplcData.fromCbor(fieldBytes));
+		});
+
+		return new ConstrData(tag, fields);
+	}
+}
+
+
+
+/////////////////////////////////
+// Section 7: Helios data objects
+/////////////////////////////////
+
+/**
+ * Base-type of all data-types that exist both on- and off-chain, and map directly to Helios instances.
+ */
+export class HeliosData extends CborData {
+	constructor() {
+        super();
+	}
+
+    /**
+     * Name begins with underscore so it can never conflict with structure field names.
+     * @package
+     * @returns {UplcData}
+     */
+	_toUplcData() {
+        throw new Error("not yet implemented");
+	}
+
+    /**
+     * @returns {string}
+     */
+	toSchemaJson() {
+		return this._toUplcData().toSchemaJson();
+	}
+}
+
+/**
+ * @template {HeliosData} T
+ * @typedef {{
+ *   new(...args: any[]): T;
+ *   fromUplcCbor: (bytes: (string | number[])) => T,
+ *   fromUplcData: (data: UplcData) => T
+ * }} HeliosDataClass
+ */
+
+/**
+ * Helios Int type
+ */
+export class Int extends HeliosData {
+    /** 
+     * @type {bigint} 
+     */
+    #value;
+
+    /**
+     * @package
+     * @param {number | bigint | string} rawValue
+     * @returns {bigint}
+     */
+    static cleanConstructorArg(rawValue) {
+        const value = BigInt(rawValue);
+
+        if (value.toString() != rawValue.toString()) {
+            throw new Error("not a valid integer");
+        }
+
+        return value;
+    }
+
+    /**
+     * @param {number | bigint | string} rawValue
+     */
+    constructor(rawValue) {
+        super();
+
+        this.#value = Int.cleanConstructorArg(rawValue);
+    }
+
+    /**
+     * @type {bigint}
+     */
+    get value() {
+        return this.#value;
+    }
+
+    /**
+     * @package
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new IntData(this.#value);
+    }
+
+    /**
+     * @param {UplcData} data
+     * @returns {Int}
+     */
+    static fromUplcData(data) {
+        return new Int(data.int);
+    }
+
+    /**
+     * @param {string | number[]} bytes
+     * @returns {Int}
+     */
+    static fromUplcCbor(bytes) {
+        return Int.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Milliseconds since 1 jan 1970
+ */
+export class Time extends Int {
+     /**
+     * @package
+     * @param {number | bigint | string | Date} rawValue
+     * @returns {bigint}
+     */
+      static cleanConstructorArg(rawValue) {
+
+        if (rawValue instanceof Date) {
+            return BigInt(rawValue.getTime());
+        } else {
+            const value = BigInt(rawValue);
+
+            if (value.toString() != rawValue.toString()) {
+                throw new Error("not a valid integer");
+            } else {
+                return value;
+            }
+        }
+    }
+
+    /**
+     * @param {number | bigint | string | Date} rawValue
+     */
+    constructor(rawValue) {
+        super(Time.cleanConstructorArg(rawValue));
+    }
+
+    /**
+     * @param {UplcData} data
+     * @returns {Time}
+     */
+    static fromUplcData(data) {
+        return new Time(data.int);
+    }
+
+    /**
+     * @param {string | number[]} bytes
+     * @returns {Time}
+     */
+    static fromUplcCbor(bytes) {
+        return Time.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Difference between two time values in milliseconds.
+ */
+export class Duration extends Int {
+    /**
+     * @param {UplcData} data
+     * @returns {Duration}
+     */
+    static fromUplcData(data) {
+        return new Duration(data.int);
+    }
+
+    /**
+     * @param {string | number[]} bytes
+     * @returns {Duration}
+     */
+    static fromUplcCbor(bytes) {
+        return Duration.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Helios Bool type
+ */
+export class Bool extends HeliosData {
+    /** 
+     * @type {boolean} 
+     */
+    #value;
+
+    /**
+     * @package
+     * @param {boolean | string} rawValue 
+     * @returns {boolean}
+     */
+    static cleanConstructorArg(rawValue) {
+        if (typeof rawValue == "string") {
+            if (rawValue == "false") {
+                return false;
+            } else if (rawValue == "true") {
+                return true;
+            } else {
+                throw new Error("not a valid string representation of a Bool");
+            }
+        } else if (typeof rawValue == "boolean") {
+            return rawValue;
+        } else {
+            throw new Error("can't convert to boolean");
+        }
+    }
+
+    /**
+     * @param {boolean | string} rawValue 
+     */
+    constructor(rawValue) {
+        super();
+
+        this.#value = Bool.cleanConstructorArg(rawValue);
+    }
+
+    get bool() {
+        return this.#value;
+    }
+    
+    /**
+     * @package
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ConstrData(this.#value ? 1 : 0, []);
+    }
+
+    /** 
+     * @param {UplcData} data
+     * @returns {Bool}
+     */
+    static fromUplcData(data) {
+        assert(data.fields.length == 0, "bool data can't have fields");
+
+        if (data.index == 0) {
+            return new Bool(false);
+        } else if (data.index == 1) {
+            return new Bool(true);
+        } else {
+            throw new Error("expected 0 or 1 for ConstrData representing Bool");
+        }
+    }
+
+    /**
+     * @param {string | number[]} bytes 
+     * @returns {Bool}
+     */
+    static fromUplcCbor(bytes) {
+        return Bool.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Helios String type.
+ * Can't be named 'String' because that would interfere with the javascript 'String'-type
+ */
+export class HeliosString extends HeliosData {
+    /**
+     * @type {string}
+     */
+    #value;
+
+    /**
+     * @param {string} value 
+     */
+    constructor(value) {
+        super();
+
+        this.#value = value;
+    }
+
+    get string() {
+        return this.#value;
+    }
+
+    /**
+     * @package
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ByteArrayData(textToBytes(this.#value));
+    }
+
+    /**
+     * @param {UplcData} data 
+     * @returns {HeliosString}
+     */
+    static fromUplcData(data) {
+        return new HeliosString(bytesToText(data.bytes));
+    }
+
+    /**
+     * @param {string | number[]} bytes 
+     * @returns {HeliosString}
+     */
+    static fromUplcCbor(bytes) {
+        return HeliosString.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Helios ByteArray type
+ */
+export class ByteArray extends HeliosData {
+    /**
+     * @type {number[]}
+     */
+    #bytes;
+
+    /**
+     * @package
+     * @param {string | number[]} rawValue 
+     */
+    static cleanConstructorArg(rawValue) {
+        if (Array.isArray(rawValue)) {
+            return rawValue;
+        } else if (typeof rawValue == "string") {
+            if (rawValue.startsWith("#")) {
+                rawValue = rawValue.slice(1);
+            }
+
+            return hexToBytes(rawValue);
+        } else {
+            throw new Error("unexpected bytes type");
+        }
+    }
+
+    /**
+     * @param {string | number[]} rawValue 
+     */
+    constructor(rawValue) {
+        super();
+
+        this.#bytes = ByteArray.cleanConstructorArg(rawValue);
+    }
+
+    /**
+     * @type {number[]}
+     */
+    get bytes() {
+        return this.#bytes;
+    }
+
+    /**
+     * @type {string}
+     */
+    get hex() {
+        return bytesToHex(this.#bytes);
+    }
+
+    /**
+     * @package
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ByteArrayData(this.#bytes);
+    }
+
+    /**
+     * @param {UplcData} data 
+     * @returns {ByteArray}
+     */
+    static fromUplcData(data) {
+        return new ByteArray(data.bytes);
+    }
+
+    /**
+     * @param {string | number[]} bytes
+     * @returns {ByteArray}
+     */
+    static fromUplcCbor(bytes) {
+        return ByteArray.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * Dynamically constructs a new List class, depending on the item type.
+ * @template {HeliosData} T
+ * @param {HeliosDataClass<T>} ItemClass
+ * @returns {HeliosDataClass<List_>}
+ */
+export function List(ItemClass) {
+    assert(!new.target, "List can't be called with new");
+    assert(ItemClass.prototype instanceof HeliosData);
+
+    const typeName = `[]${ItemClass.name}`;
+
+    class List_ extends HeliosData {
+        /** 
+         * @type {T[]} 
+         */
+        #items;
+
+        /**
+         * @param {any[]} rawList 
+         */
+        constructor(rawList) {
+            super();
+
+            this.#items = rawList.map(item => {
+                if (item instanceof ItemClass) {
+                    return item;
+                } else {
+                    return new ItemClass(item);
+                }
+            });
+        }
+
+        /**
+         * @package
+         * @type {string}
+         */
+        get _listTypeName() {
+            return typeName;
+        }
+
+        /**
+         * Overload 'instanceof' operator
+         * @package
+         * @param {any} other 
+         * @returns {boolean}
+         */
+        static [Symbol.hasInstance](other) {
+            return (other._listTypeName === typeName) && (other instanceof HeliosData);
+        }
+
+        /**
+         * @type {T[]}
+         */
+        get items() {
+            return this.#items;
+        }
+
+        /**
+         * @package
+         * @returns {UplcData}
+         */
+        _toUplcData() {
+            return new ListData(this.#items.map(item => item._toUplcData()))
+        }
+
+        /**
+         * @param {UplcData} data 
+         * @returns {List_}
+         */
+        static fromUplcData(data) {
+            return new List_(data.list.map(d => ItemClass.fromUplcData(d)));
+        }
+
+        /**
+         * @param {string | number[]} bytes 
+         * @returns {List_}
+         */
+        static fromUplcCbor(bytes) {
+            return List_.fromUplcData(UplcData.fromCbor(bytes));
+        }
+    }
+
+    Object.defineProperty(List_, "name", {
+        value: typeName,
+        writable: false
+    });
+
+    return List_;
+}
+
+/**
+ * @template {HeliosData} TKey
+ * @template {HeliosData} TValue
+ * @param {HeliosDataClass<TKey>} KeyClass 
+ * @param {HeliosDataClass<TValue>} ValueClass
+ * @returns {HeliosDataClass<HeliosMap_>}
+ */
+export function HeliosMap(KeyClass, ValueClass) {
+    assert(!new.target, "HeliosMap can't be called with new");
+    assert(KeyClass.prototype instanceof HeliosData);
+    assert(ValueClass.prototype instanceof HeliosData);
+    
+    const typeName = `Map[${KeyClass.name}]${ValueClass.name}`;
+
+    class HeliosMap_ extends HeliosData {
+        /**
+         * @type {[TKey, TValue][]}
+         */
+        #pairs;
+
+        /**
+         * @package
+         * @param {...any} args
+         * @returns {[any, any][]}
+         */
+        static cleanConstructorArgs(...args) {
+            /** @type {[any, any][]} */
+            let pairs = [];
+
+            if (args.length == 1) {
+                const arg = args[0];
+
+                if (arg instanceof Map) {
+                    return HeliosMap_.cleanConstructorArgs(Array.from(arg.entries()));
+                } else if (!Array.isArray(arg)) {
+                    throw new Error("expected array or Map arg");
+                } else {
+                    const lst = arg;
+
+                    pairs = lst.map(item => {
+                        if (!Array.isArray(item)) {
+                            throw new Error("expected array item (pair)");
+                        } else if (item.length != 2) {
+                            throw new Error("expected array item of length 2 (pair)");
+                        } else {
+                            return [item[0], item[1]];
+                        }
+                    });
+                }
+            } else if (args.length == 2) {
+                const [keys, values] = args;
+
+                if (!Array.isArray(keys)) {
+                    throw new Error("expected keys array arg");
+                } else if (!Array.isArray(values)) {
+                    throw new Error("expected values array arg");
+                } else if (keys.length != values.length) {
+                    throw new Error("keys and values list don't have same length");
+                } else {
+                    pairs = keys.map((key, i) => {
+                        const value = values[i];
+
+                        return [key, value];
+                    });
+                }
+            } else {
+                throw new Error("unexpected number of args");
+            }
+
+            return pairs;
+        }
+
+        /**
+         * @param  {...any} args
+         */
+        constructor(...args) {
+            const rawPairs = HeliosMap_.cleanConstructorArgs(...args);
+
+            /**
+             * @type {[TKey, TValue][]}
+             */
+            const pairs = rawPairs.map(([rawKey, rawValue]) => {
+                const key = function() {
+                    if (rawKey instanceof KeyClass) {
+                        return rawKey;
+                    } else {
+                        return new KeyClass(rawKey);
+                    }
+                }();
+
+                const value = function() {
+                    if (rawValue instanceof ValueClass) {
+                        return rawValue;
+                    } else {
+                        return new ValueClass(rawValue);
+                    }
+                }();
+
+                return [key, value];
+            });
+
+            super();
+
+            this.#pairs = pairs;
+        }
+
+        /**
+         * @package
+         * @type {string}
+         */
+        get _mapTypeName() {
+            return typeName;
+        }
+
+        /**
+         * Overload 'instanceof' operator
+         * @package
+         * @param {any} other 
+         * @returns {boolean}
+         */
+        static [Symbol.hasInstance](other) {
+            return (other._mapTypeName === typeName) && (other instanceof HeliosData);
+        }
+
+        /**
+         * @type {[TKey, TValue][]}
+         */
+        get pairs() {
+            return this.#pairs;
+        }
+
+        /**
+         * @package
+         * @returns {UplcData}
+         */
+        _toUplcData() {
+            return new MapData(this.#pairs.map(([key, value]) => [key._toUplcData(), value._toUplcData()]));
+        }
+
+        /**
+         * @param {UplcData} data 
+         * @returns {HeliosMap_}
+         */
+        static fromUplcData(data) {
+            return new HeliosMap_(data.map.map(([kd, vd]) => [KeyClass.fromUplcData(kd), ValueClass.fromUplcData(vd)]));
+        }
+
+        /**
+         * @param {string | number[]} bytes 
+         * @returns {HeliosMap_}
+         */
+        static fromUplcCbor(bytes) {
+            return HeliosMap_.fromUplcData(UplcData.fromCbor(bytes));
+        }
+    }
+
+    Object.defineProperty(HeliosMap_, "name", {
+        value: typeName,
+        writable: false
+    });
+
+    return HeliosMap_;
+}
+
+/**
+ * @template {HeliosData} T
+ * @param {HeliosDataClass<T>} SomeClass
+ * @returns {HeliosDataClass<Option_>}
+ */
+export function Option(SomeClass) {
+    assert(!new.target, "Option can't be called with new");
+    assert(SomeClass.prototype instanceof HeliosData);
+
+    const typeName = `Option[${SomeClass.name}]`;
+
+    class Option_ extends HeliosData {
+        /**
+         * @type {?T}
+         */
+        #value;
+
+        /**
+         * @package
+         * @param {?any} rawValue 
+         * @returns {?T}
+         */
+        static cleanConstructorArg(rawValue) {
+            if (rawValue == null) {
+                return null;
+            } else if (!(rawValue instanceof SomeClass)) {
+                return new SomeClass(rawValue);
+            } else {
+                return rawValue;
+            }
+        }
+
+        /** 
+         * @param {?any} rawValue
+         */
+        constructor(rawValue = null) {
+            super();
+
+            this.#value = Option_.cleanConstructorArg(rawValue);
+        }
+
+        /**
+         * @package
+         * @type {string}
+         */
+        get _optionTypeName() {
+            return typeName;
+        }
+
+        /**
+         * Overload 'instanceof' operator
+         * @package
+         * @param {any} other 
+         * @returns {boolean}
+         */
+        static [Symbol.hasInstance](other) {
+            return (other._optionTypeName === typeName) && (other instanceof HeliosData);
+        }
+
+        /**
+         * @type {?T}
+         */
+        get some() {
+            return this.#value;
+        }
+
+        /**
+         * @package
+         * @returns {UplcData}
+         */
+        _toUplcData() {
+            return new ConstrData(this.#value === null ? 1 : 0, this.#value === null ? [] : [this.#value._toUplcData()]);
+        }
+
+        /**
+         * @param {UplcData} data 
+         * @returns {Option_}
+         */
+        static fromUplcData(data) {
+            if (data.index == 1) {
+                assert(data.fields.length == 0);
+
+                return new Option_(null);
+            } else if (data.index == 0) {
+                assert(data.fields.length == 1);
+
+                return new Option_(SomeClass.fromUplcData(data.fields[0]))
+            } else {
+                throw new Error("unexpected option constr index");
+            }
+        }
+
+        /**
+         * @param {string | number[]} bytes
+         * @returns {Option_}
+         */
+        static fromUplcCbor(bytes) {
+            return Option_.fromUplcData(UplcData.fromCbor(bytes));
+        }
+    }
+
+    Object.defineProperty(List, "name", {
+        value: typeName,
+        writable: false
+    });
+
+    return Option_;
+}
+
+
+/**
+ * Base class of all hash-types
+ * @package
+ */
+class Hash extends HeliosData {
+	/** @type {number[]} */
+	#bytes;
+
+	/**
+	 * @param {string | number[]} rawValue 
+	 * @returns {number[]}
+	 */
+	static cleanConstructorArg(rawValue) {
+		if (typeof rawValue == "string") {
+			return hexToBytes(rawValue);
+		} else {
+			return rawValue;
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes 
+	 */
+	constructor(bytes) {
+		super();
+		this.#bytes = bytes;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	get bytes() {
+		return this.#bytes;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	get hex() {
+		return bytesToHex(this.#bytes);
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeBytes(this.#bytes);
+	}
+
+    /**
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ByteArrayData(this.#bytes);
+    }
+
+	/**
+	 * Used internally for metadataHash and scriptDataHash
+	 * @param {number[]} bytes 
+	 * @returns {Hash}
+	 */
+	static fromCbor(bytes) {
+		return new Hash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * Might be needed for internal use
+	 * @param {string} str 
+	 * @returns {Hash}
+	 */
+	static fromHex(str) {
+		return new Hash(hexToBytes(str));
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	dump() {
+		return bytesToHex(this.#bytes);
+	}
+
+	/**
+	 * @param {Hash} other
+	 */
+	eq(other) {
+		return eq(this.#bytes, other.#bytes);
+	}
+
+	/**
+	 * @param {Hash} a 
+	 * @param {Hash} b 
+	 * @returns {number}
+	 */
+	static compare(a, b) {
+		return ByteArrayData.comp(a.#bytes, b.#bytes);
+	}
+}
+
+export class DatumHash extends Hash {
+	/**
+	 * @param {string | number[]} rawValue
+	 */
+	constructor(rawValue) {
+		const bytes = Hash.cleanConstructorArg(rawValue);
+
+		assert(bytes.length == 32);
+		super(bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {DatumHash}
+	 */
+	static fromCbor(bytes) {
+		return new DatumHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {DatumHash}
+	 */
+	 static fromUplcData(data) {
+		return new DatumHash(data.bytes);
+	}
+	
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {DatumHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return DatumHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {DatumHash}
+	 */
+	static fromHex(str) {
+		return new DatumHash(hexToBytes(str));
+	}
+}
+
+export class PubKeyHash extends Hash {
+	
+	/**
+	 * @param {string | number[]} rawValue 
+	 */
+	constructor(rawValue) {
+		const bytes = Hash.cleanConstructorArg(rawValue);
+
+		assert(bytes.length == 28, `expected 28 bytes for PubKeyHash, got ${bytes.length}`);
+		super(bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {PubKeyHash}
+	 */
+	static fromCbor(bytes) {
+		return new PubKeyHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {PubKeyHash}
+	 */
+	static fromUplcData(data) {
+		return new PubKeyHash(data.bytes);
+	}
+	
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {PubKeyHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return PubKeyHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {PubKeyHash}
+	 */
+	static fromHex(str) {
+		return new PubKeyHash(hexToBytes(str));
+	}
+}
+
+export class ScriptHash extends Hash {
+	/**
+	 * @param {string | number[]} rawValue
+	 */
+	constructor(rawValue) {
+		const bytes = Hash.cleanConstructorArg(rawValue);
+
+		assert(bytes.length == 28, `expected 28 bytes for ScriptHash, got ${bytes.length}`);
+		super(bytes);
+	}
+}
+
+export class MintingPolicyHash extends ScriptHash {
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {MintingPolicyHash}
+	 */
+	static fromCbor(bytes) {
+		return new MintingPolicyHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {MintingPolicyHash}
+	 */
+	static fromUplcData(data) {
+		return new MintingPolicyHash(data.bytes);
+	}
+			
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {MintingPolicyHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return MintingPolicyHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {MintingPolicyHash}
+	 */
+	static fromHex(str) {
+		return new MintingPolicyHash(hexToBytes(str));
+	}
+
+	/**
+	 * Encodes as bech32 string using 'asset' as human readable part
+	 * @returns {string}
+	 */
+	toBech32() {
+		return Crypto.encodeBech32("asset", Crypto.blake2b(this.bytes, 20));
+	}
+}
+
+export class StakeKeyHash extends Hash {
+	/**
+	 * @param {number[]} rawValue
+	 */
+	constructor(rawValue) {
+		const bytes = Hash.cleanConstructorArg(rawValue);
 		
-		msg += "\n" + this.message;
-
-		return new RuntimeError(msg, this.src, this.pos, isIR);
+		assert(bytes.length == 28, `expected 28 bytes for StakeKeyHash, got ${bytes.length}`);
+		super(bytes);
 	}
-	
+
 	/**
-	 * @param {Site} site 
-	 * @param {string} info 
-	 * @returns {RuntimeError}
+	 * @param {number[]} bytes 
+	 * @returns {StakeKeyHash}
 	 */
-	addTraceSite(site, info = "") {
-		if (site.codeMapSite === null) {
-			return this.addTrace(site.src, site.pos, true, info);
-		} else {
-			return this.addTrace(site.codeMapSite.src, site.codeMapSite.pos, false, info);
-		}
+	static fromCbor(bytes) {
+		return new StakeKeyHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {StakeKeyHash}
+	 */
+	static fromUplcData(data) {
+		return new StakeKeyHash(data.bytes);
+	}
+		
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {StakeKeyHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return StakeKeyHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {StakeKeyHash}
+	 */
+	static fromHex(str) {
+		return new StakeKeyHash(hexToBytes(str));
+	}
+}
+
+export class StakingValidatorHash extends ScriptHash {
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromCbor(bytes) {
+		return new StakingValidatorHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromUplcData(data) {
+		return new StakingValidatorHash(data.bytes);
+	}
+			
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return StakingValidatorHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {StakingValidatorHash}
+	 */
+	static fromHex(str) {
+		return new StakingValidatorHash(hexToBytes(str));
+	}
+}
+
+export class ValidatorHash extends ScriptHash {
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {ValidatorHash}
+	 */
+	static fromCbor(bytes) {
+		return new ValidatorHash(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {UplcData} data 
+	 * @returns {ValidatorHash}
+	 */
+	static fromUplcData(data) {
+		return new ValidatorHash(data.bytes);
+	}
+		
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {ValidatorHash}
+	 */
+	static fromUplcCbor(bytes) {
+		return ValidatorHash.fromUplcData(UplcData.fromCbor(bytes));
+	}
+
+	/**
+	 * @param {string} str 
+	 * @returns {ValidatorHash}
+	 */
+	static fromHex(str) {
+		return new ValidatorHash(hexToBytes(str));
 	}
 }
 
 /**
- * Each Token/Expression/Statement has a Site, which encapsulates a position in a Source
+ * Hash of a transaction
  */
-class Site {
-	#src;
-	#pos;
-
-	/** @type {?Site} - end of token, exclusive */
-	#endSite;
-
-	/**@type {?Site} */
-	#codeMapSite;
-
+export class TxId extends Hash {
 	/**
-	 * @param {Source} src 
-	 * @param {number} pos 
+	 * @param {string | number[]} rawValue 
 	 */
-	constructor(src, pos) {
-		this.#src = src;
-		this.#pos = pos;
-		this.#endSite = null;
-		this.#codeMapSite = null;
+	constructor(rawValue) {
+        const bytes = Hash.cleanConstructorArg(rawValue);
+
+		assert(bytes.length == 32, `expected 32 bytes for TxId, got ${bytes.length}`);
+		super(bytes);
 	}
 
+    /**
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ConstrData(0, [new ByteArrayData(this.bytes)]);
+    }
+
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {TxId}
+	 */
+	static fromCbor(bytes) {
+		return new TxId(CborData.decodeBytes(bytes));
+	}
+
+    /**
+     * @param {UplcData} data
+     * @returns {TxId}
+     */
+    static fromUplcData(data) {
+        assert(data.index == 0);
+        assert(data.fields.length == 1);
+
+        return new TxId(data.fields[0].bytes);
+    }
+
+    /**
+     * @param {string | number[]} bytes 
+     * @returns {TxId}
+     */
+    static fromUplcCbor(bytes) {
+        return TxId.fromUplcData(UplcData.fromCbor(bytes));
+    }
+
+	/**
+	 * @param {string} str 
+	 * @returns {TxId}
+	 */
+	static fromHex(str) {
+		return new TxId(hexToBytes(str));
+	}
+
+	/**
+	 * @returns {TxId}
+	 */
 	static dummy() {
-		return new Site(new Source(""), 0);
-	}
-
-	get src() {
-		return this.#src;
-	}
-
-	get pos() {
-		return this.#pos;
-	}
-
-	get line() {
-		return this.#src.posToLine(this.#pos);
-	}
-	
-	get endSite() {
-		return this.#endSite;
-	}
-
-	/**
-	 * @param {Site} site
-	 */
-	setEndSite(site) {
-		this.#endSite = site;
-	}
-
-	/**
-	 * @type {string}
-	 */
-	get part() {
-		if (this.#endSite === null) {
-			return this.#src.raw.slice(this.#pos);
-		} else {
-			return this.#src.raw.slice(this.#pos, this.#endSite.pos);
-		}
-	}
-
-	/**
-	 * @type {?Site} 
-	 */
-	get codeMapSite() {
-		return this.#codeMapSite;
-	}
-
-	/**
-	 * @param {Site} site 
-	 */
-	setCodeMapSite(site) {
-		this.#codeMapSite = site;
-	}
-
-	/**
-	 * Returns a SyntaxError
-	 * @param {string} info 
-	 * @returns {UserError}
-	 */
-	syntaxError(info = "") {
-		return UserError.syntaxError(this.#src, this.#pos, info);
-	}
-
-	/**
-	 * Returns a TypeError
-	 * @param {string} info
-	 * @returns {UserError}
-	 */
-	typeError(info = "") {
-		return UserError.typeError(this.#src, this.#pos, info);
-	}
-
-	/**
-	 * Returns a ReferenceError
-	 * @param {string} info 
-	 * @returns {UserError}
-	 */
-	referenceError(info = "") {
-		return UserError.referenceError(this.#src, this.#pos, info);
-	}
-
-	/**
-	 * Returns a RuntimeError
-	 * @param {string} info
-	 * @returns {UserError}
-	 */
-	runtimeError(info = "") {
-		if (this.#codeMapSite !== null) {
-			let site = this.#codeMapSite;
-			return RuntimeError.newRuntimeError(site.#src, site.#pos, false, info);
-		} else {
-			return RuntimeError.newRuntimeError(this.#src, this.#pos, true, info);
-		}
-	}
-
-	/**
-	 * Calculates the column,line position in 'this.#src'
-	 * @returns {[number, number]}
-	 */
-	getFilePos() {
-		return this.#src.posToColAndLine(this.#pos);
+		return new TxId((new Array(32)).fill(0));
 	}
 }
 
 /**
- * A tag function for a helios source.
- * Is just a marker so IDE support can work on literal helios sources inside javascript/typescript files.
- * @example
- * hl`hello ${"world"}!` => "hello world!"
- * @param {string[]} a 
- * @param  {...any} b 
- * @returns {string}
+ * Id of a Utxo
  */
-export function hl(a, ...b) {
-	return a.map((part, i) => {
-		if (i < b.length) {
-			return part + b[i].toString();
+export class TxOutputId extends HeliosData {
+    /** @type {TxId} */
+    #txId;
+
+    /** @type {Int} */
+    #utxoIdx;
+
+    /**
+     * @param  {...any} args
+     * @returns {[any, any]}
+     */
+    static cleanConstructorArgs(...args) {
+        if (args.length == 1) {
+            const arg = args[0];
+
+            if (typeof arg == "string") {
+                const parts = arg.split("#");
+
+                assert(parts.length == 2);
+
+                return [parts[0], parts[1]];
+            } else {
+                throw new Error("unexpected single arg type");
+            }
+        } else if (args.length == 2) {
+            return [args[0], args[1]];
+        } else {
+            throw new Error("unexpected number of args");
+        }
+    }
+
+    /**
+     * @param {...any} args
+     */
+    constructor(...args) {
+        const [rawTxId, rawUtxoIdx] = TxOutputId.cleanConstructorArgs(...args);
+
+        const txId = (rawTxId instanceof TxId) ? rawTxId : new TxId(rawTxId);
+        const utxoIdx = (rawUtxoIdx instanceof Int) ? rawUtxoIdx : new Int(rawUtxoIdx);
+
+        super();
+
+        this.#txId = txId;
+        this.#utxoIdx = utxoIdx;
+    }
+
+    get txId() {
+        return this.#txId;
+    }
+
+    get utxoIdx() {
+        return this.#utxoIdx;
+    }
+
+    /**
+     * @returns {UplcData}
+     */
+    _toUplcData() {
+        return new ConstrData(0, [this.#txId._toUplcData(), this.#utxoIdx._toUplcData()])
+    }
+
+    /**
+     * @param {UplcData} data
+     * @returns {TxOutputId}
+     */
+    static fromUplcData(data) {
+        assert(data.index == 0);
+        assert(data.fields.length == 2);
+
+        return new TxOutputId(TxId.fromUplcData(data.fields[0]), Int.fromUplcData(data.fields[1]));
+    }
+
+    /**
+     * @param {string | number[]} bytes 
+     * @returns {TxOutputId}
+     */
+    static fromUplcCbor(bytes) {
+        return TxOutputId.fromUplcData(UplcData.fromCbor(bytes));
+    }
+}
+
+/**
+ * See CIP19 for formatting of first byte
+ */
+export class Address extends HeliosData {
+	/** @type {number[]} */
+	#bytes;
+
+    /**
+	 * @param {number[] | string} rawValue
+	 */
+    static cleanConstructorArg(rawValue) {
+        if (typeof rawValue == "string") {
+            if (rawValue.startsWith("addr")) {
+                return Address.fromBech32(rawValue).bytes;
+            } else {
+                if (rawValue.startsWith("#")) {
+                    rawValue = rawValue.slice(1);
+                }
+
+                return hexToBytes(rawValue);
+            }
+        } else {
+            return rawValue;
+        }
+    }
+
+	/**
+	 * @param {string | number[]} rawValue
+	 */
+	constructor(rawValue) {
+		super();
+		this.#bytes = Address.cleanConstructorArg(rawValue);
+
+        assert(this.#bytes.length == 29 || this.#bytes.length == 57, `expected 29 or 57 bytes for Address, got ${this.#bytes.length}`);
+	}
+
+	get bytes() {
+		return this.#bytes.slice();
+	}
+
+	toCbor() {
+		return CborData.encodeBytes(this.#bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {Address}
+	 */
+	static fromCbor(bytes) {
+		return new Address(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @param {string} str
+	 * @returns {Address}
+	 */
+	static fromBech32(str) {
+		// ignore the prefix (encoded in the bytes anyway)
+		let [prefix, bytes] = Crypto.decodeBech32(str);
+
+		let result = new Address(bytes);
+
+		assert(prefix == (result.isForTestnet() ? "addr_test" : "addr"), "invalid Address prefix");
+
+		return result;
+	}
+
+	/**
+	 * Doesn't check validity
+	 * @param {string} hex
+	 * @returns {Address}
+	 */
+	static fromHex(hex) {
+		return new Address(hexToBytes(hex));
+	}
+
+	/**
+	 * Returns the raw Address bytes as a hex encoded string
+	 * @returns {string}
+	 */
+	toHex() {
+		return bytesToHex(this.#bytes);
+	}
+
+    /**
+     * @param {PubKeyHash | ValidatorHash} hash 
+     * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash 
+     * @param {boolean} isTestnet
+     * @returns {Address}
+     */
+    static fromHashes(hash, stakingHash = null, isTestnet = IS_TESTNET) {
+        if (hash instanceof PubKeyHash) {
+            return Address.fromPubKeyHash(hash, stakingHash, isTestnet);
+        } else if (hash instanceof ValidatorHash) {
+            return Address.fromValidatorHash(hash, stakingHash, isTestnet);
+        } else {
+            throw new Error("unexpected");
+        }
+    }
+
+	/**
+	 * Simple payment address without a staking part
+	 * @param {PubKeyHash} hash
+	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
+     * @param {boolean} isTestnet
+	 * @returns {Address}
+	 */
+	static fromPubKeyHash(hash, stakingHash = null, isTestnet = IS_TESTNET) {
+		if (stakingHash !== null) {
+			if (stakingHash instanceof StakeKeyHash) {
+				return new Address(
+					[isTestnet ? 0x00 : 0x01].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			} else {
+				assert(stakingHash instanceof StakingValidatorHash);
+				return new Address(
+					[isTestnet ? 0x20 : 0x21].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			}
 		} else {
-			return part;
+			return new Address([isTestnet ? 0x60 : 0x61].concat(hash.bytes));
 		}
-	}).join("");
+	}
+
+	/**
+	 * Simple script address without a staking part
+	 * Only relevant for validator scripts
+	 * @param {ValidatorHash} hash
+	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
+     * @param {boolean} isTestnet
+	 * @returns {Address}
+	 */
+	static fromValidatorHash(hash, stakingHash = null, isTestnet = IS_TESTNET) {
+		if (stakingHash !== null) {
+			if (stakingHash instanceof StakeKeyHash) {
+				return new Address(
+					[isTestnet ? 0x10 : 0x11].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			} else {
+				assert(stakingHash instanceof StakingValidatorHash);
+				return new Address(
+					[isTestnet ? 0x30 : 0x31].concat(hash.bytes).concat(stakingHash.bytes)
+				);
+			}
+		} else {
+			return new Address([isTestnet ? 0x70 : 0x71].concat(hash.bytes));
+		}
+	}
+
+
+	/**
+	 * @returns {string}
+	 */
+	toBech32() {
+		return Crypto.encodeBech32(
+			this.isForTestnet() ? "addr_test" : "addr",
+			this.#bytes
+		);
+	}
+
+	/**
+	 * @returns {Object}
+	 */
+	dump() {
+		return {
+			hex: bytesToHex(this.#bytes),
+			bech32: this.toBech32(),
+		};
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isForTestnet() {
+		let type = this.#bytes[0] & 0b00001111;
+
+		return type == 0;
+	}
+
+	/**
+     * 
+     * @private
+	 * @returns {ConstrData}
+	 */
+	toCredentialData() {
+		let vh = this.validatorHash;
+
+		if (vh !== null) {
+			return new ConstrData(1, [new ByteArrayData(vh.bytes)]);
+		} else {
+			let pkh = this.pubKeyHash;
+
+			if (pkh === null) {
+				throw new Error("unexpected");
+			} else {
+				return new ConstrData(0, [new ByteArrayData(pkh.bytes)]);
+			}
+		}
+	}
+
+	/**
+	 * @returns {ConstrData}
+	 */
+	toStakingData() {
+        const type = this.#bytes[0] >> 4;
+		const sh = this.stakingHash;
+
+		if (sh == null) {
+			return new ConstrData(1, []); // none
+		} else {
+            if (type == 4 || type == 5) {
+                throw new Error("not yet implemented");
+            } else if (type == 3 || type == 2) {
+                // some
+                return new ConstrData(0, [
+                    // staking credential -> 0, 1 -> pointer
+                    new ConstrData(0, [
+                        // StakingValidator credential
+                        new ConstrData(1, [new ByteArrayData(sh.bytes)]),
+                    ]),
+                ]);
+            } else if (type == 0 || type == 1) {
+                // some
+                return new ConstrData(0, [
+                    // staking credential -> 0, 1 -> pointer
+                    new ConstrData(0, [
+                        // StakeKeyHash credential
+                        new ConstrData(0, [new ByteArrayData(sh.bytes)]),
+                    ]),
+                ]);
+            } else {
+                throw new Error("unexpected");
+            }
+		}
+	}
+
+	/**
+	 * @returns {UplcData}
+	 */
+	_toUplcData() {
+		return new ConstrData(0, [this.toCredentialData(), this.toStakingData()]);
+	}
+
+    /**
+     * @param {UplcData} data 
+     * @param {boolean} isTestnet
+     * @returns {Address}
+     */
+    static fromUplcData(data, isTestnet = IS_TESTNET) {
+        assert(data.index == 0);
+        assert(data.fields.length == 2);
+        
+        const credData = data.fields[0];
+        const stakData = data.fields[1];
+
+        assert(credData.fields.length == 1);
+
+        /**
+         * @type {?(StakeKeyHash | StakingValidatorHash)}
+         */
+        let sh;
+
+        if (stakData.index == 0) {
+            sh = null;
+        } else if (stakData.index == 1) {
+            assert(stakData.fields.length == 1);
+
+            const inner = stakData.fields[0];
+            assert(inner.fields.length == 1);
+
+            if (inner.index == 0) {
+                const innerInner = inner.fields[0];
+                assert(innerInner.fields.length == 1);
+
+                if (innerInner.index == 0) {
+                    sh = new StakeKeyHash(innerInner.fields[0].bytes);
+                } else if (innerInner.index == 1) {
+                    sh = new StakingValidatorHash(innerInner.fields[0].bytes);
+                } else {
+                    throw new Error("unexpected");
+                }
+            } else if (inner.index == 1) {
+                throw new Error("staking pointer not yet handled");
+            } else {
+                throw new Error("unexpected");
+            }
+        } else {
+            throw new Error("unexpected");
+        }
+
+        if (credData.index == 0) {
+            return Address.fromPubKeyHash(new PubKeyHash(credData.fields[0].bytes), sh, isTestnet);
+        } else if (credData.index == 1) {
+            return Address.fromValidatorHash(new ValidatorHash(credData.fields[0].bytes), sh, isTestnet);
+        } else {
+            throw new Error("unexpected");
+        }
+    }
+
+    /**
+     * @param {string | number[]} bytes 
+     * @param {boolean} isTestnet
+     * @returns {Address}
+     */
+    static fromUplcCbor(bytes, isTestnet = IS_TESTNET) {
+        return Address.fromUplcData(UplcData.fromCbor(bytes), isTestnet);
+    }
+
+	/**
+	 * @type {?PubKeyHash}
+	 */
+	get pubKeyHash() {
+		let type = this.#bytes[0] >> 4;
+
+		if (type % 2 == 0) {
+			return new PubKeyHash(this.#bytes.slice(1, 29));
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * @type {?ValidatorHash}
+	 */
+	get validatorHash() {
+		let type = this.#bytes[0] >> 4;
+
+		if (type % 2 == 1) {
+			return new ValidatorHash(this.#bytes.slice(1, 29));
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * @type {?(StakeKeyHash | StakingValidatorHash)}
+	 */
+	get stakingHash() {
+		let type = this.#bytes[0] >> 4;
+
+        let bytes = this.#bytes.slice(29);
+        
+
+        if (type == 0 || type == 1) {
+            assert(bytes.length == 28);
+            return new StakeKeyHash(bytes);
+        } else if (type == 2 || type == 3) {
+            assert(bytes.length == 28);
+            return new StakingValidatorHash(bytes);
+        } else if (type == 4 || type == 5) {
+            throw new Error("staking pointer not yet supported");
+        } else {
+			return null;
+		}
+	}
+
+	/**
+	 * Used to sort txbody withdrawals
+	 * @param {Address} a
+	 * @param {Address} b
+	 * @return {number}
+	 */
+	static compStakingHashes(a, b) {
+		return Hash.compare(assertDefined(a.stakingHash), assertDefined(b.stakingHash));
+	}
 }
 
 
-//////////////////////////////////
-// Section 3: Plutus-core builtins
-//////////////////////////////////
+/**
+ * Collection of non-lovelace assets
+ */
+export class Assets extends CborData {
+	/** @type {[MintingPolicyHash, [number[], bigint][]][]} */
+	#assets;
+
+	/**
+	 * @param {[MintingPolicyHash, [number[], bigint][]][]} assets 
+	 */
+	constructor(assets = []) {
+		super();
+		this.#assets = assets;
+	}
+
+	/**
+	 * @type {MintingPolicyHash[]}
+	 */
+	get mintingPolicies() {
+		return this.#assets.map(([mph, _]) => mph);
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isZero() {
+		return this.#assets.length == 0;
+	}
+
+	/**
+	 * @param {MintingPolicyHash} mph
+	 * @param {number[]} tokenName 
+	 * @returns {boolean}
+	 */
+	has(mph, tokenName) {
+		let inner = this.#assets.find(asset => mph.eq(asset[0]));
+
+		if (inner !== undefined) {
+			return inner[1].findIndex(pair => eq(pair[0], tokenName)) != -1;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @param {MintingPolicyHash} mph
+	 * @param {number[]} tokenName 
+	 * @returns {bigint}
+	 */
+	get(mph, tokenName) {
+		let inner = this.#assets.find(asset => mph.eq(asset[0]));
+
+		if (inner !== undefined) {
+			let token = inner[1].find(pair => eq(pair[0], tokenName));
+
+			if (token !== undefined) {
+				return token[1];
+			} else {
+				return 0n;
+			}
+		} else {
+			return 0n;
+		}
+	}
+
+	/**
+	 * Mutates 'this'
+	 */
+	removeZeroes() {
+		for (let asset of this.#assets) {
+			asset[1] = asset[1].filter(token => token[1] != 0n);
+		}
+
+		this.#assets = this.#assets.filter(asset => asset[1].length != 0);
+	}
+
+	/**
+	 * Mutates 'this'
+	 * @param {MintingPolicyHash} mph
+	 * @param {number[]} tokenName 
+	 * @param {bigint} quantity
+	 */
+	addComponent(mph, tokenName, quantity) {
+		if (quantity == 0n) {
+			return;
+		}
+
+		let inner = this.#assets.find(asset => mph.eq(asset[0]));
+
+		if (inner === undefined) {
+			this.#assets.push([mph, [[tokenName, quantity]]]);
+		} else {
+			let token = inner[1].find(pair => eq(pair[0], tokenName));
+
+			if (token === undefined) {
+				inner[1].push([tokenName, quantity]);
+			} else {
+				token[1] += quantity;
+			}
+		}
+
+		this.removeZeroes();
+	}
+
+	/**
+	 * @param {Assets} other 
+	 * @param {(a: bigint, b: bigint) => bigint} op 
+	 * @returns {Assets}
+	 */
+	applyBinOp(other, op) {
+		let res = new Assets();
+
+		for (let [mph, tokens] of this.#assets) {
+			for (let [tokenName, quantity] of tokens) {
+				res.addComponent(mph, tokenName, op(quantity, 0n));
+			}
+		}
+
+		for (let [mph, tokens] of other.#assets) {
+			for (let [tokenName, quantity] of tokens) {
+				res.addComponent(mph, tokenName, op(0n, quantity));
+			}
+		}
+
+		return res;
+	}
+
+	/**
+	 * @param {Assets} other 
+	 * @returns {Assets}
+	 */
+	add(other) {
+		return this.applyBinOp(other, (a, b) => a + b);
+	}
+
+	/**
+	 * @param {Assets} other 
+	 * @returns {Assets}
+	 */
+	sub(other) {
+		return this.applyBinOp(other, (a, b) => a - b);
+	}
+
+	/**
+	 * Mutates 'this'
+	 * Throws error if mph is already contained in 'this'
+	 * @param {MintingPolicyHash} mph
+	 * @param {[number[], bigint][]} tokens
+	 */
+	addTokens(mph, tokens) {
+		for (let asset of this.#assets) {
+			if (asset[0].eq(mph)) {
+				throw new Error(`MultiAsset already contains ${bytesToHex(mph.bytes)}`);
+			}
+		}
+
+		this.#assets.push([mph, tokens.slice()]);
+	}
+
+	/**
+	 * @param {MintingPolicyHash} mph
+	 * @returns {number[][]}
+	 */
+	getTokenNames(mph) {
+		for (let [otherMph, tokens] of this.#assets) {
+			if (otherMph.eq(mph)) {
+				return tokens.map(([tokenName, _]) => tokenName);
+			}
+		}
+
+		return [];
+	}
+
+	/**
+	 * @param {Assets} other 
+	 * @returns {boolean}
+	 */
+	eq(other) {
+		for (let asset of this.#assets) {
+			for (let token of asset[1]) {
+				if (token[1] != other.get(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		for (let asset of other.#assets) {
+			for (let token of asset[1]) {
+				if (token[1] != this.get(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Strict gt, if other contains assets this one doesn't contain => return false
+	 * @param {Assets} other 
+	 * @returns {boolean}
+	 */
+	gt(other) {
+		if (this.isZero()) {
+			return false;
+		}
+
+		for (let asset of this.#assets) {
+			for (let token of asset[1]) {
+				if (token[1] <= other.get(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		for (let asset of other.#assets) {
+			for (let token of asset[1]) {
+				if (!this.has(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param {Assets} other 
+	 * @returns {boolean}
+	 */
+	ge(other) {
+		if (this.isZero()) {
+			return other.isZero();
+		}
+
+		for (let asset of this.#assets) {
+			for (let token of asset[1]) {
+				if (token[1] < other.get(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		for (let asset of other.#assets) {
+			for (let token of asset[1]) {
+				if (!this.has(asset[0], token[0])) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	allPositive() {
+		for (let asset of this.#assets) {
+			for (let pair of asset[1]) {
+				if (pair[1] < 0n) {
+					return false;
+				} else if (pair[1] == 0n) {
+					throw new Error("unexpected");
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Throws an error if any contained quantity <= 0n
+	 */
+	assertAllPositive() {
+		assert(this.allPositive(), "non-positive token amounts detected");
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeMap(
+			this.#assets.map(
+				outerPair => {
+					return [outerPair[0].toCbor(), CborData.encodeMap(outerPair[1].map(
+						innerPair => {
+							return [
+								CborData.encodeBytes(innerPair[0]), CborData.encodeInteger(innerPair[1])
+							]
+						}
+					))]
+				}
+			)
+		)
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {Assets}
+	 */
+	static fromCbor(bytes) {
+		let ms = new Assets();
+
+		CborData.decodeMap(bytes, pairBytes => {
+			let mph = MintingPolicyHash.fromCbor(pairBytes);
+
+			/**
+			 * @type {[number[], bigint][]}
+			 */
+			let innerMap = [];
+			
+			CborData.decodeMap(pairBytes, innerPairBytes => {
+				innerMap.push([
+					CborData.decodeBytes(innerPairBytes),
+					CborData.decodeInteger(innerPairBytes),
+				]);
+			});
+
+			ms.#assets.push([mph, innerMap]);
+		});
+
+		return ms;
+	}
+
+	/**
+	 * @returns {Object}
+	 */
+	dump() {
+		let obj = {};
+
+		for (let [mph, tokens] of this.#assets) {
+			let innerObj = {};
+
+			for (let [tokenName, quantity] of tokens) {
+				innerObj[bytesToHex(tokenName)] = quantity.toString();
+			}
+
+			obj[mph.dump()] = innerObj;
+		}
+
+		return obj;
+	}
+
+	/**
+	 * Used when generating script contexts for running programs
+	 * @returns {MapData}
+	 */
+	_toUplcData() {
+		/** @type {[UplcData, UplcData][]} */
+		let pairs = [];
+
+		for (let asset of this.#assets) {
+			/** @type {[UplcData, UplcData][]} */
+			let innerPairs = [];
+
+			for (let token of asset[1]) {
+				innerPairs.push([
+					new ByteArrayData(token[0]),
+					new IntData(token[1]),
+				]);
+			}
+
+			pairs.push([
+				new ByteArrayData(asset[0].bytes),
+				new MapData(innerPairs),
+			])
+		}
+
+		return new MapData(pairs);
+	}
+
+	/**
+	 * Makes sure minting policies are in correct order
+	 * Mutates 'this'
+	 * Order of tokens per mintingPolicyHash isn't changed
+	 */
+	sort() {
+		this.#assets.sort((a, b) => {
+			return Hash.compare(a[0], b[0]);
+		});
+	}
+}
+
+export class Value extends HeliosData {
+	/** @type {bigint} */
+	#lovelace;
+
+	/** @type {Assets} */
+	#assets;
+	
+	/**
+	 * @param {bigint} lovelace 
+	 * @param {Assets} assets 
+	 */
+	constructor(lovelace = 0n, assets = new Assets()) {
+		super();
+		this.#lovelace = lovelace;
+		this.#assets = assets;
+	}
+
+	/**
+	 * @param {MintingPolicyHash} mph 
+	 * @param {number[]} tokenName 
+	 * @param {bigint} quantity 
+	 * @returns {Value}
+	 */
+	static asset(mph, tokenName, quantity) {
+		return new Value(0n, new Assets([
+			[mph, [
+				[tokenName, quantity]
+			]]
+		]));
+	}
+
+	/**
+	 * @type {bigint}
+	 */
+	get lovelace() {
+		return this.#lovelace;
+	}
+
+	/**
+	 * Setter for lovelace
+	 * Note: mutation is handy when balancing transactions
+	 * @param {bigint} lovelace
+	 */
+	setLovelace(lovelace) {
+		this.#lovelace = lovelace;
+	}
+
+	/**
+	 * @type {Assets}
+	 */
+	get assets() {
+		return this.#assets;
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		if (this.#assets.isZero()) {
+			return CborData.encodeInteger(this.#lovelace);
+		} else {
+			return CborData.encodeTuple([
+				CborData.encodeInteger(this.#lovelace),
+				this.#assets.toCbor()
+			]);
+		}
+	}
+
+	/**
+	 * @param {number[]} bytes 
+	 * @returns {Value}
+	 */
+	static fromCbor(bytes) {
+		let mv = new Value();
+
+		if (CborData.isTuple(bytes)) {
+			CborData.decodeTuple(bytes, (i, fieldBytes) => {
+				switch(i) {
+					case 0:
+						mv.#lovelace = CborData.decodeInteger(fieldBytes);
+						break;
+					case 1:
+						mv.#assets = Assets.fromCbor(fieldBytes);
+						break;
+					default:
+						throw new Error("unrecognized field");
+				}
+			});
+		} else {
+			mv.#lovelace = CborData.decodeInteger(bytes);
+		}
+
+		return mv;
+	}
+
+	/**
+	 * @param {Value} other 
+	 * @returns {Value}
+	 */
+	add(other) {
+		return new Value(this.#lovelace + other.#lovelace, this.#assets.add(other.#assets));
+	}
+
+	/**
+	 * @param {Value} other 
+	 * @returns {Value}
+	 */
+	sub(other) {
+		return new Value(this.#lovelace - other.#lovelace, this.#assets.sub(other.#assets));
+	}
+
+	/**
+	 * @param {Value} other 
+	 * @returns {boolean}
+	 */
+	eq(other) {
+		return (this.#lovelace == other.#lovelace) && (this.#assets.eq(other.#assets));
+	}
+
+	/**
+	 * Strictly greater than. Returns false if any asset is missing 
+	 * @param {Value} other 
+	 * @returns {boolean}
+	 */
+	gt(other) {
+		return (this.#lovelace > other.#lovelace) && (this.#assets.gt(other.#assets));
+	}
+
+	/**
+	 * Strictly >= 
+	 * @param {Value} other 
+	 * @returns {boolean}
+	 */
+	ge(other) {
+		return (this.#lovelace >= other.#lovelace) && (this.#assets.ge(other.#assets));
+	}
+
+	/**
+	 * Throws an error if any contained quantity is negative
+	 * Used when building transactions because transactions can't contain negative values
+	 * @returns {Value} - returns this
+	 */
+	assertAllPositive() {
+		assert(this.#lovelace >= 0n);
+
+		this.#assets.assertAllPositive();
+
+		return this;
+	}
+
+	/**
+	 * @returns {Object}
+	 */
+	dump() {
+		return {
+			lovelace: this.#lovelace.toString(),
+			assets: this.#assets.dump()
+		};
+	}
+
+	/**
+	 * Used when building script context
+	 * @param {boolean} isInScriptContext
+	 * @returns {MapData}
+	 */
+	_toUplcData(isInScriptContext = false) {
+		let map = this.#assets._toUplcData();
+
+		if (this.#lovelace != 0n || isInScriptContext) {
+			let inner = map.map; 
+
+			inner.unshift([
+				new ByteArrayData([]),
+				new MapData([
+					[new ByteArrayData([]), new IntData(this.#lovelace)]
+				]),
+			]);
+
+			// 'inner' is copy, so mutating won't change the original
+			map = new MapData(inner);
+		}
+
+		return map;
+	}
+
+	/**
+	 * Useful when deserializing inline datums
+	 * @param {UplcData} data
+	 * @returns {Value}
+	 */
+	static fromUplcData(data) {
+		let sum = new Value();
+
+		let outerMap = data.map;
+
+		for (let [mphData, tokensData] of outerMap) {
+			let mphBytes = mphData.bytes;
+
+			let innerMap = tokensData.map;
+
+			if (mphBytes.length == 0) {
+				//lovelace
+				assert(innerMap.length == 1 && innerMap[0][0].bytes.length == 0); 
+				sum = sum.add(new Value(innerMap[0][1].int));
+			} else {
+				// other assets
+				let mph = new MintingPolicyHash(mphBytes);
+
+				for (let [tokenNameData, quantityData] of innerMap) {
+					let tokenName = tokenNameData.bytes;
+					let quantity = quantityData.int;
+
+					sum = sum.add(Value.asset(mph, tokenName, quantity));
+				}
+			}
+		}
+
+		return sum;
+	}
+
+	/**
+	 * @param {string | number[]} bytes 
+	 * @returns {Value}
+	 */
+	static fromUplcCbor(bytes) {
+		return Value.fromUplcData(UplcData.fromCbor(bytes));
+	}
+}
+
+
+//////////////////////////////
+// Section 8: Uplc cost-models
+//////////////////////////////
+
+/**
+ * @typedef {Object} Cost
+ * @property {bigint} mem
+ * @property {bigint} cpu
+ */
 
 /**
  * NetworkParams contains all protocol parameters. These are needed to do correct, up-to-date, cost calculations.
@@ -2966,10 +7286,16 @@ export class NetworkParams {
 		this.#raw = raw;
 	}
 	
+    /**
+     * @package
+     * @type {Object}
+     */
 	get costModel() {
 		return assertDefined(this.#raw?.latestParams?.costModels?.PlutusScriptV2, "'obj.latestParams.costModels.PlutusScriptV2' undefined");
 	}
+
 	/**
+     * @package
 	 * @param {string} key 
 	 * @returns {number}
 	 */
@@ -2978,6 +7304,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @param {string} name 
 	 * @returns {Cost}
 	 */
@@ -2992,6 +7319,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreStartupCost() {
@@ -2999,6 +7327,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreVariableCost() {
@@ -3006,6 +7335,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreLambdaCost() {
@@ -3013,6 +7343,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreDelayCost() {
@@ -3020,6 +7351,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreCallCost() {
@@ -3027,6 +7359,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreConstCost() {
@@ -3034,6 +7367,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreForceCost() {
@@ -3041,6 +7375,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {Cost}
 	 */
 	get plutusCoreBuiltinCost() {
@@ -3048,6 +7383,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {[number, number]} - a + b*size
 	 */
 	get txFeeParams() {
@@ -3058,6 +7394,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {[number, number]} - [memFee, cpuFee]
 	 */
 	get exFeeParams() {
@@ -3068,6 +7405,7 @@ export class NetworkParams {
 	}
 	
 	/**
+     * @package
 	 * @type {number[]}
 	 */
 	get sortedCostParams() {
@@ -3080,6 +7418,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {number}
 	 */
 	get lovelacePerUTXOByte() {
@@ -3087,6 +7426,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {number}
 	 */
 	get minCollateralPct() {
@@ -3094,6 +7434,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {number}
 	 */
 	get maxCollateralInputs() {
@@ -3101,6 +7442,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {[number, number]} - [mem, cpu]
 	 */
 	get txExecutionBudget() {
@@ -3111,6 +7453,7 @@ export class NetworkParams {
 	}
 
 	/**
+     * @package
 	 * @type {number}
 	 */
 	get maxTxSize() {
@@ -3118,7 +7461,8 @@ export class NetworkParams {
 	}
 
 	/**
-	 * Use the latest slot in networkParameters to determine time
+	 * Use the latest slot in networkParameters to determine time.
+     * @package
 	 * @param {bigint} slot
 	 * @returns {bigint}
 	 */
@@ -3134,7 +7478,8 @@ export class NetworkParams {
 	}
 
 	/**
-	 * Use the latest slot in network parameters to determine slot
+	 * Use the latest slot in network parameters to determine slot.
+     * @package
 	 * @param {bigint} time - milliseconds since 1970
 	 * @returns {bigint}
 	 */
@@ -3153,6 +7498,7 @@ export class NetworkParams {
 /**
  * Each builtin has an associated CostModel.
  * The CostModel calculates the execution cost of a builtin, depending on the byte-size of the inputs.
+ * @package
  */
 class CostModel {
 	constructor() {
@@ -3183,6 +7529,10 @@ class CostModel {
 	}
 }
 
+/**
+ * A simple constant cost, independent of arg size.
+ * @package
+ */
 class ConstCost extends CostModel {
 	#constant;
 
@@ -3221,6 +7571,10 @@ class ConstCost extends CostModel {
 	}
 }
 
+/**
+ * cost = a + b*size(arg)
+ * @package
+ */
 class LinearCost extends CostModel {
 	#a;
 	#b;
@@ -3264,12 +7618,16 @@ class LinearCost extends CostModel {
 	}
 }
 
+/**
+ * cost = a + b*size(args[i])
+ * @package
+ */
 class ArgSizeCost extends LinearCost {
 	#i;
 
 	/**
-	 * @param {bigint} a
-	 * @param {bigint} b
+	 * @param {bigint} a - intercept
+	 * @param {bigint} b - slope
 	 * @param {number} i - index of the arg
 	 */
 	constructor(a, b, i) {
@@ -3288,6 +7646,10 @@ class ArgSizeCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = a + b*size(arg0)
+ * @package
+ */
 class Arg0SizeCost extends ArgSizeCost {
 	/**
 	 * @param {bigint} a 
@@ -3309,6 +7671,10 @@ class Arg0SizeCost extends ArgSizeCost {
 	}
 }
 
+/**
+ * cost = a + b*size(arg1)
+ * @package
+ */
 class Arg1SizeCost extends ArgSizeCost {
 	/**
 	 * @param {bigint} a 
@@ -3330,6 +7696,10 @@ class Arg1SizeCost extends ArgSizeCost {
 	}
 }
 
+/**
+ * cost = a + b*size(arg2)
+ * @package
+ */
 class Arg2SizeCost extends ArgSizeCost {
 	/**
 	 * @param {bigint} a 
@@ -3351,9 +7721,12 @@ class Arg2SizeCost extends ArgSizeCost {
 	}
 }
 
+/**
+ * cost = a + b*min(args)
+ * @package
+ */
 class MinArgSizeCost extends LinearCost {
 	/**
-	 * a + b*min(args)
 	 * @param {bigint} a - intercept
 	 * @param {bigint} b - slope
 	 */
@@ -3380,9 +7753,12 @@ class MinArgSizeCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = a + b*max(args)
+ * @package
+ */
 class MaxArgSizeCost extends LinearCost {
 	/**
-	 * a + b*max(args)
 	 * @param {bigint} a - intercept
 	 * @param {bigint} b - slope
 	 */
@@ -3410,9 +7786,12 @@ class MaxArgSizeCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = a + b*sum(sizes(args))
+ * @package
+ */
 class SumArgSizesCost extends LinearCost {
 	/**
-	 * a + b*sum(args)
 	 * @param {bigint} a - intercept
 	 * @param {bigint} b - slope
 	 */
@@ -3446,11 +7825,15 @@ class SumArgSizesCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = a + b*max(size(arg0)-size(arg1), min)
+ * (only for Uplc functions with two arguments) 
+ * @package
+ */
 class ArgSizeDiffCost extends LinearCost {
 	#min;
 
 	/**
-	 * a + b*max(x-y, min)
 	 * @param {bigint} a - intercept
 	 * @param {bigint} b - slope
 	 * @param {number} min
@@ -3490,13 +7873,17 @@ class ArgSizeDiffCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = (size(arg0) > size(arg1)) ? constant : a + b*size(arg0)*size(arg1)
+ * (only for Uplc functions with two arguments)
+ * @package
+ */
 class ArgSizeProdCost extends LinearCost {
 	#constant;
 
 	/**
-	 * (x > y) ? constant : a + b*x*y
-	 * @param {bigint} a
-	 * @param {bigint} b
+	 * @param {bigint} a - intercept
+	 * @param {bigint} b - slope
 	 * @param {bigint} constant
 	 */
 	constructor(a, b, constant) {
@@ -3510,8 +7897,8 @@ class ArgSizeProdCost extends LinearCost {
 	 * @returns {MaxArgSizeCost}
 	 */
 	static fromParams(params, baseName) {
-		let [a, b] = LinearCost.getParams(params, `${baseName}-model-arguments`);
-		let constant = params.getCostModelParameter(`${baseName}-constant`);
+		const [a, b] = LinearCost.getParams(params, `${baseName}-model-arguments`);
+		const constant = params.getCostModelParameter(`${baseName}-constant`);
 
 		return new ArgSizeProdCost(a, b, BigInt(constant));
 	}
@@ -3523,7 +7910,7 @@ class ArgSizeProdCost extends LinearCost {
 	calc(args) {
 		assert(args.length == 2);
 		
-		let [x, y] = args;
+		const [x, y] = args;
 
 		if (x > y) {
 			return this.#constant;
@@ -3540,6 +7927,11 @@ class ArgSizeProdCost extends LinearCost {
 	}
 }
 
+/**
+ * cost = (size(arg0) != size(arg1)) ? constant : a + b*size(arg0)
+ * (only for Uplc functions with two arguments)
+ * @package
+ */
 class ArgSizeDiagCost extends LinearCost {
 	#constant;
 
@@ -3558,8 +7950,8 @@ class ArgSizeDiagCost extends LinearCost {
 	 * @returns {ArgSizeDiagCost}
 	 */
 	static fromParams(params, baseName) {
-		let [a, b] = LinearCost.getParams(params, baseName);
-		let constant = params.getCostModelParameter(`${baseName}-constant`);
+		const [a, b] = LinearCost.getParams(params, baseName);
+		const constant = params.getCostModelParameter(`${baseName}-constant`);
 
 		return new ArgSizeDiagCost(a, b, BigInt(constant));
 	}
@@ -3591,7 +7983,17 @@ class ArgSizeDiagCost extends LinearCost {
  * @property {(params: NetworkParams, baseName: string) => CostModel} fromParams
  */
 
-class UplcBuiltinInfo {
+
+/////////////////////////////////////
+// Section 9: Uplc built-in functions
+/////////////////////////////////////
+
+/**
+ * Cost-model configuration of UplcBuiltin.
+ * Also specifies the number of times a builtin must be 'forced' before being callable.
+ * @package
+ */
+ class UplcBuiltinConfig {
 	#name;
 	#forceCount;
 	#memCostModelClass;
@@ -3640,10 +8042,10 @@ class UplcBuiltinInfo {
 	 */
 	calcCost(params, argSizes) {
 		// Note: instantiating everytime might be slow. Should this be cached (eg. in the params object?)?
-		let [memCostModel, cpuCostModel] = this.instantiateCostModels(params);
+		const [memCostModel, cpuCostModel] = this.instantiateCostModels(params);
 
-		let memCost = memCostModel.calc(argSizes);
-		let cpuCost = cpuCostModel.calc(argSizes);
+		const memCost = memCostModel.calc(argSizes);
+		const cpuCost = cpuCostModel.calc(argSizes);
 
 		return {mem: memCost, cpu: cpuCost};
 	}
@@ -3652,7 +8054,7 @@ class UplcBuiltinInfo {
 	 * @param {NetworkParams} params
 	 */
 	dumpCostModel(params) {
-		let [memCostModel, cpuCostModel] = this.instantiateCostModels(params);
+		const [memCostModel, cpuCostModel] = this.instantiateCostModels(params);
 
 		console.log(`${this.name}-memory-arguments={${memCostModel.dump()},\n${this.name}-cpu-arguments={${cpuCostModel.dump()}}`);
 	}
@@ -3660,11 +8062,12 @@ class UplcBuiltinInfo {
 
 /** 
  * A list of all PlutusScript builins, with associated costmodels (actual costmodel parameters are loaded from NetworkParams during runtime)
- * @type {UplcBuiltinInfo[]} 
+ * @package
+ * @type {UplcBuiltinConfig[]} 
  */
 const UPLC_BUILTINS = (
 	/**
-	 * @returns {UplcBuiltinInfo[]}
+	 * @returns {UplcBuiltinConfig[]}
 	 */
 	function () {
 		/**
@@ -3673,74 +8076,75 @@ const UPLC_BUILTINS = (
 		 * @param {number} forceCount 
 		 * @param {CostModelClass} memCostModel
 		 * @param {CostModelClass} cpuCostModel
-		 * @returns {UplcBuiltinInfo}
+		 * @returns {UplcBuiltinConfig}
 		 */
-		function builtinInfo(name, forceCount, memCostModel, cpuCostModel) {
+		function builtinConfig(name, forceCount, memCostModel, cpuCostModel) {
 			// builtins might need be wrapped in `force` a number of times if they are not fully typed
-			return new UplcBuiltinInfo(name, forceCount, memCostModel, cpuCostModel);
+			return new UplcBuiltinConfig(name, forceCount, memCostModel, cpuCostModel);
 		}
 
 		return [
-			builtinInfo("addInteger",               0, MaxArgSizeCost, MaxArgSizeCost), // 0
-			builtinInfo("subtractInteger",          0, MaxArgSizeCost, MaxArgSizeCost),
-			builtinInfo("multiplyInteger",          0, SumArgSizesCost, SumArgSizesCost),
-			builtinInfo("divideInteger",            0, ArgSizeDiffCost, ArgSizeProdCost),
-			builtinInfo("quotientInteger",          0, ArgSizeDiffCost, ArgSizeProdCost), 
-			builtinInfo("remainderInteger",         0, ArgSizeDiffCost, ArgSizeProdCost),
-			builtinInfo("modInteger",               0, ArgSizeDiffCost, ArgSizeProdCost),
-			builtinInfo("equalsInteger",            0, ConstCost, MinArgSizeCost),
-			builtinInfo("lessThanInteger",          0, ConstCost, MinArgSizeCost),
-			builtinInfo("lessThanEqualsInteger",    0, ConstCost, MinArgSizeCost),
-			builtinInfo("appendByteString",         0, SumArgSizesCost, SumArgSizesCost), // 10
-			builtinInfo("consByteString",           0, SumArgSizesCost, Arg1SizeCost),
-			builtinInfo("sliceByteString",          0, Arg2SizeCost, Arg2SizeCost),
-			builtinInfo("lengthOfByteString",       0, ConstCost, ConstCost),
-			builtinInfo("indexByteString",          0, ConstCost, ConstCost),
-			builtinInfo("equalsByteString",         0, ConstCost, ArgSizeDiagCost),
-			builtinInfo("lessThanByteString",       0, ConstCost, MinArgSizeCost),
-			builtinInfo("lessThanEqualsByteString", 0, ConstCost, MinArgSizeCost),
-			builtinInfo("sha2_256",                 0, ConstCost, Arg0SizeCost),
-			builtinInfo("sha3_256",                 0, ConstCost, Arg0SizeCost),
-			builtinInfo("blake2b_256",              0, ConstCost, Arg0SizeCost), // 20
-			builtinInfo("verifyEd25519Signature",   0, ConstCost, Arg2SizeCost),
-			builtinInfo("appendString",             0, SumArgSizesCost, SumArgSizesCost),
-			builtinInfo("equalsString",             0, ConstCost, ArgSizeDiagCost),
-			builtinInfo("encodeUtf8",               0, Arg0SizeCost, Arg0SizeCost),
-			builtinInfo("decodeUtf8",               0, Arg0SizeCost, Arg0SizeCost),
-			builtinInfo("ifThenElse",               1, ConstCost, ConstCost),
-			builtinInfo("chooseUnit",               1, ConstCost, ConstCost),
-			builtinInfo("trace",                    1, ConstCost, ConstCost),
-			builtinInfo("fstPair",                  2, ConstCost, ConstCost),
-			builtinInfo("sndPair",                  2, ConstCost, ConstCost), // 30
-			builtinInfo("chooseList",               1, ConstCost, ConstCost),
-			builtinInfo("mkCons",                   1, ConstCost, ConstCost),
-			builtinInfo("headList",                 1, ConstCost, ConstCost),
-			builtinInfo("tailList",                 1, ConstCost, ConstCost),
-			builtinInfo("nullList",                 1, ConstCost, ConstCost),
-			builtinInfo("chooseData",               0, ConstCost, ConstCost),
-			builtinInfo("constrData",               0, ConstCost, ConstCost),
-			builtinInfo("mapData",                  0, ConstCost, ConstCost),
-			builtinInfo("listData",                 0, ConstCost, ConstCost),
-			builtinInfo("iData",                    0, ConstCost, ConstCost), // 40
-			builtinInfo("bData",                    0, ConstCost, ConstCost),
-			builtinInfo("unConstrData",             0, ConstCost, ConstCost),
-			builtinInfo("unMapData",                0, ConstCost, ConstCost),
-			builtinInfo("unListData",               0, ConstCost, ConstCost),
-			builtinInfo("unIData",                  0, ConstCost, ConstCost),
-			builtinInfo("unBData",                  0, ConstCost, ConstCost),
-			builtinInfo("equalsData",               0, ConstCost, MinArgSizeCost),
-			builtinInfo("mkPairData",               0, ConstCost, ConstCost),
-			builtinInfo("mkNilData",                0, ConstCost, ConstCost),
-			builtinInfo("mkNilPairData",            0, ConstCost, ConstCost), // 50
-			builtinInfo("serialiseData",            0, Arg0SizeCost, Arg0SizeCost),
-			builtinInfo("verifyEcdsaSecp256k1Signature",   0, ConstCost, ConstCost), // these parameters are from aiken, but the cardano-cli parameter file differ?
-			builtinInfo("verifySchnorrSecp256k1Signature", 0, ConstCost, Arg1SizeCost), // these parameters are from, but the cardano-cli parameter file differs?
+			builtinConfig("addInteger",               0, MaxArgSizeCost, MaxArgSizeCost), // 0
+			builtinConfig("subtractInteger",          0, MaxArgSizeCost, MaxArgSizeCost),
+			builtinConfig("multiplyInteger",          0, SumArgSizesCost, SumArgSizesCost),
+			builtinConfig("divideInteger",            0, ArgSizeDiffCost, ArgSizeProdCost),
+			builtinConfig("quotientInteger",          0, ArgSizeDiffCost, ArgSizeProdCost), 
+			builtinConfig("remainderInteger",         0, ArgSizeDiffCost, ArgSizeProdCost),
+			builtinConfig("modInteger",               0, ArgSizeDiffCost, ArgSizeProdCost),
+			builtinConfig("equalsInteger",            0, ConstCost, MinArgSizeCost),
+			builtinConfig("lessThanInteger",          0, ConstCost, MinArgSizeCost),
+			builtinConfig("lessThanEqualsInteger",    0, ConstCost, MinArgSizeCost),
+			builtinConfig("appendByteString",         0, SumArgSizesCost, SumArgSizesCost), // 10
+			builtinConfig("consByteString",           0, SumArgSizesCost, Arg1SizeCost),
+			builtinConfig("sliceByteString",          0, Arg2SizeCost, Arg2SizeCost),
+			builtinConfig("lengthOfByteString",       0, ConstCost, ConstCost),
+			builtinConfig("indexByteString",          0, ConstCost, ConstCost),
+			builtinConfig("equalsByteString",         0, ConstCost, ArgSizeDiagCost),
+			builtinConfig("lessThanByteString",       0, ConstCost, MinArgSizeCost),
+			builtinConfig("lessThanEqualsByteString", 0, ConstCost, MinArgSizeCost),
+			builtinConfig("sha2_256",                 0, ConstCost, Arg0SizeCost),
+			builtinConfig("sha3_256",                 0, ConstCost, Arg0SizeCost),
+			builtinConfig("blake2b_256",              0, ConstCost, Arg0SizeCost), // 20
+			builtinConfig("verifyEd25519Signature",   0, ConstCost, Arg2SizeCost),
+			builtinConfig("appendString",             0, SumArgSizesCost, SumArgSizesCost),
+			builtinConfig("equalsString",             0, ConstCost, ArgSizeDiagCost),
+			builtinConfig("encodeUtf8",               0, Arg0SizeCost, Arg0SizeCost),
+			builtinConfig("decodeUtf8",               0, Arg0SizeCost, Arg0SizeCost),
+			builtinConfig("ifThenElse",               1, ConstCost, ConstCost),
+			builtinConfig("chooseUnit",               1, ConstCost, ConstCost),
+			builtinConfig("trace",                    1, ConstCost, ConstCost),
+			builtinConfig("fstPair",                  2, ConstCost, ConstCost),
+			builtinConfig("sndPair",                  2, ConstCost, ConstCost), // 30
+			builtinConfig("chooseList",               1, ConstCost, ConstCost),
+			builtinConfig("mkCons",                   1, ConstCost, ConstCost),
+			builtinConfig("headList",                 1, ConstCost, ConstCost),
+			builtinConfig("tailList",                 1, ConstCost, ConstCost),
+			builtinConfig("nullList",                 1, ConstCost, ConstCost),
+			builtinConfig("chooseData",               1, ConstCost, ConstCost),
+			builtinConfig("constrData",               0, ConstCost, ConstCost),
+			builtinConfig("mapData",                  0, ConstCost, ConstCost),
+			builtinConfig("listData",                 0, ConstCost, ConstCost),
+			builtinConfig("iData",                    0, ConstCost, ConstCost), // 40
+			builtinConfig("bData",                    0, ConstCost, ConstCost),
+			builtinConfig("unConstrData",             0, ConstCost, ConstCost),
+			builtinConfig("unMapData",                0, ConstCost, ConstCost),
+			builtinConfig("unListData",               0, ConstCost, ConstCost),
+			builtinConfig("unIData",                  0, ConstCost, ConstCost),
+			builtinConfig("unBData",                  0, ConstCost, ConstCost),
+			builtinConfig("equalsData",               0, ConstCost, MinArgSizeCost),
+			builtinConfig("mkPairData",               0, ConstCost, ConstCost),
+			builtinConfig("mkNilData",                0, ConstCost, ConstCost),
+			builtinConfig("mkNilPairData",            0, ConstCost, ConstCost), // 50
+			builtinConfig("serialiseData",            0, Arg0SizeCost, Arg0SizeCost),
+			builtinConfig("verifyEcdsaSecp256k1Signature",   0, ConstCost, ConstCost), // these parameters are from aiken, but the cardano-cli parameter file differ?
+			builtinConfig("verifySchnorrSecp256k1Signature", 0, ConstCost, Arg1SizeCost), // these parameters are from, but the cardano-cli parameter file differs?
 		];
 	}
 )();
 
 /**
  * Use this function to check cost-model parameters
+ * @package
  * @param {NetworkParams} networkParams
  */
 function dumpCostModels(networkParams) {
@@ -3749,10 +8153,75 @@ function dumpCostModels(networkParams) {
 	}
 }
 
+/**
+ * Returns index of a named builtin
+ * Throws an error if builtin doesn't exist
+ * @param {string} name 
+ * @returns 
+ */
+export function findUplcBuiltin(name) {
+	let i = UPLC_BUILTINS.findIndex(info => { return "__core__" + info.name == name });
+	assert(i != -1, `${name} is not a real builtin`);
+	return i;
+}
 
-/////////////////////////////////////
-// Section 4: Plutus-core AST objects
-/////////////////////////////////////
+/**
+ * Checks if a named builtin exists
+ * @param {string} name 
+ * @param {boolean} strict - if true then throws an error if builtin doesn't exist
+ * @returns {boolean}
+ */
+export function isUplcBuiltin(name, strict = false) {
+	if (name.startsWith("__core")) {
+		if (strict) {
+			void this.findBuiltin(name); // assert that builtin exists
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+
+///////////////////////
+// Section 10: Uplc AST
+///////////////////////
+
+
+/**
+ * A Helios/Uplc Program can have different purposes
+ * @package
+ */
+const ScriptPurpose = {
+	Testing: -1,
+	Minting:  0,
+	Spending: 1,
+	Staking:  2,
+	Module:   3
+};
+
+/**
+ * @package
+ * @param {number} id
+ * @returns {string}
+ */
+ function getPurposeName(id) {
+	switch (id) {
+		case ScriptPurpose.Testing:
+			return "testing";
+		case ScriptPurpose.Minting:
+			return "minting";
+		case ScriptPurpose.Spending:
+			return "spending";
+		case ScriptPurpose.Staking:
+			return "staking";
+		case ScriptPurpose.Module:
+			return "module";
+		default:
+			throw new Error(`unhandled ScriptPurpose ${id}`);
+	}
+}
+
 
 /** 
  * a UplcValue is passed around by Plutus-core expressions.
@@ -3770,6 +8239,7 @@ export class UplcValue {
 
 	/**
 	 * Return a copy of the UplcValue at a different Site.
+     * @package
 	 * @param {Site} newSite 
 	 * @returns {UplcValue}
 	 */
@@ -3777,12 +8247,17 @@ export class UplcValue {
 		throw new Error("not implemented");
 	}
 
+    /**
+     * @package
+     * @type {Site}
+     */
 	get site() {
 		return this.#site;
 	}
 
 	/**
 	 * Size in words (8 bytes, 64 bits) occupied in target node
+     * @package
 	 * @type {number}
 	 */
 	get memSize() {
@@ -3791,6 +8266,7 @@ export class UplcValue {
 
 	/**
 	 * Throws an error because most values can't be called (overridden by UplcAnon)
+     * @package
 	 * @param {UplcRte | UplcStack} rte 
 	 * @param {Site} site 
 	 * @param {UplcValue} value
@@ -3801,6 +8277,7 @@ export class UplcValue {
 	}
 
 	/**
+     * @package
 	 * @param {UplcRte | UplcStack} rte 
 	 * @returns {Promise<UplcValue>}
 	 */
@@ -3910,6 +8387,9 @@ export class UplcValue {
 		throw this.site.typeError(`expected a Plutus-core map, got '${this.toString()}'`);
 	}
 
+    /**
+     * @returns {boolean}
+     */
 	isData() {
 		return false;
 	}
@@ -3922,6 +8402,7 @@ export class UplcValue {
 	}
 
 	/**
+     * @package
 	 * @returns {Promise<UplcValue>}
 	 */
 	force() {
@@ -3929,6 +8410,7 @@ export class UplcValue {
 	}
 
 	/**
+     * @package
 	 * @returns {UplcUnit}
 	 */
 	assertUnit() {
@@ -3943,6 +8425,7 @@ export class UplcValue {
 	}
 
 	/**
+     * @package
 	 * @returns {string}
 	 */
 	typeBits() {
@@ -3951,6 +8434,7 @@ export class UplcValue {
 
 	/**
 	 * Encodes value without type header
+     * @package
 	 * @param {BitWriter} bitWriter
 	 */
 	toFlatValueInternal(bitWriter) {
@@ -3960,6 +8444,7 @@ export class UplcValue {
 	/**
 	 * Encodes value with plutus flat encoding.
 	 * Member function not named 'toFlat' as not to confuse with 'toFlat' member of terms.
+     * @package
 	 * @param {BitWriter} bitWriter
 	 */
 	toFlatValue(bitWriter) {
@@ -3968,6 +8453,11 @@ export class UplcValue {
 		this.toFlatValueInternal(bitWriter);
 	}
 }
+
+/**
+ * @package
+ * @typedef {[?string, UplcValue][]} UplcRawStack
+ */
 
 /**
 * @typedef {object} UplcRTECallbacks
@@ -3980,15 +8470,16 @@ export class UplcValue {
 /**
  * @type {UplcRTECallbacks}
  */
-const DEFAULT_UPLC_RTE_CALLBACKS = {
-	onPrint: async function (msg) {return},
-	onStartCall: async function(site, rawStack) {return false},
-	onEndCall: async function(site, rawStack) {return},
-	onIncrCost: function(cost) {return},
+export const DEFAULT_UPLC_RTE_CALLBACKS = {
+	onPrint: async function (/** @type {string} */ msg) {return},
+	onStartCall: async function(/** @type {Site} */ site, /** @type {UplcRawStack} */ rawStack) {return false},
+	onEndCall: async function(/** @type {Site} */ site, /** @type {UplcRawStack} */ rawStack) {return},
+	onIncrCost: function(/** @type {Cost} */ cost) {return},
 }
 
 /**
  * Plutus-core Runtime Environment is used for controlling the programming evaluation (eg. by a debugger)
+ * @package
  */
 class UplcRte {
 	#callbacks;
@@ -4334,6 +8825,7 @@ class UplcStack {
 /**
  * Anonymous Plutus-core function.
  * Returns a new UplcAnon whenever it is called/applied (args are 'accumulated'), except final application, when the function itself is evaluated.
+ * @package
  */
 class UplcAnon extends UplcValue {
 	/**
@@ -4506,6 +8998,9 @@ class UplcAnon extends UplcValue {
 	}
 }
 
+/**
+ * @package
+ */
 class UplcDelayedValue extends UplcValue {
 	#evaluator;
 
@@ -4617,13 +9112,7 @@ export class UplcInt extends UplcValue {
 	 * @type {number}
 	 */
 	get memSize() {
-		if (this.#value == 0n) {
-			return 1;
-		} else {
-			let abs = this.#value > 0 ? this.#value : -this.#value;
-
-			return Math.floor(Math.floor(Math.log2(Number(abs)))/64) + 1;
-		}
+        return IntData.memSizeInternal(this.#value);
 	}
 
 	/**
@@ -4660,7 +9149,8 @@ export class UplcInt extends UplcValue {
 	}
 
 	/**
-	 * Combines a list of Plutus-core bytes into a bigint (leading bit of each byte is ignored)
+	 * Combines a list of Plutus-core bytes into a bigint (leading bit of each byte is ignored).
+     * Differs from bytesToBigInt in utils.js because only 7 bits are used from each byte.
 	 * @param {number[]} bytes
 	 * @returns {bigint}
 	 */
@@ -4828,12 +9318,7 @@ export class UplcByteArray extends UplcValue {
 	 * @type {number}
 	 */
 	get memSize() {
-		let n = this.#bytes.length;
-		if (n === 0) {
-			return 1; // this is so annoying: haskell reference implementation says it should be 0, but current (20220925) testnet and mainnet settings say it's 1
-		} else {
-			return Math.floor((this.#bytes.length - 1)/8) + 1;
-		}
+        return ByteArrayData.memSizeInternal(this.#bytes);
 	}
 
 	/**
@@ -5250,6 +9735,7 @@ export class UplcPair extends UplcValue {
 /**
  * Plutus-core pair value class that only contains data
  * Only used during evaluation.
+ * @package
  */
 class UplcMapItem extends UplcValue {
 	#key;
@@ -5591,6 +10077,7 @@ export class UplcDataValue extends UplcValue {
 
 /**
  * Base class of Plutus-core terms
+ * @package
  */
 class UplcTerm {
 	#site;
@@ -5641,6 +10128,7 @@ class UplcTerm {
 
 /**
  * Plutus-core variable ref term (index is a Debruijn index)
+ * @package
  */
 class UplcVariable extends UplcTerm {
 	#index;
@@ -5683,6 +10171,7 @@ class UplcVariable extends UplcTerm {
 
 /**
  * Plutus-core delay term.
+ * @package
  */
 class UplcDelay extends UplcTerm {
 	#expr;
@@ -5724,6 +10213,7 @@ class UplcDelay extends UplcTerm {
 
 /**
  * Plutus-core lambda term
+ * @package
  */
 class UplcLambda extends UplcTerm {
 	#rhs;
@@ -5771,6 +10261,7 @@ class UplcLambda extends UplcTerm {
 
 /**
  * Plutus-core function application term (i.e. function call)
+ * @package
  */
 class UplcCall extends UplcTerm {
 	#a;
@@ -5819,6 +10310,7 @@ class UplcCall extends UplcTerm {
 
 /**
  * Plutus-core const term (i.e. a literal in conventional sense)
+ * @package
  */
 class UplcConst extends UplcTerm {
 	#value;
@@ -5871,6 +10363,7 @@ class UplcConst extends UplcTerm {
 
 /**
  * Plutus-core force term
+ * @package
  */
 class UplcForce extends UplcTerm {
 	#expr;
@@ -5912,6 +10405,7 @@ class UplcForce extends UplcTerm {
 
 /**
  * Plutus-core error term
+ * @package
  */
 class UplcError extends UplcTerm {
 	/** 'msg' is only used for debuggin and doesn't actually appear in the final program */
@@ -5952,6 +10446,7 @@ class UplcError extends UplcTerm {
 
 /**
  * Plutus-core builtin function ref term
+ * @package
  */
 class UplcBuiltin extends UplcTerm {
 	/** unknown builtins stay integers */
@@ -6253,7 +10748,13 @@ class UplcBuiltin extends UplcTerm {
 				});
 			case "chooseUnit":
 				// what is the point of this function?
-				throw new Error("no immediate need, so don't bother yet");
+				return new UplcAnon(this.site, rte, 2, (callSite, _, a, b) => {
+					rte.calcAndIncrCost(this, a, b);
+
+					a.assertUnit();
+
+					return b.copy(callSite);
+				});
 			case "trace":
 				return new UplcAnon(this.site, rte, 2, (callSite, _, a, b) => {
 					rte.calcAndIncrCost(this, a, b);
@@ -6563,7 +11064,7 @@ class UplcBuiltin extends UplcTerm {
 		let v = this.evalInternal(rte);
 
 		if  (typeof this.#name === 'string') {
-			let nForce = UPLC_BUILTINS[IRScope.findBuiltin("__core__" + this.#name)].forceCount;
+			let nForce = UPLC_BUILTINS[findUplcBuiltin("__core__" + this.#name)].forceCount;
 
 			for  (let i = 0; i < nForce; i++) {
 				const vPrev = v;
@@ -6576,10 +11077,48 @@ class UplcBuiltin extends UplcTerm {
 	}
 }
 
+
+
+///////////////////////////
+// Section 11: Uplc program
+///////////////////////////
+
+/**
+ * This library uses version "1.0.0" of Plutus-core
+ * @package
+ */
+const UPLC_VERSION_COMPONENTS = [1n, 0n, 0n];
+
+ /**
+  * i.e. "1.0.0"
+  * @package
+  * @type {string}
+  */
+const UPLC_VERSION = UPLC_VERSION_COMPONENTS.map(c => c.toString()).join(".");
+
+/**
+ * This library uses V2 of the Plutus Ledger API, and is no longer compatible with V1
+ * @package
+ */
+const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
+
+/**
+ * @package
+ * @type {Object.<string, number>}
+ */
+ const UPLC_TAG_WIDTHS = {
+	term:      4,
+	type:      3,
+	constType: 4,
+	builtin:   7,
+	constant:  4,
+	kind:      1
+};
+
 /**
  * Plutus-core program class
  */
-export class UplcProgram {
+ export class UplcProgram {
 	#version;
 	#expr;
 	#purpose;
@@ -6722,18 +11261,22 @@ export class UplcProgram {
 	 * Wrap the top-level term with consecutive UplcCall terms
 	 * No checks are performed whether this makes sense or not, so beware
 	 * Throws an error if you are trying to apply an  with anon func.
-	 * @param {UplcValue[]} args
+	 * @param {(UplcValue | HeliosData)[]} args
 	 * @returns {UplcProgram} - a new UplcProgram instance
 	 */
 	apply(args) {
 		let expr = this.expr;
 
 		for (let arg of args) {
-			if (arg instanceof UplcAnon) {
-				throw new Error("UplcAnon cannot be applied to UplcProgram");
+			if (arg instanceof UplcValue) {
+				if (arg instanceof UplcAnon) {
+					throw new Error("UplcAnon cannot be applied to UplcProgram");
+				}
+				
+				expr = new UplcCall(arg.site, expr, new UplcConst(arg));
+			} else if (arg instanceof HeliosData) {
+				expr = new UplcCall(Site.dummy(), expr, new UplcConst(new UplcDataValue(Site.dummy(), arg._toUplcData())));
 			}
-			
-			expr = new UplcCall(arg.site, expr, new UplcConst(arg));
 		}
 
 		return new UplcProgram(expr, this.#purpose, this.#version);
@@ -6746,8 +11289,6 @@ export class UplcProgram {
 	 * @returns {Promise<UplcValue | UserError>}
 	 */
 	async run(args, callbacks = DEFAULT_UPLC_RTE_CALLBACKS, networkParams = null) {
-		let globalCallSite = new Site(this.site.src, this.site.src.length);
-
 		try {
 			return await this.runInternal(args, callbacks, networkParams);
 		} catch (e) {
@@ -6767,15 +11308,15 @@ export class UplcProgram {
 		/**
 		 * @type {string[]}
 		 */
-		let messages = [];
+		const messages = [];
 
-		let callbacks = Object.assign({}, DEFAULT_UPLC_RTE_CALLBACKS);
+		const callbacks = Object.assign({}, DEFAULT_UPLC_RTE_CALLBACKS);
 
 		callbacks.onPrint = async function(msg) {
 			messages.push(msg);
 		};
 
-		let res = await this.run(args, callbacks);
+		const res = await this.run(args, callbacks);
 
 		return [res, messages];
 	}
@@ -6915,1874 +11456,393 @@ export class UplcProgram {
 	}
 }
 
-
-/////////////////////////////////
-// Section 5: Plutus data objects
-/////////////////////////////////
-
 /**
- * @typedef {(bytes: number[]) => void} Decoder
+ * Plutus-core deserializer creates a Plutus-core form an array of bytes
  */
-
-/**
- * @typedef {(i: number, bytes: number[]) => void} IDecoder
- */
-
-/**
- * Base class of any CBOR serializable data class
- * Also contains helper methods for (de)serializing data to/from CBOR
- */
-export class CborData {
-	constructor() {
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {number} m - major type
-	 * @param {bigint} n - size parameter
-	 * @returns {number[]} - uint8 bytes
-	 */
-	static encodeHead(m, n) {
-		if (n <= 23n) {
-			return [32*m + Number(n)];
-		} else if (n >= 24n && n <= 255n) {
-			return [32*m + 24, Number(n)];
-		} else if (n >= 256n && n <= 256n*256n - 1n) {
-			return [32*m + 25, Number((n/256n)%256n), Number(n%256n)];
-		} else if (n >= 256n*256n && n <= 256n*256n*256n*256n - 1n) {
-			let e4 = bigIntToBytes(n);
-
-			while (e4.length < 4) {
-				e4.unshift(0);
-			}
-			return [32*m + 26].concat(e4);
-		} else if (n >= 256n*256n*256n*256n && n <= 256n*256n*256n*256n*256n*256n*256n*256n - 1n) {
-			let e8 = bigIntToBytes(n);
-
-			while(e8.length < 8) {
-				e8.unshift(0);
-			}
-			return [32*m + 27].concat(e8);
-		} else {
-			throw new Error("n out of range");
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes - mutated to contain the rest
-	 * @returns {[number, bigint]} - [majorType, n]
-	 */
-	static decodeHead(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor head");
-		}
-
-		let first = assertDefined(bytes.shift());
-
-		if (first%32 <= 23) {
-			return [idiv(first, 32), BigInt(first%32)];
-		} else if (first%32 == 24) {
-			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 1))];
-		} else if (first%32 == 25) {
-			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 2))];
-		} else if (first%32 == 26) {
-			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 4))];
-		} else if (first%32 == 27) {
-			return [idiv(first, 32), bytesToBigInt(bytes.splice(0, 8))];
-		} else {
-			throw new Error("bad header");
-		}
-	}
-
-	/**
-	 * @param {number} m 
-	 * @returns {number[]}
-	 */
-	static encodeIndefHead(m) {
-		return [32*m + 31];
-	}
-
-	/**
-	 * @param {number[]} bytes - cbor bytes
-	 * @returns {number} - majorType
-	 */
-	static decodeIndefHead(bytes) {
-		let first = assertDefined(bytes.shift());
-
-		let m = idiv(first - 31, 32);
-		
-		return m;
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isNull(bytes) {
-		return bytes[0] == 246;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	static encodeNull() {
-		return [246];
-	}
-
-	/**
-	 * Throws error if not null
-	 * @param {number[]} bytes 
-	 */
-	static decodeNull(bytes) {
-		let b = assertDefined(bytes.shift());
-
-		if (b != 246) {
-			throw new Error("not null");
-		}
-	}
-
-	/**
-	 * @param {boolean} b
-	 * @returns {number[]}
-	 */
-	static encodeBool(b) {
-		if (b) {
-			return [245];
-		} else {
-			return [244];
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean}
-	 */
-	static decodeBool(bytes) {
-		let b = assertDefined(bytes.shift());
-
-		if (b == 245) {
-			return true;
-		} else if (b == 244) {
-			return false;
-		} else {
-			throw new Error("unexpected non-boolean cbor object");
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean} 
-	 */
-	static isDefBytes(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor bytes");
-		}
-
-		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
-
-		return m == 2;
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isIndefBytes(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor bytes");
-		}
-
-		return 2*32 + 31 == bytes[0];
-	}
-
-	/**
-	 * @example
-	 * bytesToHex(CborData.encodeBytes(hexToBytes("4d01000033222220051200120011"))) => "4e4d01000033222220051200120011"
-	 * @param {number[]} bytes 
-	 * @param {boolean} splitInChunks
-	 * @returns {number[]} - cbor bytes
-	 */
-	static encodeBytes(bytes, splitInChunks = false) {
-		bytes = bytes.slice();
-
-		if (bytes.length <= 64 || !splitInChunks) {
-			let head = CborData.encodeHead(2, BigInt(bytes.length));
-			return head.concat(bytes);
-		} else {
-			let res = CborData.encodeIndefHead(2);
-
-			while (bytes.length > 0) {
-				let chunk = bytes.splice(0, 64);
-
-				res = res.concat(CborData.encodeHead(2, BigInt(chunk.length))).concat(chunk);
-			}
-
-			res.push(255);
-
-			return res;
-		}
-	}
-
-	/**
-	 * Decodes both an indef array of bytes, and a bytearray of specified length
-	 * @example
-	 * bytesToHex(CborData.decodeBytes(hexToBytes("4e4d01000033222220051200120011"))) => "4d01000033222220051200120011"
-	 * @param {number[]} bytes - cborbytes, mutated to form remaining
-	 * @returns {number[]} - byteArray
-	 */
-	static decodeBytes(bytes) {
-		// check header type
-		assert(bytes.length > 0);
-
-		if (CborData.isIndefBytes(bytes)) {
-			// multiple chunks
-			void bytes.shift();
-
-			/**
-			 * @type {number[]}
-			 */
-			let res = [];
-
-			while(bytes[0] != 255) {
-				let [_, n] = CborData.decodeHead(bytes);
-				if (n > 64n) {
-					throw new Error("bytearray chunk too large");
-				}
-
-				res = res.concat(bytes.splice(0, Number(n)));
-			}
-
-			assert(bytes.shift() == 255);
-
-			return res;
-		} else {
-			let [_, n] = CborData.decodeHead(bytes);
-
-			return bytes.splice(0, Number(n));
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean}
-	 */
-	static isUtf8(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor bytes");
-		}
-
-		return bytes[0] === 120;
-	}
-
-	/**
-	 * Encodes a Utf8 string into Cbor bytes.
-	 * Strings longer than 64 bytes are split into lists with 64 byte chunks
-	 * Note: string splitting isn't reversible 
-	 * @param {string} str
-	 * @param {boolean} split
-	 * @returns {number[]}
-	 */
-	static encodeUtf8(str, split = false) {
-		const bytes = textToBytes(str);
-		
-		if (split && bytes.length > 64) {
-			/** @type {number[][]} */
-			const chunks = [];
-
-			for (let i = 0; i < bytes.length; i += 64) {
-				const chunk = bytes.slice(i, i + 64);
-
-				chunks.push([120, chunk.length].concat(chunk));
-			}
-
-			return CborData.encodeDefList(chunks);
-		} else {
-			return [120, bytes.length].concat(bytes);
-		}
-	}
-
-	/**
-	* @param {number[]} bytes
-	* @returns {string}
-	*/
-	static decodeUtf8Internal(bytes) {
-		assert(bytes.shift() === 120);
-
-		const length = bytes.shift();
-
-		return bytesToText(bytes.splice(0, length));
-	}
-
-	/**
-	* @param {number[]} bytes
-	* @returns {string}
-	*/
-	static decodeUtf8(bytes) {
-		assert(bytes.length > 0);
-		
-		if (CborData.isDefList(bytes)) {
-			let result = "";
-
-			CborData.decodeList(bytes, itemBytes => {
-				result += CborData.decodeUtf8Internal(itemBytes);
-			});
-
-			return result;
-		} else {
-			return CborData.decodeUtf8Internal(bytes);
-		}
-	}
-
-	/**
-	 * @param {bigint} n
-	 * @returns {number[]} - cbor bytes
-	 */
-	static encodeInteger(n) {
-		if (n >= 0n && n <= (2n << 63n) - 1n) {
-			return CborData.encodeHead(0, n);
-		} else if (n >= (2n << 63n)) {
-			return CborData.encodeHead(6, 2n).concat(CborData.encodeBytes(bigIntToBytes(n)));
-		} else if (n <= -1n && n >= -(2n << 63n)) {
-			return CborData.encodeHead(1, -n - 1n);
-		} else {
-			return CborData.encodeHead(6, 3n).concat(CborData.encodeBytes(bigIntToBytes(-n - 1n)));
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {bigint}
-	 */
-	static decodeInteger(bytes) {
-		let [m, n] = CborData.decodeHead(bytes);
-
-		if (m == 0) {
-			return n;
-		} else if (m == 1) {
-			return -n - 1n;
-		} else if (m == 6) {
-			if (n == 2n) {
-				let b = CborData.decodeBytes(bytes);
-
-				return bytesToBigInt(b);
-			} else if (n == 3n) {
-				let b = CborData.decodeBytes(bytes);
-
-				return -bytesToBigInt(b) - 1n;
-			} else {
-				throw new Error(`unexpected tag n:${n}`);
-			}
-		} else {
-			throw new Error(`unexpected tag m:${m}`);
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isIndefList(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor bytes");
-		}
-
-		return 4*32 + 31 == bytes[0];
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	static encodeIndefListStart() {
-		return CborData.encodeIndefHead(4);
-	}
-
-	/**
-	 * @param {CborData[] | number[][]} list 
-	 * @returns {number[]}
-	 */
-	static encodeListInternal(list) {
-		/**
-		 * @type {number[]}
-		 */
-		let res = [];
-		for (let item of list) {
-			if (item instanceof CborData) {
-				res = res.concat(item.toCbor());
-			} else {
-				res = res.concat(item);
-			}
-		}
-
-		return res;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	static encodeIndefListEnd() {
-		return [255];
-	}
-
-	/**
-	 * @param {CborData[] | number[][]} list 
-	 * @returns {number[]}
-	 */
-	static encodeIndefList(list) {
-		return CborData.encodeIndefListStart().concat(CborData.encodeListInternal(list)).concat(CborData.encodeIndefListEnd());
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean}
-	 */
-	static isDefList(bytes) {
-		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
-
-		return m == 4;
-	}
-
-	/**
-	 * @param {bigint} n
-	 * @returns {number[]}
-	 */
-	static encodeDefListStart(n) {
-		return CborData.encodeHead(4, n);
-	}
-
-	/**
-	 * @param {CborData[] | number[][]} list 
-	 * @returns {number[]}
-	 */
-	static encodeDefList(list) {
-		return CborData.encodeDefListStart(BigInt(list.length)).concat(CborData.encodeListInternal(list));
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean}
-	 */
-	static isList(bytes) {
-		return CborData.isIndefList(bytes) || CborData.isDefList(bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @param {Decoder} itemDecoder
-	 */
-	static decodeList(bytes, itemDecoder) {
-		if (CborData.isIndefList(bytes)) {
-			assert(CborData.decodeIndefHead(bytes) == 4);
-
-			while(bytes[0] != 255) {
-				itemDecoder(bytes);
-			}
+ class UplcDeserializer extends BitReader {
 	
-			assert(bytes.shift() == 255);
-		} else {
-			let [m, n] = CborData.decodeHead(bytes);
-
-			assert(m == 4);
-
-			for (let i = 0; i < Number(n); i++) {
-				itemDecoder(bytes);
-			}
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isTuple(bytes) {
-		return CborData.isIndefList(bytes) || CborData.isDefList(bytes);
-	}
-
-	/**
-	 * @param {number[][]} tuple
-	 * @returns {number[]}
-	 */
-	static encodeTuple(tuple) {
-		return CborData.encodeDefList(tuple);
-	}
-
-
-	/**
-	 * @param {number[]} bytes 
-	 * @param {IDecoder} tupleDecoder 
-	 * @returns {number} - returns the size of the tuple
-	 */
-	static decodeTuple(bytes, tupleDecoder) {
-		let count = 0;
-
-		CborData.decodeList(bytes, (itemBytes) => {
-			tupleDecoder(count, itemBytes);
-			count++;
-		});
-
-		return count;
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {boolean}
-	 */
-	static isMap(bytes) {
-		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
-
-		return m == 5;
-	}
-
-	/**
-	 * @param {[CborData | number[], CborData | number[]][]} pairList
-	 * @returns {number[]}
-	 */
-	static encodeMapInternal(pairList) {
-		/**
-		 * @type {number[]}
-		 */
-		let res = [];
-
-		for (let pair of pairList) {
-			let key = pair[0];
-			let value = pair[1];
-
-			if (key instanceof CborData) {
-				res = res.concat(key.toCbor());
-			} else {
-				res = res.concat(key);
-			}
-
-			if (value instanceof CborData) {
-				res = res.concat(value.toCbor());
-			} else {
-				res = res.concat(value);
-			}
-		}
-
-		return res;
-	}
-
-	/**
-	 * A decode map method doesn't exist because it specific for the requested type
-	 * @param {[CborData | number[], CborData | number[]][]} pairList 
-	 * @returns {number[]}
-	 */
-	static encodeMap(pairList) {
-		return CborData.encodeHead(5, BigInt(pairList.length)).concat(CborData.encodeMapInternal(pairList));
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @param {Decoder} pairDecoder
-	 */
-	static decodeMap(bytes, pairDecoder) {
-		let [m, n] = CborData.decodeHead(bytes);
-
-		assert(m == 5);
-
-		for (let i = 0; i < n; i++) {
-			pairDecoder(bytes);
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isObject(bytes) {
-		return CborData.isMap(bytes);
-	}
-
-	/**
-	 * @param {Map<number, CborData | number[]>} object
-	 * @returns {number[]}
-	 */
-	static encodeObject(object) {
-		return CborData.encodeMap(Array.from(object.entries()).map(pair => [
-			CborData.encodeInteger(BigInt(pair[0])),
-			pair[1]
-		]));
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @param {IDecoder} fieldDecoder
-	 * @returns {Set<number>}
-	 */
-	static decodeObject(bytes, fieldDecoder) {
-		/** @type {Set<number>} */
-		let done = new Set();
-
-		CborData.decodeMap(bytes, pairBytes => {
-			let i = Number(CborData.decodeInteger(pairBytes));
-
-			fieldDecoder(i, pairBytes);
-			done.add(i);
-		});
-
-		return done;
-	}
-
-	/**
-	 * Unrelated to constructor
-	 * @param {bigint} tag
-	 * @returns {number[]}
-	 */
-	static encodeTag(tag) {
-		return CborData.encodeHead(6, tag);
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {bigint}
-	 */
-	static decodeTag(bytes) {
-		let [m, n] = CborData.decodeHead(bytes);
-
-		assert(m == 6);
-
-		return n;
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {boolean}
-	 */
-	static isConstr(bytes) {
-		if (bytes.length == 0) {
-			throw new Error("empty cbor bytes");
-		}
-
-		let [m, _] = CborData.decodeHead(bytes.slice(0, 9));
-
-		return m == 6;
-	}
-
-	/**
-	 * Encode a constructor tag of a ConstrData type
-	 * @param {number} tag 
-	 * @returns {number[]}
-	 */
-	static encodeConstrTag(tag) {
-		if (tag >= 0 && tag <= 6) {
-			return CborData.encodeHead(6, 121n + BigInt(tag));
-		} else if (tag >= 7 && tag <= 127) {
-			return CborData.encodeHead(6, 1280n + BigInt(tag - 7));
-		} else {
-			return CborData.encodeHead(6, 102n).concat(CborData.encodeHead(4, 2n)).concat(CborData.encodeInteger(BigInt(tag)));
-		}
-	}
-
-	/**
-	 * @param {number} tag 
-	 * @param {CborData[] | number[][]} fields 
-	 * @returns {number[]}
-	 */
-	static encodeConstr(tag, fields) {
-		return CborData.encodeConstrTag(tag).concat(CborData.encodeIndefList(fields));
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {number}
-	 */
-	static decodeConstrTag(bytes) {
-		// constr
-		let [m, n] = CborData.decodeHead(bytes);
-
-		assert(m == 6);
-
-		if (n < 127n) {
-			return Number(n - 121n);
-		} else if (n == 102n) {
-			let [mCheck, nCheck] = CborData.decodeHead(bytes);
-			assert(mCheck == 4 && nCheck == 2n);
-
-			return Number(CborData.decodeInteger(bytes));
-		} else {
-			return Number(n - 1280n + 7n);
-		}
-	}
-
-	/**
-	 * Returns the tag
-	 * @param {number[]} bytes 
-	 * @param {Decoder} fieldDecoder 
-	 * @returns {number}
-	 */
-	static decodeConstr(bytes, fieldDecoder) {
-		let tag = CborData.decodeConstrTag(bytes);
-
-		CborData.decodeList(bytes, fieldDecoder);
-
-		return tag;
-	}
-}
-
-/**
- * Base class for Plutus-core data classes (not the same as Plutus-core value classes!)
- */
-export class UplcData extends CborData {
-	constructor() {
-		super();
-	}
-
-	/**
-	 * Estimate of memory usage during validation
-	 * @type {number}
-	 */
-	get memSize() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Compares the schema jsons
-	 * @param {UplcData} other 
-	 * @returns {boolean}
-	 */
-	isSame(other) {
-		return this.toSchemaJson() == other.toSchemaJson();
-	}
-
-	/**
-	 * @type {number[]}
-	 */
-	get bytes() {
-		throw new Error("not a bytearray");
-	}
-
-	/**
-	 * @type {bigint}
-	 */
-	get int() {
-		throw new Error("not an int");
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get index() {
-		throw new Error("not a constr");
-	}
-
-	/**
-	 * @type {UplcData[]}
-	 */
-	get fields() {
-		throw new Error("not a constr");
-	}
-
-	/**
-	 * @type {UplcData[]}
-	 */
-	get list() {
-		throw new Error("not a list");
-	}
-
-	/**
-	 * @type {[UplcData, UplcData][]}
-	 */
-	get map() {
-		throw new Error("not a map");
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	toIR() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toSchemaJson() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {UplcData}
-	 */
-	static fromCbor(bytes) {
-		if (CborData.isIndefList(bytes)) {	
-			return ListData.fromCbor(bytes);		
-		} else if (CborData.isIndefBytes(bytes)) {
-			return ByteArrayData.fromCbor(bytes);
-		} else {
-			if (CborData.isDefBytes(bytes)) {
-				return ByteArrayData.fromCbor(bytes);
-			} else if (CborData.isMap(bytes)) {
-				return MapData.fromCbor(bytes);
-			} else if (CborData.isConstr(bytes)) {
-				return ConstrData.fromCbor(bytes);
-			} else {
-				// int, must come last
-				return IntData.fromCbor(bytes);
-			}
-		}
-	}
-}
-
-/**
- * Plutus-core int data class
- */
-export class IntData extends UplcData {
-	#value;
-
-	/**
-	 * @param {bigint} value 
-	 */
-	constructor(value) {
-		super();
-		this.#value = value;
-	}
-
-	/**
-	 * @type {bigint}
-	 */
-	get value() {
-		return this.#value;
-	}
-
-	/**
-	 * Alias getter
-	 * @type {bigint}
-	 */
-	get int() {
-		return this.#value;
-	}
-	
-	/**
-	 * @type {number}
-	 */
-	get memSize() {
-		return UPLC_DATA_NODE_MEM_SIZE + (new UplcInt(Site.dummy(), this.#value)).memSize;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#value.toString();
-	}
-
-	/**
-	 * Returns integer literal wrapped with integer data function call.
-	 * @returns {IR}
-	 */
-	toIR() {
-		return new IR(`__core__iData(${this.#value.toString()})`);
-	}
-
-	/**
-	 * Returns string, not js object, because of unbounded integers 
-	 * @returns {string}
-	 */
-	toSchemaJson() {
-		return `{"int": ${this.#value.toString()}}`;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeInteger(this.#value);
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {IntData}
-	 */
-	static fromCbor(bytes) {
-		return new IntData(CborData.decodeInteger(bytes));
-	}
-}
-
-/**
- * Plutus-core bytearray data class.
- * Wraps a regular list of uint8 numbers (so not Uint8Array)
- */
-export class ByteArrayData extends UplcData {
-	#bytes;
-
 	/**
 	 * @param {number[]} bytes 
 	 */
 	constructor(bytes) {
-		super();
-		this.#bytes = bytes;
+		super(bytes);
 	}
 
 	/**
-	 * Applies utf-8 encoding
-	 * @param {string} s 
-	 * @returns {ByteArrayData}
+	 * @param {string} category 
+	 * @returns {number}
 	 */
-	static fromString(s) {
-		let bytes = textToBytes(s);
+	tagWidth(category) {
+		assert(category in UPLC_TAG_WIDTHS, `unknown tag category ${category.toString()}`);
 
-		return new ByteArrayData(bytes);
-	}
-
-	get bytes() {
-		return this.#bytes.slice();
-	}
-
-	get memSize() {
-		return UPLC_DATA_NODE_MEM_SIZE + (new UplcByteArray(Site.dummy(), this.#bytes)).memSize;
+		return UPLC_TAG_WIDTHS[category];
 	}
 
 	/**
-	 * @returns {string}
+	 * Returns the name of a known builtin
+	 * Returns the integer id if id is out of range (thus if the builtin is unknown)
+	 * @param {number} id
+	 * @returns {string | number}
 	 */
-	toHex() {
-		return bytesToHex(this.#bytes);
-	}
+	builtinName(id) {
+		let all = UPLC_BUILTINS;
 
-	toString() {
-		return `#${this.toHex()}`;
-	}
-
-	/**
-	 * Returns bytearray literal wrapped with bytearray data function as IR.
-	 * @returns {IR}
-	 */
-	toIR() {
-		return new IR(`__core__bData(#${this.toHex()})`);
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toSchemaJson() {
-		return `{"bytes": "${this.toHex()}"}`;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeBytes(this.#bytes, true);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {ByteArrayData}
-	 */
-	static fromCbor(bytes) {
-		return new ByteArrayData(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * Bytearray comparison, which can be used for sorting bytearrays
-	 * @param {number[]} a
-	 * @param {number[]} b
-	 * @returns {number} - 0 -> equals, 1 -> gt, -1 -> lt
-	 */
-	static comp(a, b) {
-		/** @return {boolean} */
-		function lessThan() {
-			for (let i = 0; i < Math.min(a.length, b.length); i++) {
-				if (a[i] != b[i]) {
-					return a[i] < b[i];
-				} 
-			}
-
-			return a.length < b.length;
-		}
-
-		/** @return {number} */
-		function lessOrGreater() {
-			return lessThan() ? -1 : 1;	
-		}
-
-		if (a.length != b.length) {
-			return lessOrGreater();
+		if (id >= 0 && id < all.length) {
+			return all[id].name;
 		} else {
-			for (let i = 0; i < a.length; i++) {
-				if (a[i] != b[i]) {
-					return lessOrGreater();
-				}
+			console.error(`Warning: builtin id ${id.toString()} out of range`);
+
+			return id;
+		}
+	}
+
+	/**
+	 * Reads a Plutus-core list with a specified size per element
+	 * Calls itself recursively until the end of the list is reached
+	 * @param {number} elemSize 
+	 * @returns {number[]}
+	 */
+	readLinkedList(elemSize) {
+		// Cons and Nil constructors come from Lisp/Haskell
+		//  cons 'a' creates a linked list node,
+		//  nil      creates an empty linked list
+		let nilOrCons = this.readBits(1);
+
+		if (nilOrCons == 0) {
+			return [];
+		} else {
+			return [this.readBits(elemSize)].concat(this.readLinkedList(elemSize));
+		}
+	}
+
+	/**
+	 * Reads a single UplcTerm
+	 * @returns {UplcTerm}
+	 */
+	readTerm() {
+		let tag = this.readBits(this.tagWidth("term"));
+
+		switch (tag) {
+			case 0:
+				return this.readVariable();
+			case 1:
+				return this.readDelay();
+			case 2:
+				return this.readLambda();
+			case 3:
+				return this.readCall(); // aka function application
+			case 4:
+				return this.readConstant();
+			case 5:
+				return this.readForce();
+			case 6:
+				return new UplcError(Site.dummy());
+			case 7:
+				return this.readBuiltin();
+			default:
+				throw new Error("term tag " + tag.toString() + " unhandled");
+		}
+	}
+
+	/**
+	 * Reads a single unbounded integer
+	 * @param {boolean} signed 
+	 * @returns {UplcInt}
+	 */
+	readInteger(signed = false) {
+		let bytes = [];
+
+		let b = this.readByte();
+		bytes.push(b);
+
+		while (!UplcInt.rawByteIsLast(b)) {
+			b = this.readByte();
+			bytes.push(b);
+		}
+
+		// strip the leading bit
+		let res = new UplcInt(Site.dummy(), UplcInt.bytesToBigInt(bytes.map(b => UplcInt.parseRawByte(b))), false); // raw int is unsigned
+
+		if (signed) {
+			res = res.toSigned(); // unzigzag is performed here
+		}
+
+		return res;
+	}
+
+	/**
+	 * Reads bytearray or string characters
+	 * @returns {number[]}
+	 */
+	readBytes() {
+		this.moveToByteBoundary(true);
+
+		let bytes = [];
+
+		let nChunk = this.readByte();
+
+		while (nChunk > 0) {
+			for (let i = 0; i < nChunk; i++) {
+				bytes.push(this.readByte());
 			}
 
-			return 0;
-		}
-	}
-}
-
-/**
- * Plutus-core list data class
- */
-export class ListData extends UplcData {
-	#items;
-
-	/**
-	 * @param {UplcData[]} items 
-	 */
-	constructor(items) {
-		super();
-		this.#items = items;
-	}
-
-	/**
-	 * @type {UplcData[]}
-	 */
-	get list() {
-		return this.#items.slice();
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get memSize() {
-		let sum = UPLC_DATA_NODE_MEM_SIZE;
-
-		for (let item of this.#items) {
-			sum += item.memSize;
+			nChunk = this.readByte();
 		}
 
-		return sum;
-	}
-
-	toString() {
-		return `[${this.#items.map(item => item.toString()).join(", ")}]`;
+		return bytes;
 	}
 
 	/**
-	 * @returns {IR}
+	 * Reads a literal bytearray
+	 * @returns {UplcByteArray}
 	 */
-	toIR() {
-		let ir = new IR("__core__mkNilData(())");
-		for (let i = this.#items.length - 1; i >= 0; i--) {
-			ir = new IR([new IR("__core__mkCons("), this.#items[i].toIR(), new IR(", "), ir, new IR(")")]);
+	readByteArray() {
+		let bytes = this.readBytes();
+
+		return new UplcByteArray(Site.dummy(), bytes);
+	}
+
+	/**
+	 * Reads a literal string
+	 * @returns {UplcString}
+	 */
+	readString() {
+		let bytes = this.readBytes();
+
+		let s = bytesToText(bytes);
+
+		return new UplcString(Site.dummy(), s);
+	}
+
+	/**
+	 * Reads a data object
+	 * @returns {UplcData}
+	 */
+	readData() {
+		let bytes = this.readBytes();
+
+		return UplcData.fromCbor(bytes);
+	}
+
+	/**
+	 * @returns {UplcData[]}
+	 */
+	readDataList() {
+		/** @type {UplcData[]} */
+		let items = [];
+
+		while (this.readBits(1) == 1) {
+			items.push(this.readData());
 		}
 
-		return new IR([new IR("__core__listData("), ir, new IR(")")]);
+		return items;
 	}
 
 	/**
-	 * @returns {string}
+	 * @returns {UplcMapItem[]}
 	 */
-	toSchemaJson() {
-		return `{"list":[${this.#items.map(item => item.toSchemaJson()).join(", ")}]}`;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeIndefList(this.#items);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {ListData}
-	 */
-	static fromCbor(bytes) {
-		/**
-		 * @type {UplcData[]}
-		 */
-		let list = [];
-
-		CborData.decodeList(bytes, (itemBytes) => {
-			list.push(UplcData.fromCbor(itemBytes));
-		});
-
-		return new ListData(list);
-	}
-}
-
-/**
- * Plutus-core map data class
- */
-export class MapData extends UplcData {
-	#pairs;
-
-	/**
-	 * @param {[UplcData, UplcData][]} pairs 
-	 */
-	constructor(pairs) {
-		super();
-		this.#pairs = pairs;
-	}
-
-	/**
-	 * @type {[UplcData, UplcData][]}
-	 */
-	get map() {
-		return this.#pairs.slice();
-	}
-
-	get memSize() {
-		let sum = UPLC_DATA_NODE_MEM_SIZE;
-
-		for (let [k, v] of this.#pairs) {
-			sum += k.memSize + v.memSize;
-		}
-
-		return sum;
-	}
-
-	toString() {
-		return `{${this.#pairs.map(([fst, snd]) => `${fst.toString()}: ${snd.toString()}`).join(", ")}}`;
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	toIR() {
-		let ir = new IR("__core__mkNilPairData(())");
-
-		for (let i = this.#pairs.length - 1; i >= 0; i--) {
-			let a = this.#pairs[i][0].toIR();
-			let b = this.#pairs[i][1].toIR();
-
-			ir = new IR([new IR("__core__mkCons(__core__mkPairData("), a, new IR(", "), b, new IR(", "), new IR(")"), new IR(", "), ir, new IR(")")]);
-		}
-
-		return new IR([new IR("__core__mapData("), ir, new IR(")")]);
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toSchemaJson() {
-		return `{"map": [${this.#pairs.map(pair => { return "{\"k\": " + pair[0].toSchemaJson() + ", \"v\": " + pair[1].toSchemaJson() + "}" }).join(", ")}]}`;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeMap(this.#pairs);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {MapData}
-	 */
-	static fromCbor(bytes) {
-		/**
-		 * @type {[UplcData, UplcData][]}
-		 */
+	readDataPairList() {
+		/** @type {UplcMapItem[]} */
 		let pairs = [];
 
-		CborData.decodeMap(bytes, pairBytes => {
-			pairs.push([UplcData.fromCbor(pairBytes), UplcData.fromCbor(pairBytes)]);
-		});
-
-		return new MapData(pairs);
-	}
-}
-
-/**
- * Plutus-core constructed data class
- */
-export class ConstrData extends UplcData {
-	#index;
-	#fields;
-
-	/**
-	 * @param {number} index 
-	 * @param {UplcData[]} fields 
-	 */
-	constructor(index, fields) {
-		super();
-		this.#index = index;
-		this.#fields = fields;
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get index() {
-		return this.#index;
-	}
-
-	/**
-	 * @type {UplcData[]}
-	 */
-	get fields() {
-		return this.#fields.slice();
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get memSize() {
-		let sum = UPLC_DATA_NODE_MEM_SIZE;
-
-		for (let field of this.#fields) {
-			sum += field.memSize;
+		while (this.readBits(1) == 1) {
+			pairs.push(new UplcMapItem(Site.dummy(), this.readData(), this.readData()));
 		}
 
-		return sum;
+
+		return pairs;
 	}
 
 	/**
-	 * @returns {string}
+	 * Reads a variable term
+	 * @returns {UplcVariable}
 	 */
-	toString() {
-		let parts = this.#fields.map(field => field.toString());
-		return `${this.#index.toString()}{${parts.join(", ")}}`;
+	readVariable() {
+		let index = this.readInteger()
+
+		return new UplcVariable(Site.dummy(), index);
 	}
 
 	/**
-	 * @returns {IR}
+	 * Reads a lambda expression term
+	 * @returns {UplcLambda}
 	 */
-	toIR() {
-		let ir = new IR("__core__mkNilData(())");
-		for (let i = this.#fields.length - 1; i >= 0; i--) {
-			ir = new IR([new IR("__core__mkCons("), this.#fields[i].toIR(), new IR(", "), ir, new IR(")")]);
-		}
+	readLambda() {
+		let rhs = this.readTerm();
 
-		return new IR([new IR("__core__constrData("), new IR(this.#index.toString()), new IR(", "), ir, new IR(")")]);
+		return new UplcLambda(Site.dummy(), rhs);
 	}
 
 	/**
-	 * @returns {string}
+	 * Reads a function application term
+	 * @returns {UplcCall}
 	 */
-	toSchemaJson() {
-		return `{"constructor": ${this.#index.toString()}, "fields": [${this.#fields.map(f => f.toSchemaJson()).join(", ")}]}`;
+	readCall() {
+		let a = this.readTerm();
+		let b = this.readTerm();
+
+		return new UplcCall(Site.dummy(), a, b);
 	}
 
 	/**
-	 * @returns {number[]}
+	 * Reads a single constant
+	 * @returns {UplcConst}
 	 */
-	toCbor() {
-		return CborData.encodeConstr(this.#index, this.#fields);
+	readConstant() {
+		let typeList = this.readLinkedList(this.tagWidth("constType"));
+
+		let res = new UplcConst(this.readTypedValue(typeList));
+
+		return res;
 	}
 
 	/**
-	 * @param {number[]} bytes 
-	 * @returns {ConstrData}
+	 * Reads a single constant (recursive types not yet handled)
+	 * @param {number[]} typeList 
+	 * @returns {UplcValue}
 	 */
-	static fromCbor(bytes) {
-		/**
-		 * @type {UplcData[]}
-		 */
-		let fields = [];
+	readTypedValue(typeList) {
+		let type = assertDefined(typeList.shift());
 
-		let tag = CborData.decodeConstr(bytes, (fieldBytes) => {
-			fields.push(UplcData.fromCbor(fieldBytes));
-		});
+		assert(type == 7 || typeList.length == 0);
 
-		return new ConstrData(tag, fields);
-	}
-}
-
-
-///////////////////////////
-// Section 6: Token objects
-///////////////////////////
-
-/**
- * Token is the base class of all Expressions and Statements
- */
-class Token {
-	#site;
-
-	/**
-	 * @param {Site} site 
-	 */
-	constructor(site) {
-		this.#site = assertDefined(site); // position in source of start of token
-	}
-
-	get site() {
-		return this.#site;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Returns 'true' if 'this' is a literal primitive, a literal struct constructor, or a literal function expression.
-	 * @returns {boolean}
-	 */
-	isLiteral() {
-		return false;
-	}
-
-	/**
-	 * Returns 'true' if 'this' is a Word token.
-	 * @param {?(string | string[])} value
-	 * @returns {boolean}
-	 */
-	isWord(value = null) {
-		return false;
-	}
-
-	/**
-	 * Returns 'true' if 'this' is a Symbol token (eg. '+', '(' etc.)
-	 * @param {?(string | string[])} value
-	 * @returns {boolean}
-	 */
-	isSymbol(value = null) {
-		return false;
-	}
-
-	/**
-	 * Returns 'true' if 'this' is a group (eg. '(...)').
-	 * @param {?string} value
-	 * @returns {boolean}
-	 */
-	isGroup(value) {
-		return false;
-	}
-
-	/**
-	 * Returns a SyntaxError at the current Site.
-	 * @param {string} msg 
-	 * @returns {UserError}
-	 */
-	syntaxError(msg) {
-		return this.#site.syntaxError(msg);
-	}
-
-	/**
-	 * Returns a TypeError at the current Site.
-	 * @param {string} msg
-	 * @returns {UserError}
-	 */
-	typeError(msg) {
-		return this.#site.typeError(msg);
-	}
-
-	/**
-	 * Returns a ReferenceError at the current Site.
-	 * @param {string} msg
-	 * @returns {UserError}
-	 */
-	referenceError(msg) {
-		return this.#site.referenceError(msg);
-	}
-
-	/**
-	 * Throws a SyntaxError if 'this' isn't a Word.
-	 * @param {?(string | string[])} value 
-	 * @returns {Word}
-	 */
-	assertWord(value = null) {
-		if (value !== null) {
-			throw this.syntaxError(`expected \'${value}\', got \'${this.toString()}\'`);
-		} else {
-			throw this.syntaxError(`expected word, got ${this.toString()}`);
-		}
-	}
-
-	/**
-	 * Throws a SyntaxError if 'this' isn't a Symbol.
-	 * @param {?(string | string[])} value 
-	 * @returns {Symbol}
-	 */
-	assertSymbol(value = null) {
-		if (value !== null) {
-			throw this.syntaxError(`expected '${value}', got '${this.toString()}'`);
-		} else {
-			throw this.syntaxError(`expected symbol, got '${this.toString()}'`);
-		}
-	}
-
-	/**
-	 * Throws a SyntaxError if 'this' isn't a Group.
-	 * @param {?string} type 
-	 * @param {?number} nFields
-	 * @returns {Group}
-	 */
-	assertGroup(type = null, nFields = null) {
-		if (type !== null) {
-			throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}'`)
-		} else {
-			throw this.syntaxError(`invalid syntax: expected group`);
-		}
-	}
-}
-
-/**
- * A Word token represents a token that matches /[A-Za-z_][A-Za-z_0-9]/
- */
-class Word extends Token {
-	#value;
-
-	/**
-	 * @param {Site} site 
-	 * @param {string} value 
-	 */
-	constructor(site, value) {
-		super(site);
-		this.#value = value;
-	}
-
-	/**
-	 * @param {string} value 
-	 * @returns {Word}
-	 */
-	static new(value) {
-		return new Word(Site.dummy(), value);
-	}
-
-	get value() {
-		return this.#value;
-	}
-
-	/**
-	 * @param {?(string | string[])} value 
-	 * @returns {boolean}
-	 */
-	isWord(value = null) {
-		if (value !== null) {
-			if (value instanceof Array) {
-				return value.lastIndexOf(this.#value) != -1;
-			} else {
-				return value == this.#value;
-			}
-		} else {
-			return true;
-		}
-	}
-
-	/**
-	 * @param {?(string | string[])} value 
-	 * @returns {Word}
-	 */
-	assertWord(value = null) {
-		if (!this.isWord(value)) {
-			super.assertWord(value);
-		}
-
-		return this;
-	}
-
-	/**
-	 * @returns {Word}
-	 */
-	assertNotInternal() {
-		if (this.#value == "_") {
-			throw this.syntaxError("_ is reserved");
-		} else if (this.#value.startsWith("__")) {
-			throw this.syntaxError("__ prefix is reserved");
-		} else if (this.#value.endsWith("__")) {
-			throw this.syntaxError("__ suffix is reserved");
-		}
-
-		return this;
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isKeyword() {
-		switch (this.#value) {
-			case "const":
-			case "func":
-			case "struct":
-			case "enum":
-			case "import":
-			case "if":
-			case "else":
-			case "switch":
-			case "print":
-			case "error":
-			case "self":
-				return true;
+		switch (type) {
+			case 0: // signed Integer
+				return this.readInteger(true);
+			case 1: // bytearray
+				return this.readByteArray();
+			case 2: // utf8-string
+				return this.readString();
+			case 3:
+				return new UplcUnit(Site.dummy()); // no reading needed
+			case 4: // Bool
+				return new UplcBool(Site.dummy(), this.readBits(1) == 1);
+			case 5:
+			case 6:
+				throw new Error("unexpected type tag without type application");
+			case 7:
+				if (eq(typeList, [5, 8])) {
+					return new UplcList(Site.dummy(), this.readDataList());
+				} else if (eq(typeList, [5, 7, 7, 6, 8, 8])) {
+					// map of (data, data)
+					return new UplcMap(Site.dummy(), this.readDataPairList());
+				} else if (eq(typeList, [7, 6, 8, 8])) {
+					// pair of (data, data)
+					return new UplcMapItem(Site.dummy(), this.readData(), this.readData());
+				} else if (eq(typeList, [7, 6, 0, 7, 5, 8])) {
+					// constr
+					return new UplcPair(Site.dummy(), this.readInteger(true), new UplcList(Site.dummy(), this.readDataList()));
+				} else {
+					console.log(typeList);
+					throw new Error("unhandled container type")
+				}
+			case 8:
+				return new UplcDataValue(Site.dummy(), this.readData());
 			default:
-				return false;
+				throw new Error(`unhandled constant type ${type.toString()}`);
 		}
 	}
 
 	/**
-	 * @returns {Word}
+	 * Reads a delay term
+	 * @returns {UplcDelay}
 	 */
-	assertNotKeyword() {
-		this.assertNotInternal();
+	readDelay() {
+		let expr = this.readTerm();
 
-		if (this.isKeyword()) {
-			throw this.syntaxError(`'${this.#value}' is a reserved word`);
-		}
-
-		return this;
+		return new UplcDelay(Site.dummy(), expr);
 	}
 
 	/**
-	 * @returns {string}
+	 * Reads a force term
+	 * @returns {UplcForce}
 	 */
-	toString() {
-		return this.#value;
+	readForce() {
+		let expr = this.readTerm();
+
+		return new UplcForce(Site.dummy(), expr);
 	}
 
 	/**
-	 * Finds the index of the first Word(value) in a list of tokens
-	 * Returns -1 if none found
-	 * @param {Token[]} ts 
-	 * @param {string | string[]} value 
-	 * @returns {number}
+	 * Reads a builtin function ref term
+	 * @returns {UplcBuiltin}
 	 */
-	static find(ts, value) {
-		return ts.findIndex(item => item.isWord(value));
+	readBuiltin() {
+		let id = this.readBits(this.tagWidth("builtin"));
+
+		let name = this.builtinName(id);
+
+		return new UplcBuiltin(Site.dummy(), name);
+	}
+
+	/**
+	 * Move to the next byteboundary
+	 * (and check that we are at the end)
+	 */
+	finalize() {
+		this.moveToByteBoundary(true);
 	}
 }
 
 /**
- * Symbol token represent anything non alphanumeric
+ * @param {number[]} bytes 
+ * @returns {UplcProgram}
  */
-class Symbol extends Token {
-	#value;
+export function deserializeUplcBytes(bytes) {
+	let reader = new UplcDeserializer(bytes);
 
-	/**
-	 * @param {Site} site
-	 * @param {string} value
-	 */
-	constructor(site, value) {
-		super(site);
-		this.#value = value;
+	let version = [
+		reader.readInteger(),
+		reader.readInteger(),
+		reader.readInteger(),
+	];
+
+	let versionKey = version.map(v => v.toString()).join(".");
+
+	if (versionKey != UPLC_VERSION) {
+		console.error(`Warning: Plutus-core script doesn't match version of Helios (expected ${UPLC_VERSION}, got ${versionKey})`);
 	}
 
-	get value() {
-		return this.#value;
+	let expr = reader.readTerm();
+
+	reader.finalize();
+
+	return new UplcProgram(expr, null, version);
+}
+
+/**
+ * Parses a plutus core program. Returns a UplcProgram object
+ * @param {string} jsonString 
+ * @returns {UplcProgram}
+ */
+export function deserializeUplc(jsonString) {
+	let obj = JSON.parse(jsonString);
+
+	if (!("cborHex" in obj)) {
+		throw UserError.syntaxError(new Source(jsonString), 0, "cborHex field not in json")
 	}
 
-	/**
-	 * @param {?(string | string[])} value 
-	 * @returns {boolean}
-	 */
-	isSymbol(value = null) {
-		if (value !== null) {
-			if (value instanceof Array) {
-				return value.lastIndexOf(this.#value) != -1;
-			} else {
-				return value == this.#value;
-			}
+	let cborHex = obj.cborHex;
+	if (typeof cborHex !== "string") {
+		let src = new Source(jsonString);
+		let re = /cborHex/;
+		let cborHexMatch = jsonString.match(re);
+		if (cborHexMatch === null) {
+			throw UserError.syntaxError(src, 0, "'cborHex' key not found");
 		} else {
-			return true;
+			throw UserError.syntaxError(src, jsonString.search(re), "cborHex not a string");
 		}
 	}
 
-	/**
-	 * @param {?(string | string[])} value 
-	 * @returns {Symbol}
-	 */
-	assertSymbol(value) {
-		if (!this.isSymbol(value)) {
-			super.assertSymbol(value);
-		}
-
-		return this;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#value;
-	}
-
-	/**
-	 * Finds the index of the first Symbol(value) in a list of tokens.
-	 * Returns -1 if none found.
-	 * @param {Token[]} ts
-	 * @param {string | string[]} value
-	 * @returns {number}
-	 */
-	static find(ts, value) {
-		return ts.findIndex(item => item.isSymbol(value));
-	}
-
-	/**
-	 * Finds the index of the last Symbol(value) in a list of tokens.
-	 * Returns -1 if none found.
-	 * @param {Token[]} ts 
-	 * @param {string | string[]} value 
-	 * @returns {number}
-	 */
-	static findLast(ts, value) {
-		for (let i = ts.length - 1; i >= 0; i--) {
-			if (ts[i].isSymbol(value)) {
-				return i;
-			}
-		}
-
-		return -1;
-	}
-}
-
-/**
- * Group token can '(...)', '[...]' or '{...}' and can contain comma separated fields.
- */
-class Group extends Token {
-	#type;
-	#fields;
-	#firstComma;
-
-	/**
-	 * @param {Site} site 
-	 * @param {string} type - "(", "[" or "{"
-	 * @param {Token[][]} fields 
-	 * @param {?Symbol} firstComma
-	 */
-	constructor(site, type, fields, firstComma = null) {
-		super(site);
-		this.#type = type;
-		this.#fields = fields; // list of lists of tokens
-		this.#firstComma = firstComma;
-
-		assert(fields.length < 2 || firstComma !== null);
-	}
-
-	get fields() {
-		return this.#fields.slice(); // copy, so fields_ doesn't get mutated
-	}
-
-	/**
-	 * @param {?string} type 
-	 * @returns {boolean}
-	 */
-	isGroup(type = null) {
-		if (type !== null) {
-			return this.#type == type;
-		} else {
-			return true;
-		}
-	}
-
-	/**
-	 * @param {?string} type 
-	 * @param {?number} nFields 
-	 * @returns {Group}
-	 */
-	assertGroup(type = null, nFields = null) {
-		if (type !== null && this.#type != type) {
-			throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}', got '${this.#type}...${Group.matchSymbol(this.#type)}'`);
-		} else if (type !== null && nFields !== null && nFields != this.#fields.length) {
-			if (this.#fields.length > 1 && nFields <= 1 && this.#firstComma !== null) {
-				throw this.#firstComma.syntaxError(`invalid syntax, unexpected ','`);
-			} else {
-				throw this.syntaxError(`invalid syntax: expected '${type}...${Group.matchSymbol(type)}' with ${nFields} field(s), got '${type}...${Group.matchSymbol(type)}' with ${this.#fields.length} fields`);
-			}
-		}
-
-		return this;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		let s = this.#type;
-
-		let parts = [];
-		for (let f of this.#fields) {
-			parts.push(f.map(t => t.toString()).join(" "));
-		}
-
-		s += parts.join(", ") + Group.matchSymbol(this.#type);
-
-		return s;
-	}
-
-	/**
-	 * @param {Token} t 
-	 * @returns {boolean}
-	 */
-	static isOpenSymbol(t) {
-		return t.isSymbol("{") || t.isSymbol("[") || t.isSymbol("(");
-	}
-
-	/**
-	 * @param {Token} t 
-	 * @returns {boolean}
-	 */
-	static isCloseSymbol(t) {
-		return t.isSymbol("}") || t.isSymbol("]") || t.isSymbol(")");
-	}
-
-	/**
-	 * Returns the corresponding closing bracket, parenthesis or brace.
-	 * Throws an error if not a group symbol.
-	 * @example
-	 * Group.matchSymbol("(") => ")"
-	 * @param {string | Symbol} t
-	 * @returns {string}
-	 */
-	static matchSymbol(t) {
-		if (t instanceof Symbol) {
-			t = t.value;
-		}
-
-		if (t == "{") {
-			return "}";
-		} else if (t == "[") {
-			return "]";
-		} else if (t == "(") {
-			return ")";
-		} else if (t == "}") {
-			return "{";
-		} else if (t == "]") {
-			return "[";
-		} else if (t == ")") {
-			return "(";
-		} else {
-			throw new Error("not a group symbol");
-		}
-	}
-
-	/**
-	 * Finds the index of first Group(type) in list of tokens
-	 * Returns -1 if none found.
-	 * @param {Token[]} ts 
-	 * @param {string} type 
-	 * @returns {number}
-	 */
-	static find(ts, type) {
-		return ts.findIndex(item => item.isGroup(type));
-	}
-}
-
-/**
- * Base class of literal tokens
- */
-class PrimitiveLiteral extends Token {
-	/**
-	 * @param {Site} site 
-	 */
-	constructor(site) {
-		super(site);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isLiteral() {
-		return true;
-	}
-}
-
-/**
- * Signed int literal token
- */
-class IntLiteral extends PrimitiveLiteral {
-	#value;
-
-	/**
-	 * @param {Site} site 
-	 * @param {bigint} value 
-	 */
-	constructor(site, value) {
-		super(site);
-		this.#value = value;
-	}
-
-	get value() {
-		return this.#value;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#value.toString();
-	}
-}
-
-/**
- * Bool literal token
- */
-class BoolLiteral extends PrimitiveLiteral {
-	#value;
-
-	/**
-	 * @param {Site} site 
-	 * @param {boolean} value 
-	 */
-	constructor(site, value) {
-		super(site);
-		this.#value = value;
-	}
-
-	get value() {
-		return this.#value;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#value ? "true" : "false";
-	}
-}
-
-/**
- * ByteArray literal token
- */
-class ByteArrayLiteral extends PrimitiveLiteral {
-	#bytes;
-
-	/**
-	 * @param {Site} site 
-	 * @param {number[]} bytes 
-	 */
-	constructor(site, bytes) {
-		super(site);
-		this.#bytes = bytes;
-	}
-
-	get bytes() {
-		return this.#bytes;
-	}
-
-	toString() {
-		return `#${bytesToHex(this.#bytes)}`;
-	}
-}
-
-/**
- * String literal token (utf8)
- */
-class StringLiteral extends PrimitiveLiteral {
-	#value;
-
-	/**
-	 * @param {Site} site 
-	 * @param {string} value 
-	 */
-	constructor(site, value) {
-		super(site);
-		this.#value = value;
-	}
-
-	get value() {
-		return this.#value;
-	}
-
-	toString() {
-		return `"${this.#value.toString()}"`;
-	}
+	return UplcProgram.fromCbor(hexToBytes(cborHex));
 }
 
 
-//////////////////////////
-// Section 7: Tokenization
-//////////////////////////
+///////////////////////////
+// Section 12: Tokenization
+///////////////////////////
 
-class Tokenizer {
+export class Tokenizer {
 	#src;
 	#pos;
 
@@ -8978,13 +12038,13 @@ class Tokenizer {
 		let c = this.readChar();
 
 		if (c == '\0') {
-			this.pushToken(new Symbol(site, '/'));
+			this.pushToken(new SymbolToken(site, '/'));
 		} else if (c == '/') {
 			this.readSingleLineComment();
 		} else if (c == '*') {
 			this.readMultiLineComment(site);
 		} else {
-			this.pushToken(new Symbol(site, '/'));
+			this.pushToken(new SymbolToken(site, '/'));
 			this.unreadChar();
 		}
 	}
@@ -9233,7 +12293,7 @@ class Tokenizer {
 			parseSecondChar('>');
 		}
 
-		this.pushToken(new Symbol(site, chars.join('')));
+		this.pushToken(new SymbolToken(site, chars.join('')));
 	}
 
 	/**
@@ -9252,17 +12312,17 @@ class Tokenizer {
 			let curField = [];
 			let fields = [];
 
-			/** @type {?Symbol} */
+			/** @type {?SymbolToken} */
 			let firstComma = null;
 
-			/** @type {?Symbol} */
+			/** @type {?SymbolToken} */
 			let lastComma = null;
 
 			/** @type {?Site} */
 			let endSite = null;
 
 			while (stack.length > 0 && ts.length > 0) {
-				let t = ts.shift();
+				let t = assertDefined(ts.shift());
 				let prev = stack.pop();
 				endSite = t.site;
 
@@ -9349,6 +12409,7 @@ class Tokenizer {
 
 /**
  * Tokenizes a string (wrapped in Source)
+ * @package
  * @param {Source} src 
  * @returns {Token[]}
  */
@@ -9360,6 +12421,7 @@ function tokenize(src) {
 
 /**
  * Tokenizes an IR string with a codemap to the original source
+ * @package
  * @param {string} rawSrc 
  * @param {CodeMap} codeMap 
  * @returns {Token[]}
@@ -9373,393 +12435,74 @@ function tokenizeIR(rawSrc, codeMap) {
 	return tokenizer.tokenize();
 }
 
-/**
- * @param {number} id
- * @returns {string}
- */
- function getPurposeName(id) {
-	switch (id) {
-		case ScriptPurpose.Testing:
-			return "testing";
-		case ScriptPurpose.Minting:
-			return "minting";
-		case ScriptPurpose.Spending:
-			return "spending";
-		case ScriptPurpose.Staking:
-			return "staking";
-		case ScriptPurpose.Module:
-			return "module";
-		default:
-			throw new Error(`unhandled ScriptPurpose ${id}`);
-	}
-}
+
+///////////////////////////////////
+// Section 13: Helios eval entities
+///////////////////////////////////
 
 /**
- * Parses Helios quickly to extract the script purpose header.
- * Returns null if header is missing or incorrectly formed (instead of throwing an error)
- * @param {string} rawSrc 
- * @returns {?[string, string]} - [purpose, name]
+ * We can't use StructStatement etc. directly because that would give circular dependencies
+ * @typedef {{
+ *   name: Word,
+ *   getTypeMember(key: Word): EvalEntity,
+ *   getInstanceMember(key: Word): Instance,
+ *   nFields(site: Site): number,
+ *   hasField(key: Word): boolean,
+ *   getFieldType(site: Site, i: number): Type,
+ *   getFieldName(i: number): string,
+ *   getConstrIndex(site: Site): number,
+ *   nEnumMembers(site: Site): number,
+ *   path: string,
+ *   use: () => void
+ * }} UserTypeStatement
  */
-export function extractScriptPurposeAndName(rawSrc) {
-	try {
-		let src = new Source(rawSrc);
-
-		let tokenizer = new Tokenizer(src);
-
-		let gen = tokenizer.streamTokens();
-
-		// Don't parse the whole script, just 'eat' 2 tokens: `<purpose> <name>`
-		let ts = [];
-		for (let i = 0; i < 2; i++) {
-			let yielded = gen.next();
-			if (yielded.done) {
-				return null;
-			}
-
-			ts.push(yielded.value);
-		}
-
-		let [purposeId, nameWord] = buildScriptPurpose(ts);
-
-		return [getPurposeName(purposeId), nameWord.value];
-	} catch (e) {
-		if (!(e instanceof UserError)) {
-			throw e;
-		} else {
-			return null;
-		}
-	}
-}
 
 /**
- * Categories for syntax highlighting
+ * We can't use ConstStatement directly because that would give a circular dependency
+ * @typedef {{
+ *   name: Word,
+ *   path: string,
+ *   use: () => void
+ * }} ConstTypeStatement
  */
-const SyntaxCategory = {
-	Normal:     0,
-	Comment:    1,
-	Literal:    2,
-	Symbol:     3,
-	Type:       4,
-	Keyword:    5,
-	Error:      6,
-};
 
 /**
- * Applies syntax highlighting by returning a list of char categories.
- * Not part of Tokeizer because it needs to be very fast and can't throw errors.
- * Doesn't depend on any other functions so it can easily be ported to other languages.
- * @param {string} src
- * @returns {Uint8Array}
+ * We can't use EnumMember directly because that would give a circular dependency
+ * @typedef {UserTypeStatement & {
+ * 	 parent: EnumTypeStatement,
+ *   getConstrIndex(site: Site): number
+ * }} EnumMemberTypeStatement
  */
-export function highlight(src) {
-	let n = src.length;
 
-	const SyntaxState = {
-		Normal:        0,
-		SLComment:     1,
-		MLComment:     2,
-		String:        3,
-		NumberStart:   4,
-		HexNumber:     5,
-		BinaryNumber:  6,
-		OctalNumber:   7,
-		DecimalNumber: 8,
-		ByteArray:     9,
-	};
+/**
+ * We can't use EnumStatement directly because that would give a circular dependency
+ * @typedef {UserTypeStatement & {
+ *   nEnumMembers(site: Site): number,
+ *   getEnumMember(site: Site, i: number): EnumMemberTypeStatement
+ * }} EnumTypeStatement
+ */
 
-	// array of categories
-	let data = new Uint8Array(n);
+/**
+ * We can't use FuncStatement directly because that would give a circular dependency
+ * @typedef {{
+ *   path: string,
+ *   use: () => void,
+ *   setRecursive: () => void,
+ *   isRecursive: () => boolean
+ * }} RecurseableStatement
+ */
 
-	let j = 0; // position in data
-	let state = SyntaxState.Normal;
-
-	/** @type {Symbol[]} */
-	let groupStack = [];
-	
-	for (let i = 0; i < n; i++) {
-		let c = src[i];
-		let isLast = i == n - 1;
-
-		switch (state) {
-			case SyntaxState.Normal:
-				if (c == "/") {
-					// maybe comment
-					if (!isLast && src[i+1] == "/") {
-						data[j++] = SyntaxCategory.Comment;
-						data[j++] = SyntaxCategory.Comment;
-		
-						i++;
-						state = SyntaxState.SLComment;
-					} else if (!isLast && src[i+1] == "*") {
-						data[j++] = SyntaxCategory.Comment;
-						data[j++] = SyntaxCategory.Comment;
-
-						i++;
-						state = SyntaxState.MLComment;
-					} else {
-						data[j++] = SyntaxCategory.Symbol;
-					}
-				} else if (c == "[" || c == "]" || c == "{" || c == "}" || c == "(" || c == ")") {
-					let s = new Symbol(new Site(new Source(src), i), c);
-
-					if (Group.isOpenSymbol(s)) {
-						groupStack.push(s);
-						data[j++] = SyntaxCategory.Normal;
-					} else {
-						let prevGroup = groupStack.pop();
-
-						if (prevGroup === undefined) {
-							data[j++] = SyntaxCategory.Error;
-						} else if (c == Group.matchSymbol(prevGroup)) {
-							data[j++] = SyntaxCategory.Normal;
-						} else {
-							data[prevGroup.site.pos] = SyntaxCategory.Error;
-							data[j++] = SyntaxCategory.Error;
-						}
-					}
-				} else if (c == "%" || c == "!" || c == "&" || c == "*" || c == "+" || c == "-" || c == "<" || c == "=" || c == ">" || c == "|") {
-					// symbol
-					switch (c) {
-						case "&":
-							if (!isLast && src[i+1] == "&") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Normal;
-							}
-							break;
-						case "|":
-							if (!isLast && src[i+1] == "|") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Normal;
-							}
-							break;
-						case "!":
-							if (!isLast && src[i+1] == "=") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Symbol;
-							}
-							break;
-						case "=":
-							if (!isLast && (src[i+1] == "=" || src[i+1] == ">")) {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Symbol;
-							}
-							break;
-						case ">":
-							if (!isLast && src[i+1] == "=") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Symbol;
-							}
-							break;
-						case "<":
-							if (!isLast && src[i+1] == "=") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Symbol;
-							}
-							break;
-						case "-":
-							if (!isLast && src[i+1] == ">") {
-								data[j++] = SyntaxCategory.Symbol;
-								data[j++] = SyntaxCategory.Symbol;
-								i++;
-							} else {
-								data[j++] = SyntaxCategory.Symbol;
-							}
-							break;
-						default:
-							data[j++] = SyntaxCategory.Symbol;
-					}
-				} else if (c == "\"") {
-					// literal string
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.String;
-				} else if (c == "0") {
-					// literal number
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.NumberStart;
-				} else if (c >= "1" && c <= "9") {
-					// literal decimal number
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.DecimalNumber;
-				} else if (c == "#") {
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.ByteArray;
-				} else if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_") {
-					// maybe keyword, builtin type, or boolean
-					let i0 = i;
-					let chars = [c];
-					// move i to the last word char
-					while (i + 1 < n) {
-						let d = src[i+1];
-
-						if ((d >= "a" && d <= "z") || (d >= "A" && d <= "Z") || d == "_" || (d >= "0" && d <= "9")) {
-							chars.push(d);
-							i++;
-						} else {
-							break;
-						}
-					}
-
-					let word = chars.join("");
-					/** @type {number} */
-					let type;
-					switch (word) {
-						case "true":
-						case "false":
-							type = SyntaxCategory.Literal;
-							break;
-						case "Bool":
-						case "Int":
-						case "ByteArray":
-						case "String":
-						case "Option":
-							type = SyntaxCategory.Type;
-							break;
-						case "if":
-						case "else":
-						case "switch":
-						case "func":
-						case "const":
-						case "struct":
-						case "enum":
-						case "import":
-						case "print":
-						case "error":
-						case "self":
-							type = SyntaxCategory.Keyword;
-							break;
-						case "testing":
-						case "spending":
-						case "staking":
-						case "minting":
-						case "module":
-							if (i0 == 0) {
-								type = SyntaxCategory.Keyword;
-							} else {
-								type = SyntaxCategory.Normal;
-							}
-							break;
-						default:
-							type = SyntaxCategory.Normal;
-					}
-
-					for (let ii = i0; ii < i0 + chars.length; ii++) {
-						data[j++] = type;
-					}
-				} else {
-					data[j++] = SyntaxCategory.Normal;
-				}
-				break;
-			case SyntaxState.SLComment:
-				data[j++] = SyntaxCategory.Comment;
-				if (c == "\n") {
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.MLComment:
-				data[j++] = SyntaxCategory.Comment;
-
-				if (c == "*" && !isLast && src[i+1] == "/") {
-					i++;
-					data[j++] = SyntaxCategory.Comment;
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.String:
-				data[j++] = SyntaxCategory.Literal;
-
-				if (c == "\"") {
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.NumberStart:
-				if (c == "x") {
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.HexNumber;
-				} else if (c == "o") {
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.OctalNumber;
-				} else if (c == "b") {
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.BinaryNumber;
-				} else if (c >= "0" && c <= "9") {
-					data[j++] = SyntaxCategory.Literal;
-					state = SyntaxState.DecimalNumber;
-				} else {
-					i--;
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.DecimalNumber:
-				if (c >= "0" && c <= "9") {
-					data[j++] = SyntaxCategory.Literal;
-				} else {
-					i--;
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.HexNumber:
-			case SyntaxState.ByteArray:
-				if ((c >= "a" && c <= "f") || (c >= "0" && c <= "9")) {
-					data[j++] = SyntaxCategory.Literal;
-				} else {
-					i--;
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.OctalNumber:
-				if (c >= "0" && c <= "7") {
-					data[j++] = SyntaxCategory.Literal;
-				} else {
-					i--;
-					state = SyntaxState.Normal;
-				}
-				break;
-			case SyntaxState.BinaryNumber:
-				if (c == "0" || c == "1") {
-					data[j++] = SyntaxCategory.Literal;
-				} else {
-					i--;
-					state = SyntaxState.Normal;
-				}
-				break;
-			default:
-				throw new Error("unhandled SyntaxState");
-		}		
-	}
-
-	for (let s of groupStack) {
-		data[s.site.pos] = SyntaxCategory.Error;
-	}
-
-	return data;
-}
-
-
-//////////////////////////////////////
-// Section 8: Type evaluation entities
-//////////////////////////////////////
+/**
+ * We can't use Scope directly because that would give a circular dependency
+ * @typedef {{
+ *   isRecursive: (statement: RecurseableStatement) => boolean
+ * }} RecursivenessChecker
+ */
 
 /**
  * Base class of Instance and Type.
  * Any member function that takes 'site' as its first argument throws a TypeError if used incorrectly (eg. calling a non-FuncType).
+ * @package
  */
 class EvalEntity {
 	constructor() {
@@ -9912,6 +12655,7 @@ class EvalEntity {
 
 /**
  * Types are used during type-checking of Helios
+ * @package
  */
 class Type extends EvalEntity {
 	constructor() {
@@ -9993,17 +12737,25 @@ class Type extends EvalEntity {
 	}
 
 	/**
-	 * Returns the base path of type (eg. __helios__bool).
-	 * This is used extensively in the Intermediate Representation.
+	 * Returns the base path in the IR (eg. __helios__bool, __helios__error, etc.)
 	 * @type {string}
 	 */
 	get path() {
-		throw new Error("not implemented")
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		throw new Error(`${this.toString()} doesn't have a corresponding userType`);
 	}
 }
 
+
 /**
  * AnyType matches any other type in the type checker.
+ * @package
  */
 class AnyType extends Type {
 	constructor() {
@@ -10062,6 +12814,7 @@ class AnyDataType extends Type {
 /**
  * Base class of all builtin types (eg. IntType)
  * Note: any builtin type that inherits from BuiltinType must implement get path()
+ * @package
  */
 class BuiltinType extends DataType {
 	#macrosAllowed; // macros are allowed after the definition of the main function
@@ -10137,6 +12890,9 @@ class BuiltinType extends DataType {
 	}
 }
 
+/**
+ * @package
+ */
 class BuiltinEnumMember extends BuiltinType {
 	#parentType;
 
@@ -10182,12 +12938,14 @@ class BuiltinEnumMember extends BuiltinType {
 
 /**
  * Type wrapper for Struct statements and Enums and Enum members.
+ * @package
+ * @template {UserTypeStatement} T
  */
 class StatementType extends DataType {
 	#statement;
 
 	/**
-	 * @param {StructStatement | EnumMember | EnumStatement} statement 
+	 * @param {T} statement 
 	 */
 	constructor(statement) {
 		super();
@@ -10195,7 +12953,14 @@ class StatementType extends DataType {
 	}
 
 	/**
-	 * @returns {StructStatement | EnumMember | EnumStatement}
+	 * @type {string}
+	 */
+	get name() {
+		return this.#statement.name.value;
+	}
+
+	/**
+	 * @returns {T}
 	 */
 	get statement() {
 		return this.#statement;
@@ -10287,20 +13052,358 @@ class StatementType extends DataType {
 	 * @returns {Instance}
 	 */
 	assertValue(site) {
-		if (this.#statement instanceof EnumMember) {
-			if (this.#statement.nFields(site) == 0) {
-				return Instance.new(this);
-			} else {
-				throw site.typeError(`expected '{...}' after '${this.#statement.name.toString()}'`);
-			}
-		} else {
-			throw site.typeError(`expected a value, got a type`);
+		throw site.typeError(`expected a value, got a type`);
+	}
+}
+
+/**
+ * @package
+ * @extends {StatementType<UserTypeStatement>}
+ */
+class StructStatementType extends StatementType {
+	/**
+	 * @param {UserTypeStatement} statement - can't use StructStatement because that would give a circular dependency
+	 */
+	constructor(statement) {
+		super(statement);
+	}
+
+	/**
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		const statement = this.statement;
+
+		const nFields = this.nFields(Site.dummy());
+
+		/**
+		 * @type {[string, Type][]} - [name, type]
+		 */
+		const fields = [];
+
+		for (let i = 0; i < nFields; i++) {
+			fields.push([statement.getFieldName(i), statement.getFieldType(Site.dummy(), i)]);
 		}
+
+		class Struct extends HeliosData {
+			/**
+			 * So we can access fields by index
+			 * @type {HeliosData[]}
+			 */
+			#fields;
+
+			/**
+			 * @param  {...any} args
+			 */
+			constructor(...args) {
+				super();
+				if (args.length != nFields) {
+					throw new Error(`expected ${nFields} args, got ${args.length}`);
+				}
+
+				this.#fields = [];
+
+				args.forEach((arg, i) => {
+					const [fieldName, fieldType] = fields[i];
+					const FieldClass = fieldType.userType;
+
+					const instance = arg instanceof FieldClass ? arg : new FieldClass(arg);
+
+					this.#fields.push(instance);
+					this[fieldName] = instance;
+				});
+			}
+
+			/**
+			 * Overload 'instanceof' operator
+			 * @param {any} other 
+			 * @returns {boolean}
+			 */
+			static [Symbol.hasInstance](other) {
+				return (other._structStatement === statement) && (other instanceof HeliosData);
+			}
+
+			/**
+			 * @type {UserTypeStatement}
+			 */
+			get _structStatement() {
+				return statement;
+			}
+
+			/**
+			 * @returns {UplcData}
+			 */
+			_toUplcData() {
+				if (this.#fields.length == 1) {
+					return this.#fields[0]._toUplcData();
+				} else {
+					return new ListData(this.#fields.map(f => f._toUplcData()));
+				}
+			}
+
+			/**
+			 * @param {string | number[]} bytes 
+			 * @returns {Struct}
+			 */
+			static fromUplcCbor(bytes) {
+				return Struct.fromUplcData(UplcData.fromCbor(bytes));
+			}
+
+			/**
+			 * @param {UplcData} data 
+			 * @returns {Struct}
+			 */
+			static fromUplcData(data) {
+				const dataItems = data.list;
+
+				if (dataItems.length != nFields) {
+					throw new Error("unexpected number of fields");
+				}
+
+				const args = dataItems.map((item, i) => {
+					return fields[i][1].userType.fromUplcData(item);
+				});
+
+				return new Struct(...args);
+			}
+		}
+
+		Object.defineProperty(Struct, "name", {value: this.name, writable: false});		
+
+		return Struct;
+	}
+}
+
+/**
+ * @package
+ * @extends {StatementType<EnumTypeStatement>}
+ */
+class EnumStatementType extends StatementType {
+	/**
+	 * @param {EnumTypeStatement} statement - can't use EnumStatement because that would give a circular dependency
+	 */
+	constructor(statement) {
+		super(statement);
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		const statement = this.statement;
+
+		const nVariants = statement.nEnumMembers(Site.dummy());
+
+		/**
+		 * @type {HeliosDataClass<HeliosData>[]}
+		 */
+		const variants = [];
+
+		for (let i = 0; i < nVariants; i++) {
+			variants.push(
+				(new EnumMemberStatementType(statement.getEnumMember(Site.dummy(), i))).userType
+			);
+		}
+
+		class Enum extends HeliosData {
+			constructor() {
+				super();
+				throw new Error("can't be constructed (hint: construct an enum)");
+			}
+
+			/**
+			 * Overload 'instanceof' operator
+			 * @param {any} other 
+			 * @returns {boolean}
+			 */
+			static [Symbol.hasInstance](other) {
+				return (other._enumStatement === statement) && (other instanceof HeliosData);
+			}
+
+			/**
+			 * @type {EnumTypeStatement}
+			 */
+			get _enumStatement() {
+				return statement;
+			}
+
+			/**
+			 * @param {string | number[]} bytes
+			 * @returns {HeliosData}
+			 */
+			static fromUplcCbor(bytes) {
+				return Enum.fromUplcData(UplcData.fromCbor(bytes));
+			}
+
+			/**
+			 * @param {UplcData} data 
+			 * @returns {HeliosData}
+			 */
+			static fromUplcData(data) {
+				const variant = assertDefined(variants[data.index], "index out of range");
+
+				return variant.fromUplcData(data);
+			}
+		}
+
+		Object.defineProperty(Enum, "name", {value: this.name, writable: false});
+
+		for (let v of variants) {
+			Object.defineProperty(Enum, v.name, {value: v, writable: false});
+		}
+
+		return Enum;
+	}
+}
+
+/**
+ * @package
+ * @extends {StatementType<EnumMemberTypeStatement>}
+ */
+class EnumMemberStatementType extends StatementType {
+    /**
+     * @param {EnumMemberTypeStatement} statement - can't use EnumMember because that would give a circular dependency
+     */
+    constructor(statement) {
+        super(statement);
+    }
+
+    /**
+	 * A StatementType can instantiate itself if the underlying statement is an enum member with no fields
+	 * @package
+	 * @param {Site} site
+	 * @returns {Instance}
+	 */
+    assertValue(site) {
+        if (this.statement.nFields(site) == 0) {
+            return Instance.new(this);
+        } else {
+            throw site.typeError(`expected '{...}' after '${this.statement.name.toString()}'`);
+        }
+    }
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		const statement = this.statement;
+
+		const enumStatement = statement.parent;
+
+		const index = statement.getConstrIndex(Site.dummy());
+
+		const nFields = this.nFields(Site.dummy());
+
+		/**
+		 * @type {[string, Type][]} - [name, type]
+		 */
+		const fields = [];
+
+		for (let i = 0; i < nFields; i++) {
+			fields.push([statement.getFieldName(i), statement.getFieldType(Site.dummy(), i)]);
+		}
+
+		// similar to Struct
+		class EnumVariant extends HeliosData {
+			/**
+			 * So we can access fields by index
+			 * @type {HeliosData[]}
+			 */
+			#fields;
+
+			/**
+			 * @param  {...any} args
+			 */
+			constructor(...args) {
+				super();
+				if (args.length != nFields) {
+					throw new Error(`expected ${nFields} args, got ${args.length}`);
+				}
+ 
+				this.#fields = [];
+ 
+				args.forEach((arg, i) => {
+					const [fieldName, fieldType] = fields[i];
+					const FieldClass = fieldType.userType;
+ 
+					const instance = arg instanceof FieldClass ? arg : new FieldClass(arg);
+
+ 					this.#fields.push(instance);
+					this[fieldName] = instance;
+
+				});
+			}
+ 
+			/**
+			 * Overload 'instanceof' operator
+			 * @param {any} other 
+			 * @returns {boolean}
+			 */
+			static [Symbol.hasInstance](other) {
+				return (other._enumVariantStatement === statement) && (other instanceof HeliosData);
+			}
+ 
+			/**
+			 * @type {EnumTypeStatement}
+			 */
+			get _enumStatement() {
+				return enumStatement;
+			}
+
+			/**
+			 * @type {EnumMemberTypeStatement}
+			 */
+			get _enumVariantStatement() {
+				return statement;
+			}
+ 
+			/**
+			 * @returns {UplcData}
+			 */
+			_toUplcData() {
+				return new ConstrData(index, this.#fields.map(f => f._toUplcData()));
+			}
+ 
+			/**
+			 * @param {string | number[]} bytes 
+			 * @returns {EnumVariant}
+			 */
+			static fromUplcCbor(bytes) {
+				return EnumVariant.fromUplcData(UplcData.fromCbor(bytes));
+			}
+ 
+			/**
+			 * @param {UplcData} data 
+			 * @returns {EnumVariant}
+			 */
+			static fromUplcData(data) {
+				assert(data.index == index, "wrong index");
+
+				const dataItems = data.list;
+ 
+				if (dataItems.length != nFields) {
+					throw new Error("unexpected number of fields");
+				}
+ 
+				const args = dataItems.map((item, i) => {
+					return fields[i][1].userType.fromUplcData(item);
+				});
+ 
+				return new EnumVariant(...args);
+			}
+		}
+
+		Object.defineProperty(EnumVariant, "name", {value: this.name, writable: false});
+
+		return EnumVariant;
 	}
 }
 
 /**
  * Function type with arg types and a return type
+ * @package
  */
 class FuncType extends Type {
 	#argTypes;
@@ -10448,10 +13551,42 @@ class FuncType extends Type {
 	}
 }
 
+class NotType extends EvalEntity {
+	constructor() {
+		super();
+	}
+	
+	/**
+	 * @returns {boolean}
+	 */
+	isType() {
+		return false;
+	}
+
+	/**
+	 * Throws an error because NotType can't be a base-Type of anything.
+	 * @param {Site} site 
+	 * @param {Type} type 
+	 * @returns {boolean}
+	 */
+	isBaseOf(site, type) {
+		throw site.typeError("not a type");
+	}
+
+	/**
+	 * @param {Word} name
+	 * @returns {EvalEntity} - can be Instance or Type
+	 */
+	getTypeMember(name) {
+		throw new Error("not a type");
+	}
+}
+
 /**
  * Base class for DataInstance and FuncInstance
+ * @package
  */
-class Instance extends EvalEntity {
+class Instance extends NotType {
 	constructor() {
 		super();
 	}
@@ -10470,17 +13605,14 @@ class Instance extends EvalEntity {
 		} else if (type instanceof FuncType) {
 			return new FuncInstance(type);
 		} else if (type instanceof ParamType) {
-			return new DataInstance(type.type);
+			return new DataInstance(type.dataType);
+		} else if (type instanceof ErrorType) {
+			return new ErrorInstance();
+		} else if (type instanceof VoidType) {
+			return new VoidInstance();
 		} else {
 			return new DataInstance(type);
 		}
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isType() {
-		return false;
 	}
 
 	/**
@@ -10497,26 +13629,12 @@ class Instance extends EvalEntity {
 	assertValue(site) {
 		return this;
 	}
-
-	/**
-	 * Throws an error because an Instance isn't a Type, and thus can't be a base-Type of anything.
-	 * @param {Site} site 
-	 * @param {Type} type 
-	 * @returns {boolean}
-	 */
-	isBaseOf(site, type) {
-		throw site.typeError("not a type");
-	}
 }
 
-/**
- * Returned by an ErrorExpr
- */
-class ErrorInstance extends Instance {
-}
 
 /**
  * A regular non-Func Instance. DataValues can always be compared, serialized, used in containers.
+ * @package
  */
 class DataInstance extends Instance {
 	#type;
@@ -10604,12 +13722,15 @@ class DataInstance extends Instance {
 	}
 }
 
+/**
+ * @package
+ */
 class ConstStatementInstance extends DataInstance {
 	#statement;
 
 	/**
 	 * @param {DataType} type 
-	 * @param {ConstStatement} statement
+	 * @param {ConstTypeStatement} statement - can't use ConstStatement because that would give circular dependency
 	 */
 	constructor(type, statement) {
 		super(type);
@@ -10617,7 +13738,7 @@ class ConstStatementInstance extends DataInstance {
 	}
 
 	/**
-	 * @type {ConstStatement}
+	 * @type {ConstTypeStatement}
 	 */
 	get statement() {
 		return this.#statement
@@ -10626,6 +13747,7 @@ class ConstStatementInstance extends DataInstance {
 
 /**
  * A callable Instance.
+ * @package
  */
 class FuncInstance extends Instance {
 	#type;
@@ -10645,7 +13767,7 @@ class FuncInstance extends Instance {
 	}
 
 	/**
-	 * @param {Scope} scope
+	 * @param {RecursivenessChecker} scope
 	 * @returns {boolean}
 	 */
 	isRecursive(scope) {
@@ -10731,14 +13853,15 @@ class FuncInstance extends Instance {
 }
 
 /**
- * Special function value class for top level functions because they can be used recursively.s
+ * Special function value class for top level functions because they can be used recursively.
+ * @package
  */
 class FuncStatementInstance extends FuncInstance {
 	#statement
 
 	/**
 	 * @param {FuncType} type 
-	 * @param {FuncStatement} statement 
+	 * @param {RecurseableStatement} statement - can't use FuncStatement because that would give circular dependency
 	 */
 	constructor(type, statement) {
 		super(type);
@@ -10746,14 +13869,14 @@ class FuncStatementInstance extends FuncInstance {
 	}
 
 	/**
-	 * @type {FuncStatement}
+	 * @type {RecurseableStatement}
 	 */
 	get statement() {
 		return this.#statement;
 	}
 
 	/**
-	 * @param {Scope} scope
+	 * @param {RecursivenessChecker} scope
 	 * @returns {boolean}
 	 */
 	isRecursive(scope) {
@@ -10765,6 +13888,10 @@ class FuncStatementInstance extends FuncInstance {
 	}
 }
 
+/**
+ * Wraps multiple return values
+ * @package
+ */
 class MultiInstance extends Instance {
 	#values;
 
@@ -10809,4094 +13936,62 @@ class MultiInstance extends Instance {
 	}
 }
 
-
-////////////////////
-// Section 9: Scopes
-////////////////////
-
 /**
- * GlobalScope sits above the top-level scope and contains references to all the builtin Values and Types
+ * Returned by functions that don't return anything (eg. assert, error, print)
+ * @package
  */
-class GlobalScope {
-	/**
-	 * @type {[Word, EvalEntity][]}
-	 */
-	#values;
-
+class VoidInstance extends Instance {
 	constructor() {
-		this.#values = [];
+		super();
 	}
 
 	/**
-	 * Checks if scope contains a name
-	 * @param {Word} name 
+	 * @returns {string}
+	 */
+	toString() {
+		return "()"
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @param {Type | TypeClass} type 
 	 * @returns {boolean}
 	 */
-	has(name) {
-		for (let pair of this.#values) {
-			if (pair[0].toString() == name.toString()) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Sets a global name, doesn't check for uniqueness
-	 * Called when initializing GlobalScope
-	 * @param {string | Word} name
-	 * @param {EvalEntity} value
-	 */
-	set(name, value) {
-		/** @type {Word} */
-		let nameWord = !(name instanceof Word) ? Word.new(name) : name;
-
-		this.#values.push([nameWord, value]);
-	}
-
-	/**
-	 * Gets a named value from the scope.
-	 * Throws an error if not found.
-	 * @param {Word} name 
-	 * @returns {EvalEntity}
-	 */
-	get(name) {
-		for (let pair of this.#values) {
-			if (pair[0].toString() == name.toString()) {
-				pair[1].markAsUsed();
-				return pair[1];
-			}
-		}
-
-		throw name.referenceError(`'${name.toString()}' undefined`);
-	}
-
-	/**
-	 * Check if funcstatement is called recursively (always false here)
-	 * @param {FuncStatement} statement
-	 * @returns {boolean}
-	 */
-	isRecursive(statement) {
-		return false;
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isStrict() {
-		throw new Error("should've been returned be TopScope");
-	}
-
-	/**
-	 * Initialize the GlobalScope with all the builtins
-	 * @param {number} purpose
-	 * @returns {GlobalScope}
-	 */
-	static new(purpose) {
-		let scope = new GlobalScope();
-
-		// List (aka '[]'), Option, and Map types are accessed through special expressions
-
-		// fill the global scope with builtin types
-		scope.set("Int", new IntType());
-		scope.set("Bool", new BoolType());
-		scope.set("String", new StringType());
-		scope.set("ByteArray", new ByteArrayType());
-		scope.set("PubKey", new PubKeyType());
-		scope.set("PubKeyHash", new PubKeyHashType());
-		scope.set("StakeKeyHash", new StakeKeyHashType());
-		scope.set("ScriptHash", new ScriptHashType());
-		scope.set("ValidatorHash", new ValidatorHashType(purpose));
-		scope.set("MintingPolicyHash", new MintingPolicyHashType(purpose));
-		scope.set("StakingValidatorHash", new StakingValidatorHashType(purpose));
-		scope.set("DatumHash", new DatumHashType());
-		scope.set("ScriptContext", new ScriptContextType(purpose));
-		scope.set("StakingPurpose", new StakingPurposeType());
-		scope.set("ScriptPurpose", new ScriptPurposeType());
-		scope.set("DCert", new DCertType());
-		scope.set("Tx", new TxType());
-		scope.set("TxId", new TxIdType());
-		scope.set("TxInput", new TxInputType());
-		scope.set("TxOutput", new TxOutputType());
-		scope.set("OutputDatum", new OutputDatumType());
-		scope.set("Data", new RawDataType());
-		scope.set("TxOutputId", new TxOutputIdType());
-		scope.set("Address", new AddressType());
-		scope.set("Credential", new CredentialType());
-		scope.set("StakingHash", new StakingHashType());
-		scope.set("StakingCredential", new StakingCredentialType());
-		scope.set("Time", new TimeType());
-		scope.set("Duration", new DurationType());
-		scope.set("TimeRange", new TimeRangeType());
-		scope.set("AssetClass", new AssetClassType());
-		scope.set("Value", new ValueType());
-
-		return scope;
-	}
-
-	allowMacros() {
-		for (let [_, value] of this.#values) {
-			if (value instanceof BuiltinType) {
-				value.allowMacros();
-			}
-		}
-	}
-}
-
-/**
- * User scope
- */
-class Scope {
-	/** @type {GlobalScope | Scope} */
-	#parent;
-
-	/** 
-	 * TopScope can elverage the #values to store ModuleScopes
-	 * @type {[Word, (EvalEntity | Scope)][]} 
-	 */
-	#values;
-
-	/**
-	 * @param {GlobalScope | Scope} parent 
-	 */
-	constructor(parent) {
-		this.#parent = parent;
-		this.#values = []; // list of pairs
-	}
-
-	/**
-	 * Used by top-scope to loop over all the statements
-	 */
-	get values() {
-		return this.#values.slice();
-	}
-
-	/**
-	 * Checks if scope contains a name
-	 * @param {Word} name 
-	 * @returns {boolean}
-	 */
-	has(name) {
-		for (let pair of this.#values) {
-			if (pair[0].toString() == name.toString()) {
-				return true;
-			}
-		}
-
-		if (this.#parent !== null) {
-			return this.#parent.has(name);
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * Sets a named value. Throws an error if not unique
-	 * @param {Word} name 
-	 * @param {EvalEntity | Scope} value 
-	 */
-	set(name, value) {
-		if (this.has(name)) {
-			throw name.syntaxError(`'${name.toString()}' already defined`);
-		}
-
-		this.#values.push([name, value]);
-	}
-
-	/**
-	 * Gets a named value from the scope. Throws an error if not found
-	 * @param {Word} name 
-	 * @returns {EvalEntity | Scope}
-	 */
-	get(name) {
-		if (!(name instanceof Word)) {
-			name = Word.new(name);
-		}
-
-		for (let [key, entity] of this.#values) {
-			if (key.toString() == name.toString()) {
-				if (entity instanceof EvalEntity) {
-					entity.markAsUsed();
-				}
-
-				return entity;
-			}
-		}
-
-		if (this.#parent !== null) {
-			return this.#parent.get(name);
-		} else {
-			throw name.referenceError(`'${name.toString()}' undefined`);
-		}
-	}
-
-	/**
-	 * Check if function statement is called recursively
-	 * @param {FuncStatement} statement
-	 * @returns {boolean}
-	 */
-	isRecursive(statement) {
-		return this.#parent.isRecursive(statement);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isStrict() {
-		return this.#parent.isStrict();
-	}
-
-	/**
-	 * Asserts that all named values are user.
-	 * Throws an error if some are unused.
-	 * Check is only run if we are in strict mode
-	 * @param {boolean} onlyIfStrict
-	 */
-	assertAllUsed(onlyIfStrict = true) {
-		if (!onlyIfStrict || this.isStrict()) {
-			for (let [name, entity] of this.#values) {
-				if (entity instanceof EvalEntity && !entity.isUsed()) {
-					throw name.referenceError(`'${name.toString()}' unused`);
-				}
-			}
-		}
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {boolean}
-	 */
-	isUsed(name) {
-		for (let [name, entity] of this.#values) {
-			if (name.value == name.value && entity instanceof EvalEntity) {
-				return entity.isUsed();
-			}
-		}
-
-		throw new Error(`${name.value} not found`);
+	isInstanceOf(site, type) {
+		return type instanceof VoidType;
 	}
 
 	/**
 	 * @param {Site} site 
 	 * @returns {Type}
 	 */
-	assertType(site) {
-		throw site.typeError("expected a type, got a module");
+	getType(site) {
+		return new VoidType();
 	}
 
 	/**
 	 * @param {Site} site 
+	 * @param {Instance[]} args
 	 * @returns {Instance}
 	 */
-	assertValue(site) {
-		throw site.typeError("expected a value, got a module");
+	call(site, args) {
+		throw new Error("can't call void");
 	}
-}
-
-/**
- * TopScope is a special scope that can contain UserTypes
- */
-class TopScope extends Scope {
-	#strict;
-
-	/**
-	 * @param {GlobalScope} parent 
-	 * @param {boolean} strict
-	 */
-	constructor(parent, strict = true) {
-		super(parent);
-		this.#strict = strict;
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @param {EvalEntity | Scope} value 
-	 */
-	set(name, value) {
-		super.set(name, value);
-	}
-
-	/**
-	 * @param {boolean} s 
-	 */
-	setStrict(s) {
-		this.#strict = s;
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isStrict() {
-		return this.#strict;
-	}
-}
-
-class ModuleScope extends Scope {
-}
-
-/**
- * FuncStatementScope is a special scope used to detect recursion
- */
-class FuncStatementScope extends Scope {
-	#statement;
-
-	/**
-	 * @param {Scope} parent
-	 * @param {FuncStatement} statement
-	 */
-	constructor(parent, statement) {
-		super(parent);
-
-		this.#statement = statement;
-	}
-
-	/**
-	 * @param {FuncStatement} statement 
-	 * @returns {boolean}
-	 */
-	isRecursive(statement) {
-		if (this.#statement === statement) {
-			this.#statement.setRecursive();
-			return true;
-		} else {
-			return super.isRecursive(statement);
-		}
-	}
-}
-
-
-////////////////////////////////////
-// Section 10: AST expression objects
-////////////////////////////////////
-
-/**
- * Base class of every Type and Instance expression.
- */
-class Expr extends Token {
-	/**
-	 * @param {Site} site 
-	 */
-	constructor(site) {
-		super(site);
-	}
-
-	use() {
-		throw new Error("not yet implemented");
-	}
-}
-
-/**
- * Base class of every Type expression
- * Caches evaluated Type.
- */
-class TypeExpr extends Expr {
-	#cache;
-
-	/**
-	 * @param {Site} site 
-	 * @param {?Type} cache
-	 */
-	constructor(site, cache = null) {
-		super(site);
-		this.#cache = cache;
-	}
-
-	get type() {
-		if (this.#cache === null) {
-			throw new Error("type not yet evaluated");
-		} else {
-			return this.#cache;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	eval(scope) {
-		if (this.#cache === null) {
-			this.#cache = this.evalInternal(scope);
-		}
-
-		return this.#cache;
-	}
-}
-
-/**
- * Type reference class (i.e. using a Word)
- */
-class TypeRefExpr extends TypeExpr {
-	#name;
 
 	/**
 	 * @param {Word} name
-	 * @param {?Type} cache
+	 * @returns {Instance} - can be FuncInstance or DataInstance
 	 */
-	constructor(name, cache = null) {
-		super(name.site, cache);
-		this.#name = name;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#name.toString();
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let type = scope.get(this.#name);
-
-		return type.assertType(this.#name.site);
-	}
-
-	get path() {
-		return this.type.path;
-	}
-
-	use() {
-		let t = this.type;
-
-		if (t instanceof StatementType) {
-			t.statement.use();
-		}
-	}
-}
-
-/**
- * Type::Member expression
- */
-class TypePathExpr extends TypeExpr {
-	#baseExpr;
-	#memberName;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} baseExpr 
-	 * @param {Word} memberName
-	 */
-	constructor(site, baseExpr, memberName) {
-		super(site);
-		this.#baseExpr = baseExpr;
-		this.#memberName = memberName;
-	}
-
-	toString() {
-		return `${this.#baseExpr.toString()}::${this.#memberName.toString()}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let enumType = this.#baseExpr.eval(scope);
-
-		let memberType = enumType.getTypeMember(this.#memberName);
-
-		return memberType.assertType(this.#memberName.site);
-	}
-
-	get path() {
-		return this.type.path;
-	}
-
-	use() {
-		this.#baseExpr.use();
-	}
-}
-
-class ListTypeExpr extends TypeExpr {
-	#itemTypeExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} itemTypeExpr 
-	 */
-	constructor(site, itemTypeExpr) {
-		super(site);
-		this.#itemTypeExpr = itemTypeExpr;
-	}
-
-	toString() {
-		return `[]${this.#itemTypeExpr.toString()}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let itemType = this.#itemTypeExpr.eval(scope);
-
-		if (itemType instanceof FuncType) {
-			throw this.#itemTypeExpr.typeError("list item type can't be function");
-		}
-
-		return new ListType(itemType);
-	}
-
-	use() {
-		this.#itemTypeExpr.use();
-	}
-}
-
-/**
- * Map[KeyType]ValueType expression
- */
-class MapTypeExpr extends TypeExpr {
-	#keyTypeExpr;
-	#valueTypeExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} keyTypeExpr 
-	 * @param {TypeExpr} valueTypeExpr 
-	 */
-	constructor(site, keyTypeExpr, valueTypeExpr) {
-		super(site);
-		this.#keyTypeExpr = keyTypeExpr;
-		this.#valueTypeExpr = valueTypeExpr;
-	}
-
-	toString() {
-		return `Map[${this.#keyTypeExpr.toString()}]${this.#valueTypeExpr.toString()}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let keyType = this.#keyTypeExpr.eval(scope);
-
-		if (keyType instanceof FuncType) {
-			throw this.#keyTypeExpr.typeError("map key type can't be function");
-		} else if (keyType instanceof BoolType) {
-			throw this.#keyTypeExpr.typeError("map key type can't be a boolean");
-		}
-
-		let valueType = this.#valueTypeExpr.eval(scope);
-
-		if (valueType instanceof FuncType) {
-			throw this.#valueTypeExpr.typeError("map value type can't be function");
-		}
-
-		return new MapType(keyType, valueType);
-	}
-
-	use() {
-		this.#keyTypeExpr.use();
-		this.#valueTypeExpr.use();
-	}
-}
-
-/**
- * Option[SomeType] expression
- */
-class OptionTypeExpr extends TypeExpr {
-	#someTypeExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} someTypeExpr 
-	 */
-	constructor(site, someTypeExpr) {
-		super(site);
-		this.#someTypeExpr = someTypeExpr;
-	}
-
-	toString() {
-		return `Option[${this.#someTypeExpr.toString()}]`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let someType = this.#someTypeExpr.eval(scope);
-
-		if (someType instanceof FuncType) {
-			throw this.#someTypeExpr.typeError("option some type can't be function");
-		}
-
-		return new OptionType(someType);
-	}
-
-	use() {
-		this.#someTypeExpr.use();
-	}
-}
-
-/**
- * (ArgType1, ...) -> RetType expression
- */
-class FuncTypeExpr extends TypeExpr {
-	#argTypeExprs;
-	#retTypeExprs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr[]} argTypeExprs 
-	 * @param {TypeExpr[]} retTypeExprs 
-	 */
-	constructor(site, argTypeExprs, retTypeExprs) {
-		super(site);
-		this.#argTypeExprs = argTypeExprs;
-		this.#retTypeExprs = retTypeExprs;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		if (this.#retTypeExprs.length === 1) {
-			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExprs.toString()}`;
-		} else {
-			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => e.toString()).join(", ")})`;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		let argTypes = this.#argTypeExprs.map(a => a.eval(scope));
-
-		let retTypes = this.#retTypeExprs.map(e => e.eval(scope));
-
-		return new FuncType(argTypes, retTypes);
-	}
-
-	use() {
-		this.#argTypeExprs.forEach(arg => arg.use());
-		this.#retTypeExprs.forEach(e => e.use());
-	}
-}
-
-/**
- * Base class of expression that evaluate to Values.
- */
-class ValueExpr extends Expr {
-	/** @type {?Instance} */
-	#cache;
-
-	/**
-	 * @param {Site} site 
-	 */
-	constructor(site) {
-		super(site);
-
-		this.#cache = null;
-	}
-
-	/**
-	 * @type {Instance}
-	 */
-	get value() {
-		if (this.#cache === null) {
-			throw new Error("type not yet evaluated");
-		} else {
-			return this.#cache;
-		}
-	}
-
-	get type() {
-		return this.value.getType(this.site);
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	eval(scope) {
-		if (this.#cache === null) {
-			this.#cache = this.evalInternal(scope);
-		}
-
-		return this.#cache;
-	}
-
-	/**
-	 * Returns Intermediate Representation of a value expression.
-	 * The IR should be indented to make debugging easier.
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		throw new Error("not implemented");
-	}
-}
-
-/**
- * '... = ... ; ...' expression
- */
-class AssignExpr extends ValueExpr {
-	#nameTypes;
-	#upstreamExpr;
-	#downstreamExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {NameTypePair[]} nameTypes 
-	 * @param {ValueExpr} upstreamExpr 
-	 * @param {ValueExpr} downstreamExpr 
-	 */
-	constructor(site, nameTypes, upstreamExpr, downstreamExpr) {
-		super(site);
-		assert(nameTypes.length > 0);
-		this.#nameTypes = nameTypes;
-		this.#upstreamExpr = assertDefined(upstreamExpr);
-		this.#downstreamExpr = assertDefined(downstreamExpr);
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		let downstreamStr = this.#downstreamExpr.toString();
-		assert(downstreamStr != undefined);
-
-		if (this.#nameTypes.length === 1) {
-			return `${this.#nameTypes.toString()} = ${this.#upstreamExpr.toString()}; ${downstreamStr}`;
-		} else {
-			return `(${this.#nameTypes.map(nt => nt.toString()).join(", ")}) = ${this.#upstreamExpr.toString()}; ${downstreamStr}`;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let subScope = new Scope(scope);
-
-		let upstreamVal = this.#upstreamExpr.eval(scope);
-
-		if (this.#nameTypes.length > 1) {
-			if (!(upstreamVal instanceof MultiInstance)) {
-				throw this.typeError("rhs ins't a multi-value");
-			} else {
-				let types = this.#nameTypes.map(nt => nt.evalType(scope));
-
-				let vals = upstreamVal.values;
-
-				if (types.length != vals.length) {
-					throw this.typeError(`expected ${types.length} rhs in multi-assign, got ${vals.length}`);
-				} else {
-					types.forEach((t, i) => {
-						if (!vals[i].isInstanceOf(this.#upstreamExpr.site, t)) {
-							throw this.#upstreamExpr.typeError(`expected ${t.toString()} for rhs ${i+1}, got ${vals[i].toString()}`);
-						}
-					});
-
-					vals.forEach((v, i) => {
-						if (!this.#nameTypes[i].isIgnored()) {
-							// TODO: take into account ghost type parameters
-							v = Instance.new(types[i]);
-
-							subScope.set(this.#nameTypes[i].name, v);
-						}
-					});
-				}
-			}
-		} else {
-			if (!upstreamVal.isValue()) {
-				throw this.typeError("rhs isn't a value");
-			}
-
-			if (this.#nameTypes[0].hasType()) {
-				let type = this.#nameTypes[0].evalType(scope);
-
-				assert(type.isType());
-
-				if (!upstreamVal.isInstanceOf(this.#upstreamExpr.site, type)) {
-					throw this.#upstreamExpr.typeError(`expected ${type.toString()}, got ${upstreamVal.toString()}`);
-				}
-
-				// TODO: take into account ghost type parameters
-				upstreamVal = Instance.new(type);
-			} else if (this.#upstreamExpr.isLiteral()) {
-				// enum variant type resulting from a constructor-like associated function must be cast back into its enum type
-				if ((this.#upstreamExpr instanceof CallExpr &&
-					this.#upstreamExpr.fnExpr instanceof ValuePathExpr) || 
-					(this.#upstreamExpr instanceof ValuePathExpr && 
-					!this.#upstreamExpr.isZeroFieldConstructor())) 
-				{
-					let upstreamType = upstreamVal.getType(this.#upstreamExpr.site);
-
-					if (upstreamType instanceof StatementType && 
-						upstreamType.statement instanceof EnumMember) 
-					{
-						upstreamVal = Instance.new(new StatementType(upstreamType.statement.parent));
-					} else if (upstreamType instanceof BuiltinEnumMember) {
-						upstreamVal = Instance.new(upstreamType.parentType);
-					}
-				}
-			} else {
-				throw this.typeError("unable to infer type of assignment rhs");
-			}
-
-			subScope.set(this.#nameTypes[0].name, upstreamVal);
-		}
-
-		let downstreamVal = this.#downstreamExpr.eval(subScope);
-
-		subScope.assertAllUsed();
-
-		return downstreamVal;
-	}
-
-	use() {
-		this.#nameTypes.forEach(nt => nt.use());
-		this.#upstreamExpr.use();
-		this.#downstreamExpr.use();
-	}
-
-	/**
-	 * 
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		if (this.#nameTypes.length === 1) {
-			return new IR([
-				new IR(`(${this.#nameTypes[0].name.toString()}) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
-				this.#downstreamExpr.toIR(indent + TAB),
-				new IR(`\n${indent}}(`),
-				this.#upstreamExpr.toIR(indent),
-				new IR(")")
-			]);
-		} else {
-			let ir = new IR([
-				this.#upstreamExpr.toIR(indent),
-				new IR(`(\n${indent + TAB}(`), new IR(this.#nameTypes.map(nt => new IR(nt.name.toString()))).join(", "), new IR(") ->", this.site), new IR(` {\n${indent}${TAB}${TAB}`),
-				this.#downstreamExpr.toIR(indent + TAB + TAB),
-				new IR(`\n${indent + TAB}}\n${indent})`)
-			]);
-
-			return ir;
-		}
-	}
-}
-
-/**
- * print(...); ... expression
- */
-class PrintExpr extends ValueExpr {
-	#msgExpr;
-	#downstreamExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr} msgExpr 
-	 * @param {ValueExpr} downstreamExpr 
-	 */
-	constructor(site, msgExpr, downstreamExpr) {
-		super(site);
-		this.#msgExpr = msgExpr;
-		this.#downstreamExpr = downstreamExpr;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		let downstreamStr = this.#downstreamExpr.toString();
-		assert(downstreamStr != undefined);
-		return `print(${this.#msgExpr.toString()}); ${downstreamStr}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let msgVal = this.#msgExpr.eval(scope);
-
-		assert(msgVal.isValue());
-
-		if (!msgVal.isInstanceOf(this.#msgExpr.site, StringType)) {
-			throw this.#msgExpr.typeError("expected string arg for print");
-		}
-
-		let downstreamVal = this.#downstreamExpr.eval(scope);
-
-		return downstreamVal;
-	}
-
-	use() {
-		this.#msgExpr.use();
-		this.#downstreamExpr.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return new IR([
-			new IR("__core__trace", this.site), new IR("("), new IR("__helios__common__unStringData("),
-			this.#msgExpr.toIR(indent),
-			new IR(`), () -> {\n${indent}${TAB}`),
-			this.#downstreamExpr.toIR(indent + TAB),
-			new IR(`\n${indent}})()`)
-		]);
-	}
-}
-
-/**
- * ... ; error(...)
- */
-class ErrorExpr extends ValueExpr {
-	#msgExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr} msgExpr 
-	 */
-	constructor(site, msgExpr) {
-		super(site);
-		this.#msgExpr = msgExpr;
-	}
-
-	toString() {
-		return `error(${this.#msgExpr.toString()})`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let msgVal = this.#msgExpr.eval(scope);
-
-		assert(msgVal.isValue());
-
-		if (!msgVal.isInstanceOf(this.#msgExpr.site, StringType)) {
-			throw this.#msgExpr.typeError("expected string arg for error");
-		}
-
-		return new ErrorInstance();
-	}
-
-	use() {
-		this.#msgExpr.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return new IR([
-			new IR("__core__trace", this.site), new IR("("), new IR("__helios__common__unStringData("),
-			this.#msgExpr.toIR(indent),
-			new IR(`), () -> {__core__error("error thrown by user-code")})()`)
-		]);
-	}
-}
-
-/**
- * Literal expression class (wraps literal tokens)
- */
-class PrimitiveLiteralExpr extends ValueExpr {
-	#primitive;
-
-	/**
-	 * @param {PrimitiveLiteral} primitive 
-	 */
-	constructor(primitive) {
-		super(primitive.site);
-		this.#primitive = primitive;
-	}
-
-	isLiteral() {
-		return true;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#primitive.toString();
-	}
-
-	/**
-	 * @type {Type}
-	 */
-	get type() {
-		if (this.#primitive instanceof IntLiteral) {
-			return new IntType();
-		} else if (this.#primitive instanceof BoolLiteral) {
-			return new BoolType();
-		} else if (this.#primitive instanceof StringLiteral) {
-			return new StringType();
-		} else if (this.#primitive instanceof ByteArrayLiteral) {
-			return new ByteArrayType(this.#primitive.bytes.length == 32 ? 32 : null);
-		} else {
-			throw new Error("unhandled primitive type");
-		}	
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		return new DataInstance(this.type);
-	}
-
-	use() {
-	}
-
-	/**
-	 * @param {string} indent
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		// all literals can be reused in their string-form in the IR
-		let inner = new IR(this.#primitive.toString(), this.#primitive.site);
-
-		if (this.#primitive instanceof IntLiteral) {
-			return new IR([new IR("__core__iData", this.site), new IR("("), inner, new IR(")")]);
-		} else if (this.#primitive instanceof BoolLiteral) {
-			return inner;
-		} else if (this.#primitive instanceof StringLiteral) {
-			return new IR([new IR("__helios__common__stringData", this.site), new IR("("), inner, new IR(")")]);
-		} else if (this.#primitive instanceof ByteArrayLiteral) {
-			return new IR([new IR("__core__bData", this.site), new IR("("), inner, new IR(")")]);
-		} else {
-			throw new Error("unhandled primitive type");
-		}
-	}
-}
-
-/**
- * Struct field (part of a literal struct constructor)
- */
-class StructLiteralField {
-	#name;
-	#value;
-
-	/**
-	 * @param {?Word} name 
-	 * @param {ValueExpr} value 
-	 */
-	constructor(name, value) {
-		this.#name = name;
-		this.#value = value;
-	}
-
-	get site() {
-		if (this.#name === null) {
-			return this.#value.site;
-		} else {
-			return this.#name.site;
-		}
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isNamed() {
-		return this.#name !== null;
-	}
-
-	get name() {
-		if (this.#name === null) {
-			throw new Error("name of field not given");
-		} else {
-			return this.#name;
-		}
-	}
-
-	toString() {
-		if (this.#name === null) {
-			return this.#value.toString();
-		} else {
-			return `${this.#name.toString()}: ${this.#value.toString()}`;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	eval(scope) {
-		return this.#value.eval(scope);
-	}
-
-	use() {
-		this.#value.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return this.#value.toIR(indent);
-	}
-}
-
-/**
- * Struct literal constructor
- */
-class StructLiteralExpr extends ValueExpr {
-	#typeExpr;
-	#fields;
-	/** @type {?number} - set during evaluation */
-	#constrIndex;
-
-	/**
-	 * @param {TypeExpr} typeExpr 
-	 * @param {StructLiteralField[]} fields 
-	 */
-	constructor(typeExpr, fields) {
-		super(typeExpr.site);
-		this.#typeExpr = typeExpr;
-		this.#fields = fields;
-		this.#constrIndex = null;
-	}
-
-	isLiteral() {
-		return true;
-	}
-
-	toString() {
-		return `${this.#typeExpr.toString()}{${this.#fields.map(f => f.toString()).join(", ")}}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns 
-	 */
-	evalInternal(scope) {
-		let type = this.#typeExpr.eval(scope);
-
-		assert(type.isType());
-
-		this.#constrIndex = type.getConstrIndex(this.site);
-
-		let instance = Instance.new(type);
-
-		if (instance.nFields(this.site) != this.#fields.length) {
-			throw this.typeError("wrong number of fields");
-		}
-
-		for (let i = 0; i < this.#fields.length; i++) {
-			let f = this.#fields[i];
-		
-			let fieldVal = f.eval(scope);
-
-			if (f.isNamed()) {
-				// check the named type
-				let memberType = instance.getInstanceMember(f.name).getType(f.name.site);
-
-				if (!fieldVal.isInstanceOf(f.site, memberType)) {
-					throw f.site.typeError(`wrong field type for '${f.name.toString()}'`);
-				}
-			}
-			
-			// check the positional type
-			let memberType = instance.getFieldType(f.site, i);
-			
-			if (!fieldVal.isInstanceOf(f.site, memberType)) {
-				if (f.isNamed()) {
-					throw f.site.typeError("wrond field order");
-				} else {
-					throw f.site.typeError("wrong field type");
-				}
-			}
-		}
-
-		return instance;
-	}
-
-	use() {
-		this.#typeExpr.use();
-
-		for (let f of this.#fields) {
-			f.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let res = new IR("__core__mkNilData(())");
-
-		let fields = this.#fields.slice();
-
-		let instance = Instance.new(this.#typeExpr.type);
-
-		for (let i = fields.length - 1; i >= 0; i--) {
-			let f = fields[i];
-
-			let isBool = instance.getFieldType(f.site, i) instanceof BoolType;
-
-			let fIR = f.toIR(indent);
-
-			if (isBool) {
-				fIR = new IR([
-					new IR("__helios__common__boolData("),
-					fIR,
-					new IR(")"),
-				]);
-			}
-
-			// in case of a struct with only one field, return that field directly 
-			if (fields.length == 1 && this.#typeExpr.type instanceof StatementType && this.#typeExpr.type.statement instanceof StructStatement) {
-				return fIR;
-			}
-
-			res = new IR([
-				new IR("__core__mkCons("),
-				fIR,
-				new IR(", "),
-				res,
-				new IR(")")
-			]);
-		}
-
-		let index = this.#constrIndex;
-
-		if (index === null) {
-			throw new Error("constrIndex not yet set");
-		} else if (index == -1) {
-			// regular struct
-			return new IR([
-				new IR("__core__listData", this.site),
-				new IR("("), 
-				res,
-				new IR(")")
-			]);
-		} else {
-			return new IR([
-				new IR("__core__constrData", this.site), new IR(`(${index.toString()}, `),
-				res,
-				new IR(")")
-			]);
-		}
-	}
-}
-
-/**
- * []{...} expression
- */
-class ListLiteralExpr extends ValueExpr {
-	#itemTypeExpr;
-	#itemExprs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} itemTypeExpr 
-	 * @param {ValueExpr[]} itemExprs 
-	 */
-	constructor(site, itemTypeExpr, itemExprs) {
-		super(site);
-		this.#itemTypeExpr = itemTypeExpr;
-		this.#itemExprs = itemExprs;
-	}
-
-	isLiteral() {
-		return true;
-	}
-
-	toString() {
-		return `[]${this.#itemTypeExpr.toString()}{${this.#itemExprs.map(itemExpr => itemExpr.toString()).join(', ')}}`;
-	}
-
-	/**
-	 * @param {Scope} scope
-	 */
-	evalInternal(scope) {
-		let itemType = this.#itemTypeExpr.eval(scope);
-
-		if (itemType instanceof FuncType) {
-			throw this.#itemTypeExpr.typeError("content of list can't be func");
-		}
-
-		for (let itemExpr of this.#itemExprs) {
-			let itemVal = itemExpr.eval(scope);
-
-			if (!itemVal.isInstanceOf(itemExpr.site, itemType)) {
-				throw itemExpr.typeError(`expected ${itemType.toString()}, got ${itemVal.toString()}`);
-			}
-		}
-
-		return Instance.new(new ListType(itemType));
-	}
-
-	use() {
-		this.#itemTypeExpr.use();
-
-		for (let item of this.#itemExprs) {
-			item.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let isBool = this.#itemTypeExpr.type instanceof BoolType;
-
-		// unsure if list literals in untyped Plutus-core accept arbitrary terms, so we will use the more verbose constructor functions 
-		let res = new IR("__core__mkNilData(())");
-
-		// starting from last element, keeping prepending a data version of that item
-
-		for (let i = this.#itemExprs.length - 1; i >= 0; i--) {
-			let itemIR = this.#itemExprs[i].toIR(indent);
-
-			if (isBool) {
-				itemIR = new IR([
-					new IR("__helios__common__boolData("),
-					itemIR,
-					new IR(")"),
-				]);
-			}
-
-			res = new IR([
-				new IR("__core__mkCons("),
-				itemIR,
-				new IR(", "),
-				res,
-				new IR(")")
-			]);
-		}
-
-		return new IR([new IR("__core__listData", this.site), new IR("("), res, new IR(")")]);
-	}
-}
-
-/**
- * Map[...]...{... : ...} expression
- */
- class MapLiteralExpr extends ValueExpr {
-	#keyTypeExpr;
-	#valueTypeExpr;
-	#pairExprs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {TypeExpr} keyTypeExpr 
-	 * @param {TypeExpr} valueTypeExpr
-	 * @param {[ValueExpr, ValueExpr][]} pairExprs 
-	 */
-	constructor(site, keyTypeExpr, valueTypeExpr, pairExprs) {
-		super(site);
-		this.#keyTypeExpr = keyTypeExpr;
-		this.#valueTypeExpr = valueTypeExpr;
-		this.#pairExprs = pairExprs;
-	}
-
-	isLiteral() {
-		return true;
-	}
-
-	toString() {
-		return `Map[${this.#keyTypeExpr.toString()}]${this.#valueTypeExpr.toString()}{${this.#pairExprs.map(([keyExpr, valueExpr]) => `${keyExpr.toString()}: ${valueExpr.toString()}`).join(', ')}}`;
-	}
-
-	/**
-	 * @param {Scope} scope
-	 */
-	evalInternal(scope) {
-		let keyType = this.#keyTypeExpr.eval(scope);
-		let valueType = this.#valueTypeExpr.eval(scope);
-
-		if (keyType instanceof FuncType) {
-			throw this.#keyTypeExpr.typeError("key-type of Map can't be func");
-		} else if (valueType instanceof FuncType) {
-			throw this.#valueTypeExpr.typeError("value-type of Map can't be func");
-		}
-
-		for (let [keyExpr, valueExpr] of this.#pairExprs) {
-			let keyVal = keyExpr.eval(scope);
-			let valueVal = valueExpr.eval(scope);
-
-			if (!keyVal.isInstanceOf(keyExpr.site, keyType)) {
-				throw keyExpr.typeError(`expected ${keyType.toString()} for map key, got ${keyVal.toString()}`);
-			} else if (!valueVal.isInstanceOf(valueExpr.site, valueType)) {
-				throw valueExpr.typeError(`expected ${valueType.toString()} for map value, got ${valueVal.toString()}`);
-			}
-		}
-
-		return Instance.new(new MapType(keyType, valueType));
-	}
-
-	use() {
-		this.#keyTypeExpr.use();
-		this.#valueTypeExpr.use();
-
-		for (let [fst, snd] of this.#pairExprs) {
-			fst.use();
-			snd.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let isBoolValue = this.#valueTypeExpr.type instanceof BoolType;
-
-		// unsure if list literals in untyped Plutus-core accept arbitrary terms, so we will use the more verbose constructor functions 
-		let res = new IR("__core__mkNilPairData(())");
-
-		// starting from last element, keeping prepending a data version of that item
-
-		for (let i = this.#pairExprs.length - 1; i >= 0; i--) {
-			let [keyExpr, valueExpr] = this.#pairExprs[i];
-
-			let valueIR = valueExpr.toIR(indent);
-
-			if (isBoolValue) {
-				valueIR = new IR([
-					new IR("__helios__common__boolData("),
-					valueIR,
-					new IR(")"),
-				]);
-			}
-
-			res = new IR([
-				new IR("__core__mkCons("),
-				new IR("__core__mkPairData("),
-				keyExpr.toIR(indent),
-				new IR(","),
-				valueIR,
-				new IR(")"),
-				new IR(", "),
-				res,
-				new IR(")")
-			]);
-		}
-
-		return new IR([new IR("__core__mapData", this.site), new IR("("), res, new IR(")")]);
-	}
-}
-
-/**
- * NameTypePair is base class of FuncArg and DataField (differs from StructLiteralField) 
- */
-class NameTypePair {
-	#name;
-	#typeExpr;
-
-	/**
-	 * @param {Word} name 
-	 * @param {?TypeExpr} typeExpr 
-	 */
-	constructor(name, typeExpr) {
-		this.#name = name;
-		this.#typeExpr = typeExpr;
-	}
-
-	/**
-	 * @type {Site}
-	 */
-	get site() {
-		return this.#name.site;
-	}
-
-	/**
-	 * @type {Word}
-	 */
-	get name() {
-		return this.#name;
-	}
-
-	isIgnored() {
-		return this.name.value === "_";
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	hasType() {
-		return this.#typeExpr !== null;
-	}
-
-	/**
-	 * Throws an error if called before evalType()
-	 * @type {Type}
-	 */
-	get type() {
-		if (this.isIgnored()) {
-			return new AnyType();
-		} else if (this.#typeExpr === null) {
-			throw new Error("typeExpr not set");
-		} else {
-			return this.#typeExpr.type;
-		}
-	}
-
-	/**
-	 * @type {string}
-	 */
-	get typeName() {
-		if (this.#typeExpr === null) {
-			return "";
-		} else {
-			return this.#typeExpr.toString();
-		}
-	}
-
-	toString() {
-		if (this.#typeExpr === null) {
-			return this.name.toString();
-		} else {
-			return `${this.name.toString()}: ${this.#typeExpr.toString()}`;
-		}
-	}
-
-	/**
-	 * Evaluates the type, used by FuncLiteralExpr and DataDefinition
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalType(scope) {
-		if (this.isIgnored()) {
-			return new AnyType();
-		} else if (this.#typeExpr === null) {
-			throw new Error("typeExpr not set");
-		} else {
-			return this.#typeExpr.eval(scope);
-		}
-	}
-
-	use() {
-		if (this.#typeExpr !== null) {
-			this.#typeExpr.use();
-		}
-	}
-
-	toIR() {
-		return new IR(this.#name.toString(), this.#name.site);
-	}
-}
-
-/**
- * Function argument class
- */
-class FuncArg extends NameTypePair {
-	/**
-	 * @param {Word} name 
-	 * @param {?TypeExpr} typeExpr 
-	 */
-	constructor(name, typeExpr) {
-		super(name, typeExpr);
-	}
-}
-
-/**
- * (..) -> RetTypeExpr {...} expression
- */
-class FuncLiteralExpr extends ValueExpr {
-	#args;
-	#retTypeExprs;
-	#bodyExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {FuncArg[]} args 
-	 * @param {TypeExpr[]} retTypeExprs 
-	 * @param {ValueExpr} bodyExpr 
-	 */
-	constructor(site, args, retTypeExprs, bodyExpr) {
-		super(site);
-		this.#args = args;
-		this.#retTypeExprs = retTypeExprs;
-		this.#bodyExpr = bodyExpr;
-	}
-
-	/**
-	 * @type {Type[]}
-	 */
-	get argTypes() {
-		return this.#args.map(a => a.type);
-	}
-
-	/**
-	 * @type {string[]}
-	 */
-	get argTypeNames() {
-		return this.#args.map(a => a.typeName)
-	}
-
-	/**
-	 * @type {Type[]}
-	 */
-	get retTypes() {
-		return this.#retTypeExprs.map(e => e.type);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isLiteral() {
-		return true;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		if (this.#retTypeExprs.length === 1) {
-			return `(${this.#args.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExprs[0].toString()} {${this.#bodyExpr.toString()}}`;
-		} else {
-			return `(${this.#args.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => e.toString()).join(", ")}) {${this.#bodyExpr.toString()}}`;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns 
-	 */
-	evalType(scope) {
-		let args = this.#args;
-		if (this.isMethod()) {
-			args = args.slice(1);
-		}
-
-		let argTypes = args.map(a => a.evalType(scope));
-		let retTypes = this.#retTypeExprs.map(e => e.eval(scope));
-
-		return new FuncType(argTypes, retTypes);
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {FuncInstance}
-	 */
-	evalInternal(scope) {
-		let fnType = this.evalType(scope);
-		
-		// argTypes is calculated separately again here so it includes self
-		let argTypes = this.#args.map(a => a.evalType(scope));
-
-		let res = new FuncInstance(fnType);
-
-		let subScope = new Scope(scope);
-		argTypes.forEach((a, i) => {
-			if (!this.#args[i].isIgnored()) {
-				subScope.set(this.#args[i].name, Instance.new(a));
-			}
-		});
-
-		let bodyVal = this.#bodyExpr.eval(subScope);
-
-		if (this.#retTypeExprs.length === 1) {
-			if (bodyVal instanceof MultiInstance) {
-				throw this.#retTypeExprs[0].typeError("unexpected multi-value body");
-			} else if (!bodyVal.isInstanceOf(this.#retTypeExprs[0].site, fnType.retTypes[0])) {
-				throw this.#retTypeExprs[0].typeError(`wrong return type, expected ${fnType.retTypes[0].toString()} but got ${this.#bodyExpr.type.toString()}`);
-			}
-		} else {
-			if (bodyVal instanceof MultiInstance) {
-				/** @type {Instance[]} */
-				let bodyVals = bodyVal.values;
-
-				if (bodyVals.length !== this.#retTypeExprs.length) {
-					throw this.#bodyExpr.typeError(`expected multi-value function body with ${this.#retTypeExprs.length} values, but got ${bodyVals.length} values`);
-				} else {
-					for (let i = 0; i < bodyVals.length; i++) {
-						let v = bodyVals[i];
-
-						if (!v.isInstanceOf(this.#retTypeExprs[i].site, fnType.retTypes[i])) {
-							throw this.#retTypeExprs[i].typeError(`wrong return type for value ${i}, expected ${fnType.retTypes[i].toString()} but got ${v.getType(this.#bodyExpr.site).toString()}`);
-						}
-					}
-				}
-			} else {
-				throw this.#bodyExpr.typeError(`expected multi-value function body, but got ${this.#bodyExpr.type.toString()}`);
-			}
-		}
-
-		subScope.assertAllUsed();
-
-		return res;
-	}
-
-	isMethod() {
-		return this.#args.length > 0 && this.#args[0].name.toString() == "self";
-	}
-
-	use() {
-		for (let arg of this.#args) {
-			arg.use();
-		}
-
-		this.#retTypeExprs.forEach(e => e.use());
-		this.#bodyExpr.use();
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	argsToIR() {
-		let args = this.#args.map(a => a.toIR());
-		if (this.isMethod()) {
-			args = args.slice(1);
-		}
-
-		return (new IR(args)).join(", ");
-	}
-
-	/**
-	 * @param {?string} recursiveName 
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIRInternal(recursiveName, indent = "") {
-		let argsWithCommas = this.argsToIR();
-
-		let innerIndent = indent;
-		let methodIndent = indent;
-		if (this.isMethod()) {
-			innerIndent += TAB;
-		}
-
-		if (recursiveName !== null) {
-			innerIndent += TAB;
-			methodIndent += TAB;
-		}
-
-		let ir = new IR([
-			new IR("("),
-			argsWithCommas,
-			new IR(") "), new IR("->", this.site), new IR(` {\n${innerIndent}${TAB}`),
-			this.#bodyExpr.toIR(innerIndent + TAB),
-			new IR(`\n${innerIndent}}`),
-		]);
-
-		// wrap with 'self'
-		if (this.isMethod()) {
-			ir = new IR([
-				new IR(`(self) -> {\n${methodIndent}${TAB}`),
-				ir,
-				new IR(`\n${methodIndent}}`),
-			]);
-		}
-
-		if (recursiveName !== null) {
-			ir = new IR([
-				new IR("("),
-				new IR(recursiveName),
-				new IR(`) -> {\n${indent}${TAB}`),
-				ir,
-				new IR(`\n${indent}}`)
-			]);
-		}
-
-		return ir;
-	}
-
-	/**
-	 * @param {string} recursiveName 
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIRRecursive(recursiveName, indent = "") {
-		return this.toIRInternal(recursiveName, indent);
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return this.toIRInternal(null, indent);
-	}
-}
-
-/**
- * Variable expression
- */
-class ValueRefExpr extends ValueExpr {
-	#name;
-	#isRecursiveFunc;
-
-	/**
-	 * @param {Word} name 
-	 */
-	constructor(name) {
-		super(name.site);
-		this.#name = name;
-		this.#isRecursiveFunc = false;
-	}
-
-	toString() {
-		return this.#name.toString();
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let val = scope.get(this.#name);
-
-		if (val instanceof FuncInstance && val.isRecursive(scope)) {
-			this.#isRecursiveFunc = true;
-		}
-
-		return val.assertValue(this.#name.site);
-	}
-
-	use() {
-		if (this.value instanceof FuncStatementInstance) {
-			this.value.statement.use();
-		} else if (this.value instanceof ConstStatementInstance) {
-			this.value.statement.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let path = this.toString();
-
-		if (this.value instanceof FuncStatementInstance || this.value instanceof ConstStatementInstance) {
-			path = this.value.statement.path;
-		}
-
-		let ir = new IR(path, this.site);
-
-		if (this.#isRecursiveFunc) {
-			ir = new IR([
-				ir,
-				new IR("("),
-				ir,
-				new IR(")")
-			]);
-		}
-		
-		return ir;
-	}
-}
-
-/**
- * Word::Word::... expression
- */
-class ValuePathExpr extends ValueExpr {
-	#baseTypeExpr;
-	#memberName;
-	#isRecursiveFunc;
-
-	/**
-	 * @param {TypeExpr} baseTypeExpr 
-	 * @param {Word} memberName 
-	 */
-	constructor(baseTypeExpr, memberName) {
-		super(memberName.site);
-		this.#baseTypeExpr = baseTypeExpr;
-		this.#memberName = memberName;
-		this.#isRecursiveFunc = false;
-	}
-
-	/**
-	 * @type {Type}
-	 */
-	get baseType() {
-		return this.#baseTypeExpr.type;
-	}
-
-	toString() {
-		return `${this.#baseTypeExpr.toString()}::${this.#memberName.toString()}`;
-	}
-
-	isZeroFieldConstructor() {
-		let type = this.type;
-
-		if (type instanceof StatementType && type.statement instanceof EnumMember && type.statement.name.value === this.#memberName.value) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * Returns true if ValuePathExpr constructs a literal enum member with zero field or
-	 * if this baseType is also a baseType of the returned value
-	 * @returns {boolean}
-	 */
-	isLiteral() {
-		if (this.isZeroFieldConstructor()) {
-			return true;
-		} else {
-			let type = this.type;
-
-			if (this.baseType.isBaseOf(this.site, type)) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let baseType = this.#baseTypeExpr.eval(scope);
-		assert(baseType.isType());
-
-		let memberVal = baseType.getTypeMember(this.#memberName);
-
-		if (memberVal instanceof FuncInstance && memberVal.isRecursive(scope)) {
-			this.#isRecursiveFunc = true;
-		}
-
-		return memberVal.assertValue(this.#memberName.site);
-	}
-
-	use() {
-		this.#baseTypeExpr.use();
-
-		if (this.value instanceof ConstStatementInstance) {
-			this.value.statement.use();
-		} else if (this.value instanceof FuncStatementInstance) {
-			this.value.statement.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		// if we are directly accessing an enum member as a zero-field constructor we must change the code a bit
-		let memberVal = this.#baseTypeExpr.type.getTypeMember(this.#memberName);
-
-		if (((memberVal instanceof StatementType) && (memberVal.statement instanceof EnumMember)) || (memberVal instanceof OptionNoneType)) {
-			let cId = memberVal.getConstrIndex(this.#memberName.site);
-
-			assert(cId >= 0);
-
-			return new IR(`__core__constrData(${cId.toString()}, __core__mkNilData(()))`, this.site)
-		} else {
-			let ir = new IR(`${this.#baseTypeExpr.type.path}__${this.#memberName.toString()}`, this.site);
-
-			if (this.#isRecursiveFunc) {
-				ir = new IR([
-					ir,
-					new IR("("),
-					ir,
-					new IR(")")
-				]);
-			}
-
-			return ir;
-		}
-	}
-}
-
-/**
- * Unary operator expression
- * Note: there are no post-unary operators, only pre
- */
-class UnaryExpr extends ValueExpr {
-	#op;
-	#a;
-
-	/**
-	 * @param {Symbol} op 
-	 * @param {ValueExpr} a 
-	 */
-	constructor(op, a) {
-		super(op.site);
-		this.#op = op;
-		this.#a = a;
-	}
-
-	toString() {
-		return `${this.#op.toString()}${this.#a.toString()}`;
-	}
-
-	/**
-	 * Turns an op symbol into an internal name
-	 * @returns {Word}
-	 */
-	translateOp() {
-		let op = this.#op.toString();
-		let site = this.#op.site;
-
-		if (op == "+") {
-			return new Word(site, "__pos");
-		} else if (op == "-") {
-			return new Word(site, "__neg");
-		} else if (op == "!") {
-			return new Word(site, "__not");
-		} else {
-			throw new Error("unhandled unary op");
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let a = this.#a.eval(scope);
-
-		let fnVal = a.assertValue(this.#a.site).getInstanceMember(this.translateOp());
-
-		// ops are immediately applied
-		return fnVal.call(this.#op.site, []);
-	}
-
-	use() {
-		this.#a.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let path = this.type.path;
-
-		return new IR([
-			new IR(`${path}__${this.translateOp().value}`, this.site), new IR("("),
-			this.#a.toIR(indent),
-			new IR(")()")
-		]);
-	}
-}
-
-/**
- * Binary operator expression
- */
-class BinaryExpr extends ValueExpr {
-	#op;
-	#a;
-	#b;
-	#swap; // swap a and b for commutative ops
-	#alt; // use alt (each operator can have one overload)
-
-	/**
-	 * @param {Symbol} op 
-	 * @param {ValueExpr} a 
-	 * @param {ValueExpr} b 
-	 */
-	constructor(op, a, b) {
-		super(op.site);
-		this.#op = op;
-		this.#a = a;
-		this.#b = b;
-		this.#swap = false;
-		this.#alt = false;
-	}
-
-	/** 
-	 * @type {ValueExpr}
-	 */
-	get first() {
-		return this.#swap ? this.#b : this.#a;
-	}
-
-	/**
-	 * @type {ValueExpr} 
-	 */
-	get second() {
-		return this.#swap ? this.#a : this.#b;
-	}
-
-	toString() {
-		return `${this.#a.toString()} ${this.#op.toString()} ${this.#b.toString()}`;
-	}
-
-	/**
-	 * Turns op symbol into internal name
-	 * @param {boolean} alt
-	 * @returns {Word}
-	 */
-	translateOp(alt = false) {
-		let op = this.#op.toString();
-		let site = this.#op.site;
-		let name;
-
-		if (op == "||") {
-			name = "__or";
-		} else if (op == "&&") {
-			name = "__and";
-		} else if (op == "==") {
-			name = "__eq";
-		} else if (op == "!=") {
-			name = "__neq";
-		} else if (op == "<") {
-			name = "__lt";
-		} else if (op == "<=") {
-			name = "__leq";
-		} else if (op == ">") {
-			name = "__gt";
-		} else if (op == ">=") {
-			name = "__geq";
-		} else if (op == "+") {
-			name = "__add";
-		} else if (op == "-") {
-			name = "__sub";
-		} else if (op == "*") {
-			name = "__mul";
-		} else if (op == "/") {
-			name = "__div";
-		} else if (op == "%") {
-			name = "__mod";
-		} else {
-			throw new Error("unhandled");
-		}
-
-		if (alt) {
-			name += "_alt";
-		}
-
-		return new Word(site, name);
-	}
-
-	isCommutative() {
-		let op = this.#op.toString();
-		return op == "+" || op == "*";
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let a = this.#a.eval(scope);
-		let b = this.#b.eval(scope);
-
-		assert(a.isValue() && b.isValue());
-
-		/**
-		 * @type {?UserError}
-		 */
-		let firstError = null;
-
-		for (let swap of (this.isCommutative() ? [false, true] : [false])) {
-			for (let alt of [false, true]) {
-				let first  = swap ? b : a;
-				let second = swap ? a : b;
-
-				try {
-					let fnVal = first.getInstanceMember(this.translateOp(alt));
-
-					let res = fnVal.call(this.#op.site, [second]);
-
-					this.#swap = swap;
-					this.#alt  = alt;
-
-					return res;
-				} catch (e) {
-					if (e instanceof UserError) {
-						if (firstError === null) {
-							firstError = e;
-						}
-						continue;
-					} else {
-						throw e;
-					}
-				}
-			}
-		}
-
-		if (firstError !== null) {
-			throw firstError;
-		} else {
-			throw new Error("unexpected");
-		}
-	}
-
-	use() {
-		this.#a.use();
-		this.#b.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let path = this.first.type.path;
-
-		let op = this.translateOp(this.#alt).value;
-
-		if (op == "__and" || op == "__or") {
-			return new IR([
-				new IR(`${path}${op}`, this.site), new IR(`(\n${indent}${TAB}() -> {`),
-				this.first.toIR(indent + TAB),
-				new IR(`},\n${indent}${TAB}() -> {`),
-				this.second.toIR(indent + TAB),
-				new IR(`}\n${indent})`)
-			]);
-		} else {
-			return new IR([
-				new IR(`${path}__${op}`, this.site), new IR("("),
-				this.first.toIR(indent),
-				new IR(")("),
-				this.second.toIR(indent),
-				new IR(")")
-			]);
-		}
-	}
-}
-
-/**
- * Parentheses expression
- */
-class ParensExpr extends ValueExpr {
-	#exprs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr[]} exprs
-	 */
-	constructor(site, exprs) {
-		super(site);
-		this.#exprs = exprs;
-	}
-
-	toString() {
-		return `(${this.#exprs.map(e => e.toString()).join(", ")})`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		if (this.#exprs.length === 1) {
-			return this.#exprs[0].eval(scope);
-		} else {
-			return new MultiInstance(this.#exprs.map(e => e.eval(scope)));
-		}
-	}
-
-	use() {
-		this.#exprs.forEach(e => e.use());
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		if (this.#exprs.length === 1) {
-			return this.#exprs[0].toIR(indent);
-		} else {
-			return new IR(
-				[new IR(`(callback) -> {\n${indent + TAB}callback(\n${indent + TAB + TAB}`, this.site)]
-				.concat(new IR(this.#exprs.map(e => e.toIR(indent + TAB + TAB))).join(`,\n${indent + TAB + TAB}`))
-				.concat([new IR(`\n${indent + TAB})\n${indent}}`)])
-			);
-		}
-	}
-}
-
-/**
- * ...(...) expression
- */
-class CallExpr extends ValueExpr {
-	#fnExpr;
-	#argExprs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr} fnExpr 
-	 * @param {ValueExpr[]} argExprs 
-	 */
-	constructor(site, fnExpr, argExprs) {
-		super(site);
-		this.#fnExpr = fnExpr;
-		this.#argExprs = argExprs;
-	}
-
-	get fnExpr() {
-		return this.#fnExpr;
-	}
-
-	toString() {
-		return `${this.#fnExpr.toString()}(${this.#argExprs.map(a => a.toString()).join(", ")})`;
-	}
-
-	isLiteral() {
-		if (this.#fnExpr instanceof ValuePathExpr && this.#fnExpr.baseType.isBaseOf(this.site, this.type)) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let fnVal = this.#fnExpr.eval(scope);
-
-		let argVals = this.#argExprs.map(argExpr => argExpr.eval(scope));
-
-		argVals = MultiInstance.flatten(argVals);
-
-		return fnVal.call(this.site, argVals);
-	}
-
-	use() {
-		this.#fnExpr.use();
-
-		for (let arg of this.#argExprs) {
-			arg.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		if (this.#argExprs.some(e => (!e.isLiteral()) && (e.value instanceof MultiInstance))) {
-			// count the number of final args
-			let n = 0;
-			this.#argExprs.forEach(e => {
-				if ((!e.isLiteral()) && (e.value instanceof MultiInstance)) {
-					n += e.value.values.length;
-				} else {
-					n += 1;
-				}
-			});
-
-			let names = [];
-
-			for (let i = 0; i < n; i++) {
-				names.push(`x${i}`);
-			}
-
-			let ir = new IR([
-				this.#fnExpr.toIR(),
-				new IR("("),
-				new IR(names.map(n => new IR(n))).join(", "),
-				new IR(")", this.site)
-			]);
-
-			let exprs = this.#argExprs.slice().reverse();
-
-			for (let e of exprs) {
-				if ((!e.isLiteral()) && (e.value instanceof MultiInstance)) {
-					let mNames = names.splice(names.length - e.value.values.length);
-
-					ir = new IR([
-						e.toIR(),
-						new IR("(("),
-						new IR(mNames.map(n => new IR(n))).join(", "),
-						new IR(") -> {"),
-						ir,
-						new IR("})")
-					]);
-				} else {
-					ir = new IR([
-						new IR("("),
-						new IR(names.pop()),
-						new IR(") -> {"),
-						ir,
-						new IR("}("),
-						e.toIR(),
-						new IR(")")
-					]);
-				}
-			}
-
-			return ir;
-		} else {
-			let args = this.#argExprs.map(a => a.toIR(indent));
-
-			return new IR([
-				this.#fnExpr.toIR(indent),
-				new IR("("),
-				(new IR(args)).join(", "),
-				new IR(")", this.site)
-			]);
-		}
-	}
-}
-
-/**
- *  ... . ... expression
- */
-class MemberExpr extends ValueExpr {
-	#objExpr;
-	#memberName;
-	#isRecursiveFunc;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr} objExpr 
-	 * @param {Word} memberName 
-	 */
-	constructor(site, objExpr, memberName) {
-		super(site);
-		this.#objExpr = objExpr;
-		this.#memberName = memberName;
-		this.#isRecursiveFunc = false;
-	}
-
-	toString() {
-		return `${this.#objExpr.toString()}.${this.#memberName.toString()}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let objVal = this.#objExpr.eval(scope);
-
-		let memberVal = objVal.assertValue(this.#objExpr.site).getInstanceMember(this.#memberName);
-
-		if (memberVal instanceof FuncInstance && memberVal.isRecursive(scope)) {
-			this.#isRecursiveFunc = true;
-		}
-
-		return memberVal;
-	}
-
-	use() {
-		this.#objExpr.use();
-
-		if (this.value instanceof FuncStatementInstance) {
-			this.value.statement.use();
-		} else if (this.value instanceof ConstStatementInstance) {
-			this.value.statement.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		// members can be functions so, field getters are also encoded as functions for consistency
-
-		let objPath = this.#objExpr.type.path;
-
-		// if we are getting the member of an enum member we should check if it a field or method, because for a method we have to use the parent type
-		if ((this.#objExpr.type instanceof StatementType) && (this.#objExpr.type.statement instanceof EnumMember) && (!this.#objExpr.type.statement.hasField(this.#memberName))) {
-			objPath = this.#objExpr.type.statement.parent.path;
-		}
-
-		// if the memberVal was a ParamFuncValue then the member name might need to be modified if the output type of some callbacks is a Bool
-		if (this.value instanceof ParamFuncValue && this.value.correctMemberName !== null) {
-			this.#memberName = new Word(this.#memberName.site, this.value.correctMemberName());
-		}
-
-		let ir = new IR(`${objPath}__${this.#memberName.toString()}`, this.site);
-
-		if (this.#isRecursiveFunc) {
-			ir = new IR([
-				ir,
-				new IR("("),
-				ir,
-				new IR(")"),
-			]);
-		}
-
-		return new IR([
-			ir, new IR("("),
-			this.#objExpr.toIR(indent),
-			new IR(")"),
-		]);
-	}
-}
-
-/**
- * if-then-else expression 
- */
-class IfElseExpr extends ValueExpr {
-	#conditions;
-	#branches;
-
-	/**
-	 * @param {Site} site 
-	 * @param {ValueExpr[]} conditions 
-	 * @param {ValueExpr[]} branches 
-	 */
-	constructor(site, conditions, branches) {
-		assert(branches.length == conditions.length + 1);
-		assert(branches.length > 1);
-
-		super(site);
-		this.#conditions = conditions;
-		this.#branches = branches;
-	}
-
-	toString() {
-		let s = "";
-		for (let i = 0; i < this.#conditions.length; i++) {
-			s += `if (${this.#conditions[i].toString()}) {${this.#branches[i].toString()}} else `;
-		}
-
-		s += `{${this.#branches[this.#conditions.length].toString()}}`;
-
-		return s;
+	getInstanceMember(name) {
+		throw new Error("can't get member of void");
 	}
 
 	/**
 	 * @param {Site} site
-	 * @param {?Type} prevType
-	 * @param {Type} newType
-	 */
-	static reduceBranchType(site, prevType, newType) {
-		if (prevType === null) {
-			return newType;
-		} else if (!prevType.isBaseOf(site, newType)) {
-			if (newType.isBaseOf(site, prevType)) {
-				return newType;
-			} else {
-				// check if enumparent is base of newType and of prevType
-				if (newType instanceof StatementType && newType.statement instanceof EnumMember) {
-					let parentType = newType.statement.type;
-
-					if (parentType.isBaseOf(site, prevType) && parentType.isBaseOf(site, newType)) {
-						return parentType;
-					}
-				} else if (newType instanceof BuiltinEnumMember) {
-					let parentType = newType.parentType;
-
-					if (parentType.isBaseOf(site, prevType) && parentType.isBaseOf(site, newType)) {
-						return parentType;
-					}
-				}
-
-				throw site.typeError("inconsistent types");
-			}
-		} else {
-			return prevType;
-		}
-	}
-
-	/**
-	 * @param {Site} site
-	 * @param {?Type[]} prevTypes
-	 * @param {Type[]} newTypes
-	 */
-	static reduceBranchMultiType(site, prevTypes, newTypes) {
-		if (prevTypes === null) {
-			return newTypes
-		} else if (prevTypes.length !== newTypes.length) {
-			throw site.typeError("inconsistent number of multi-value types");
-		} else {
-			return prevTypes.map((pt, i) => IfElseExpr.reduceBranchType(site, pt, newTypes[i]));
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		for (let c of this.#conditions) {
-			let cVal = c.eval(scope);
-			if (!cVal.isInstanceOf(c.site, BoolType)) {
-				throw c.typeError("expected bool");
-			}
-		}
-
-		/**
-		 * Supports multiple return values
-		 * @type {?Type[]}
-		 */
-		let branchMultiType = null;
-
-		for (let b of this.#branches) {
-			let branchVal = b.eval(scope);
-
-			if (!(branchVal instanceof ErrorInstance)) {
-				branchMultiType = IfElseExpr.reduceBranchMultiType(
-					b.site, 
-					branchMultiType, 
-					(branchVal instanceof MultiInstance) ? 
-						branchVal.values.map(v => v.getType(b.site)) : 
-						[branchVal.getType(b.site)]
-				);
-			}
-		}
-
-		if (branchMultiType === null) {
-			throw new Error("unexpected");
-		} else  {
-			return Instance.new(branchMultiType);
-		}
-	}
-
-	use() {
-		for (let c of this.#conditions) {
-			c.use();
-		}
-
-		for (let b of this.#branches) {
-			b.use();
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let n = this.#conditions.length;
-
-		// each branch actually returns a function to allow deferred evaluation
-		let res = new IR([
-			new IR("() -> {"),
-			this.#branches[n].toIR(indent),
-			new IR("}")
-		]);
-
-		// TODO: nice indentation
-		for (let i = n - 1; i >= 0; i--) {
-			res = new IR([
-				new IR("__core__ifThenElse("),
-				this.#conditions[i].toIR(indent),
-				new IR(", () -> {"),
-				this.#branches[i].toIR(indent),
-				new IR("}, () -> {"),
-				res,
-				new IR("()})"),
-			]);
-		}
-
-		return new IR([res, new IR("()", this.site)]);
-	}
-}
-
-/**
- * Switch case for a switch expression
- */
-class SwitchCase extends Token {
-	#varName;
-	#memberName;
-	#bodyExpr;
-
-	/** @type {?number} */
-	#constrIndex;
-
-	/**
-	 * @param {Site} site 
-	 * @param {?Word} varName - optional
-	 * @param {Word} memberName - not optional
-	 * @param {ValueExpr} bodyExpr 
-	 */
-	constructor(site, varName, memberName, bodyExpr) {
-		super(site);
-		this.#varName = varName;
-		this.#memberName = memberName;
-		this.#bodyExpr = bodyExpr;
-		this.#constrIndex = null;
-	}
-
-	isError() {
-		return this.#bodyExpr instanceof ErrorExpr;
-	}
-
-	/**
-	 * Returns typeExpr.
-	 * Used by parser to check if typeExpr reference the same base enum
-	 */
-	get memberName() {
-		return this.#memberName;
-	}
-
-	isDataMember() {
-		switch (this.#memberName.value) {
-			case "Int":
-			case "[]Data":
-			case "ByteArray":
-			case "Map[Data]Data":
-				return true;
-			default:
-				return false;
-		}
-	}
-
-	get constrIndex() {
-		if (this.#constrIndex === null) {
-			throw new Error("constrIndex not yet set");
-		} else {
-			return this.#constrIndex;
-		}
-	}
-
-	toString() {
-		if (this.#varName === null) {
-			return `${this.#memberName.toString()} => ${this.#bodyExpr.toString()}`
-		} else {
-			return `(${this.#varName.toString()}: ${this.#memberName.toString()}) => ${this.#bodyExpr.toString()}`;
-		}
-	}
-
-	/**
-	 * Evaluates the switch type and body value of a case.
-	 * Evaluated switch type is only used if #varName !== null
-	 * @param {Scope} scope 
-	 * @param {Type} enumType
-	 * @returns {Instance}
-	 */
-	evalEnumMember(scope, enumType) {
-		let caseType = enumType.getTypeMember(this.#memberName).assertType(this.#memberName.site);
-
-		this.#constrIndex = caseType.getConstrIndex(this.#memberName.site);
-
-		assert(this.#constrIndex >= 0);
-
-		if (this.#varName !== null) {
-			let caseScope = new Scope(scope);
-
-			caseScope.set(this.#varName, Instance.new(caseType));
-
-			let bodyVal = this.#bodyExpr.eval(caseScope);
-
-			caseScope.assertAllUsed();
-
-			return bodyVal;
-		} else {
-			return this.#bodyExpr.eval(scope);
-		}
-	}
-
-	/**
-	 * Evaluates the switch type and body value of a case.
-	 * Evaluated switch type is only used if #varName !== null
-	 * @param {Scope} scope
-	 * @returns {Instance}
-	 */
-	evalDataMember(scope) {
-		/** @type {Type} */
-		let memberType;
-
-		switch (this.#memberName.value) {
-			case "Int":
-				memberType = new IntType();
-				break;
-			case "ByteArray":
-				memberType = new ByteArrayType();
-				break;
-			case "[]Data":
-				memberType = new ListType(new RawDataType());
-				break;
-			case "Map[Data]Data":
-				memberType = new MapType(new RawDataType(), new RawDataType());
-				break;
-			default:
-				let maybeMemberType = scope.get(this.#memberName);
-				if (maybeMemberType instanceof Type) {
-					memberType = maybeMemberType;
-
-					if (!(memberType instanceof StatementType && memberType.statement instanceof EnumStatement)) {
-						throw this.#memberName.typeError("expected an enum type");
-					}
-				} else {
-					throw this.#memberName.typeError("expected a type");
-				}
-		}
-
-		if (this.#varName !== null) {
-			let caseScope = new Scope(scope);
-
-			caseScope.set(this.#varName, Instance.new(memberType));
-
-			let bodyVal = this.#bodyExpr.eval(caseScope);
-
-			caseScope.assertAllUsed();
-
-			return bodyVal;
-		} else {
-			return this.#bodyExpr.eval(scope);
-		}
-	}
-
-	use() {
-		this.#bodyExpr.use();
-	}
-
-	/**
-	 * Accept an arg because will be called with the result of the controlexpr
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return new IR([
-			new IR(`(${this.#varName !== null ? this.#varName.toString() : "_"}) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
-			this.#bodyExpr.toIR(indent + TAB),
-			new IR(`\n${indent}}`),
-		]);
-	}
-}
-
-/**
- * Default switch case
- */
-class SwitchDefault extends Token {
-	#bodyExpr;
-
-	/**
-	 * @param {Site} site
-	 * @param {ValueExpr} bodyExpr
-	 */
-	constructor(site, bodyExpr) {
-		super(site);
-		this.#bodyExpr = bodyExpr;
-	}
-
-	isError() {
-		return this.#bodyExpr instanceof ErrorExpr;
-	}
-
-	toString() {
-		return `else => ${this.#bodyExpr.toString()}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	eval(scope) {
-		return this.#bodyExpr.eval(scope);
-	}
-
-	use() {
-		this.#bodyExpr.use();
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		return new IR([
-			new IR(`(_) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
-			this.#bodyExpr.toIR(indent + TAB),
-			new IR(`\n${indent}}`)
-		]);
-	}
-}
-
-/**
- * Parent class of EnumSwitchExpr and DataSwitchExpr
- */
-class SwitchExpr extends ValueExpr {
-	#controlExpr;
-	#cases;
-	#defaultCase;
-
-	/** 
-	 * @param {Site} site
-	 * @param {ValueExpr} controlExpr - input value of the switch
-	 * @param {SwitchCase[]} cases
-	 * @param {?SwitchDefault} defaultCase
-	*/
-	constructor(site, controlExpr, cases, defaultCase = null) {
-		super(site);
-		this.#controlExpr = controlExpr;
-		this.#cases = cases;
-		this.#defaultCase = defaultCase;
-	}
-
-	get controlExpr() {
-		return this.#controlExpr;
-	}
-
-	get cases() {
-		return this.#cases;
-	}
-
-	get defaultCase() {
-		return this.#defaultCase;
-	}
-
-	toString() {
-		return `${this.#controlExpr.toString()}.switch{${this.#cases.map(c => c.toString()).join(", ")}${this.#defaultCase === null ? "" : ", " + this.#defaultCase.toString()}}`;
-	}
-
-	use() {
-		this.#controlExpr.use();
-
-		for (let c of this.#cases) {
-			c.use();
-		}
-
-		if (this.#defaultCase !== null) {
-			this.#defaultCase.use();
-		}
-	}
-}
-
-/**
- * Switch expression for Enum, with SwitchCases and SwitchDefault as children
- */
-class EnumSwitchExpr extends SwitchExpr {
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let controlVal = this.controlExpr.eval(scope);
-		let enumType = controlVal.getType(this.controlExpr.site);
-		let nEnumMembers = enumType.nEnumMembers(this.controlExpr.site);
-
-		// check that we have enough cases to cover the enum members
-		if (this.defaultCase === null && nEnumMembers > this.cases.length) {
-			throw this.typeError(`insufficient coverage of '${enumType.toString()}' in switch expression`);
-		}
-
-		/** @type {?Type[]} */
-		let branchMultiType = null;
-
-		for (let c of this.cases) {
-			let branchVal = c.evalEnumMember(scope, enumType);
-
-			if (!(branchVal instanceof ErrorInstance)) {	
-				branchMultiType = IfElseExpr.reduceBranchMultiType(
-					c.site, 
-					branchMultiType, 
-					(branchVal instanceof MultiInstance) ? 
-						branchVal.values.map(v => v.getType(c.site)) :
-						[branchVal.getType(c.site)]
-				);
-			}
-		}
-
-		if (this.defaultCase !== null) {
-			let defaultVal = this.defaultCase.eval(scope);
-
-			if (!(defaultVal instanceof ErrorInstance)) {
-				branchMultiType = IfElseExpr.reduceBranchMultiType(
-					this.defaultCase.site, 
-					branchMultiType, 
-					(defaultVal instanceof MultiInstance) ?
-						defaultVal.values.map(v => v.getType(this.defaultCase.site)) :
-						[defaultVal.getType(this.defaultCase.site)]
-				);
-			}
-		}
-
-		if (branchMultiType === null) {
-			throw new Error("unexpected");
-		} else {
-			return Instance.new(branchMultiType);
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		let cases = this.cases.slice();
-
-		/** @type {SwitchCase | SwitchDefault} */
-		let last;
-		if (this.defaultCase !== null) {
-			last = this.defaultCase;
-		} else {
-			last = assertDefined(cases.pop());
-		}
-
-		let n = cases.length;
-
-		let res = last.toIR(indent + TAB + TAB + TAB);
-
-		for (let i = n - 1; i >= 0; i--) {
-			res = new IR([
-				new IR(`__core__ifThenElse(__core__equalsInteger(i, ${cases[i].constrIndex.toString()}), () -> {`),
-				cases[i].toIR(indent + TAB + TAB + TAB),
-				new IR(`}, () -> {`),
-				res,
-				new IR(`})()`)
-			]);
-		}
-
-		return new IR([
-			new IR(`(e) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}(\n${indent}${TAB}${TAB}(i) -> {\n${indent}${TAB}${TAB}${TAB}`),
-			res,
-			new IR(`\n${indent}${TAB}${TAB}}(__core__fstPair(__core__unConstrData(e)))\n${indent}${TAB})(e)\n${indent}}(`),
-			this.controlExpr.toIR(indent),
-			new IR(")"),
-		]);
-	}
-}
-
-/**
- * Switch expression for Data
- */
- class DataSwitchExpr extends SwitchExpr {
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let controlVal = this.controlExpr.eval(scope);
-		let dataType = controlVal.getType(this.controlExpr.site);
-
-		let controlSite = this.controlExpr.site;
-		if (!dataType.isBaseOf(controlSite, new RawDataType())) {
-			throw this.controlExpr.typeError(`expected Data type, got ${controlVal.getType(controlSite).toString()}`);
-		}
-
-		// check that we have enough cases to cover the enum members
-		if (this.defaultCase === null && this.cases.length < 5) {
-			throw this.typeError(`insufficient coverage of 'Data' in switch expression`);
-		}
-
-		/** @type {?Type[]} */
-		let branchMultiType = null;
-
-		for (let c of this.cases) {
-			let branchVal = c.evalDataMember(scope);
-
-			if (!(branchVal instanceof ErrorInstance)) {
-				branchMultiType = IfElseExpr.reduceBranchMultiType(
-					c.site, 
-					branchMultiType, 
-					(branchVal instanceof MultiInstance) ?
-						branchVal.values.map(v => v.getType(c.site)) :
-						[branchVal.getType(c.site)]
-				);
-			}
-		}
-
-		if (this.defaultCase !== null) {
-			let defaultVal = this.defaultCase.eval(scope);
-
-			if (!(defaultVal instanceof ErrorInstance)) {
-				branchMultiType = IfElseExpr.reduceBranchMultiType(
-					this.defaultCase.site, 
-					branchMultiType, 
-					(defaultVal instanceof MultiInstance) ?
-						defaultVal.values.map(v => v.getType(this.defaultCase.site)) :
-						[defaultVal.getType(this.defaultCase.site)]
-				);
-			}
-		}
-
-		if (branchMultiType === null) {
-			throw new Error("unexpected");
-		} else {
-			return Instance.new(branchMultiType);
-		}
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {IR}
-	 */
-	toIR(indent = "") {
-		/** @type {[?IR, ?IR, ?IR, ?IR, ?IR]} */
-		let cases = [null, null, null, null, null]; // constr, map, list, int, byteArray
-
-		for (let c of this.cases) {
-			let ir = c.toIR(indent + TAB + TAB);
-
-			switch (c.memberName.value) {
-				case "ByteArray":
-					cases[4] = ir;
-					break;
-				case "Int":
-					cases[3] = ir;
-					break;
-				case "[]Data":
-					cases[2] = ir;
-					break;
-				case "Map[Data]Data":
-					cases[1] = ir;
-					break;
-				default:
-					cases[0] = ir;
-			}
-		}
-
-		if (this.defaultCase !== null) {
-			for (let i = 0; i < 5; i++) {
-				if (cases[i] === null) {
-					cases[i] = new IR(`${indent}${TAB}def`);
-				}
-			}
-		}
-
-		let res = new IR([
-			new IR(`${indent}__core__chooseData(e, `, this.site),
-			new IR(cases).join(", "),
-			new IR(`${indent})`)
-		]);
-
-		if (this.defaultCase !== null) {
-			res = new IR([
-				new IR(`${indent}(def) -> {\n`),
-				res,
-				new IR(`\n${indent}}(`),
-				this.defaultCase.toIR(indent),
-				new IR(`)`)
-			]);
-		}
-
-		res = new IR([
-			new IR(`${indent}(e) -> {\n`),
-			res,
-			new IR("(e)"),
-			new IR(`${indent}}(`),
-			this.controlExpr.toIR(indent),
-			new IR(")")
-		]);
-
-		return res;
-	}
-}
-
-
-////////////////////////////////////
-// Section 11: AST statement objects
-////////////////////////////////////
-
-/**
- * Base class for all statements
- * Doesn't return a value upon calling eval(scope)
- */
-class Statement extends Token {
-	#name;
-	#used;
-	#basePath; // set by the parent Module
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 */
-	constructor(site, name) {
-		super(site);
-		this.#name = name;
-		this.#used = false;
-		this.#basePath = "__user";
-	}
-
-	/**
-	 * @param {string} basePath 
-	 */
-	setBasePath(basePath) {
-		this.#basePath = basePath;
-	}
-
-	get path() {
-		return `${this.#basePath}__${this.name.toString()}`;
-	}
-
-	/**
-	 * @type {Word}
-	 */
-	get name() {
-		return this.#name;
-	}
-
-	/**
-	 * @type {boolean}
-	 */
-	get used() {
-		return this.#used;
-	}
-
-	/**
-	 * @param {ModuleScope} scope 
-	 */
-	eval(scope) {
-		throw new Error("not yet implemented");
-	}
-
-	use() {
-		this.#used = true;
-	}
-
-	/**
-	 * @param {Uint8Array} mask
-	 */
-	hideUnused(mask) {
-		if (!this.#used) {
-			if (this.site.endSite === null) {
-				mask.fill(0, this.site.pos);
-			} else {
-				mask.fill(0, this.site.pos, this.site.endSite.pos);
-			}
-		}
-	}
-
-	/**
-	 * Returns IR of statement.
-	 * No need to specify indent here, because all statements are top-level
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		throw new Error("not yet implemented");
-	}
-}
-
-/**
- * Each field is given a separate ImportStatement
- */
-class ImportStatement extends Statement {
-	#origName;
-	#moduleName;
-
-	/** 
-	 * @type {?Statement} 
-	 */
-	#origStatement;
-
-	/**
-	 * 
-	 * @param {Site} site 
-	 * @param {Word} name
-	 * @param {Word} origName
-	 * @param {Word} moduleName
-	 */
-	constructor(site, name, origName, moduleName) {
-		super(site, name);
-		this.#origName = origName;
-		this.#moduleName = moduleName;
-		this.#origStatement = null;
-	}
-
-	/**
-	 * @type {Word}
-	 */
-	get moduleName() {
-		return this.#moduleName;
-	}
-
-	/**
-	 * @param {ModuleScope} scope
-	 * @returns {EvalEntity}
-	 */
-	evalInternal(scope) {
-		let importedScope = scope.get(this.#moduleName);
-
-		if (importedScope instanceof Scope) {
-			let importedEntity = importedScope.get(this.#origName);
-
-			if (importedEntity instanceof Scope) {
-				throw this.#origName.typeError(`can't import a module from a module`);
-			} else {
-				return importedEntity;
-			}
-		} else {
-			throw this.#moduleName.typeError(`${this.name.toString()} isn't a module`);
-		}
-	}
-
-	/**
-	 * @param {ModuleScope} scope 
-	 */
-	eval(scope) {
-		let v = this.evalInternal(scope);
-
-		if (v instanceof FuncStatementInstance || v instanceof ConstStatementInstance || v instanceof StatementType) {
-			this.#origStatement = v.statement;
-		} else {
-			throw new Error("unexpected import entity");
-		}
-
-		scope.set(this.name, v);
-	}
-
-	use() {
-		super.use();
-
-		if (this.#origStatement === null) {
-			throw new Error("should be set");
-		} else {
-			this.#origStatement.use();
-		}
-	}
-
-	/**
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		// import statements only have a scoping function and don't do anything to the IR
-	}
-}
-
-/**
- * Const value statement
- */
-class ConstStatement extends Statement {
-	/**
-	 * @type {?TypeExpr}
-	 */
-	#typeExpr;
-
-	/**
-	 * @type {ValueExpr}
-	 */
-	#valueExpr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 * @param {?TypeExpr} typeExpr - can be null in case of type inference
-	 * @param {ValueExpr} valueExpr 
-	 */
-	constructor(site, name, typeExpr, valueExpr) {
-		super(site, name);
-		this.#typeExpr = typeExpr;
-		this.#valueExpr = valueExpr;
-	}
-
-	get type() {
-		if (this.#typeExpr === null) {
-			return this.#valueExpr.type;
-		} else {
-			return this.#typeExpr.type;
-		}
-	}
-
-	/**
-	 * @param {string | UplcValue} value 
-	 */
-	changeValue(value) {
-		let type = this.type;
-		let site = this.#valueExpr.site;
-
-		if (typeof value == "string") {
-			this.#valueExpr = buildLiteralExprFromJson(site, type, JSON.parse(value), this.name.value);
-		} else {
-			this.#valueExpr = buildLiteralExprFromValue(site, type, value, this.name.value);
-		}
-	}
-
-	toString() {
-		return `const ${this.name.toString()}${this.#typeExpr === null ? "" : ": " + this.#typeExpr.toString()} = ${this.#valueExpr.toString()};`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		let value = this.#valueExpr.eval(scope);
-
-		/** @type {Type} */
-		let type;
-
-		if (this.#typeExpr === null) {
-			if (!this.#valueExpr.isLiteral()) {
-				throw this.typeError("can't infer type");
-			}
-
-			type = this.#valueExpr.type;
-		} else {
-			type = this.#typeExpr.eval(scope);
-
-			if (!value.isInstanceOf(this.#valueExpr.site, type)) {
-				throw this.#valueExpr.typeError("wrong type");
-			}
-		}
-
-		return new ConstStatementInstance(type, this);
-	}
-
-	/**
-	 * Evaluates rhs and adds to scope
-	 * @param {TopScope} scope 
-	 */
-	eval(scope) {
-		scope.set(this.name, this.evalInternal(scope));
-	}
-
-	use() {
-		if (!this.used) {
-			super.use();
-
-			this.#valueExpr.use();
-
-			if (this.#typeExpr !== null) {
-				this.#typeExpr.use();
-			}
-		}
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	toIRInternal() {
-		return this.#valueExpr.toIR();
-	}
-
-	/**
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		map.set(this.path, this.toIRInternal());
-	}
-}
-
-/**
- * Single field in struct or enum member
- */
-class DataField extends NameTypePair {
-	/**
-	 * @param {Word} name 
-	 * @param {TypeExpr} typeExpr 
-	 */
-	constructor(name, typeExpr) {
-		super(name, typeExpr);
-	}
-}
-
-/**
- * Base class for struct and enum member
- */
-class DataDefinition extends Statement {
-	#fields;
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 * @param {DataField[]} fields 
-	 */
-	constructor(site, name, fields) {
-		super(site, name);
-		this.#fields = fields;
-	}
-
-	get fields() {
-		return this.#fields.slice();
-	}
-
-	/**
-	 * Returns index of a field.
-	 * Returns -1 if not found.
-	 * @param {Word} name 
-	 * @returns {number}
-	 */
-	findField(name) {
-		let found = -1;
-		let i = 0;
-		for (let f of this.#fields) {
-			if (f.name.toString() == name.toString()) {
-				found = i;
-				break;
-			}
-			i++;
-		}
-
-		return found;
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {boolean}
-	 */
-	hasField(name) {
-		return this.findField(name) != -1;
-	}
-
-	toString() {
-		return `${this.name.toString()} {${this.#fields.map(f => f.toString()).join(", ")}}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
-	 */
-	evalInternal(scope) {
-		for (let f of this.#fields) {
-			let fieldType = f.evalType(scope);
-
-			if (fieldType instanceof FuncType) {
-				throw f.site.typeError("field can't be function type");
-			}
-		}
-
-		// the following assertion is needed for vscode typechecking
-		if (this instanceof StructStatement || this instanceof EnumMember) {
-			return new StatementType(this);
-		} else {
-			throw new Error("unhandled implementations");
-		}
-	}
-
-	/**
-	 * @param {Site} site 
 	 * @returns {number}
 	 */
 	nFields(site) {
-		return this.#fields.length;
-	}
-
-	/**
-	 * @param {Site} site 
-	 * @param {number} i 
-	 * @returns {Type}
-	 */
-	getFieldType(site, i) {
-		return this.#fields[i].type;
-	}
-
-	/**
-	 * @param {number} i
-	 * @returns {string}
-	 */
-	getFieldName(i) {
-		return this.#fields[i].name.toString();
-	}
-	
-	/**
-	 * @param {Site} site 
-	 * @returns {number}
-	 */
-	nEnumMembers(site) {
-		throw site.typeError(`'${this.name.value}' isn't an enum type`);
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {EvalEntity}
-	 */
-	getTypeMember(name) {
-		if (this.hasField(name)) {
-			throw name.referenceError(`'${this.name.toString()}::${name.toString()}' undefined (did you mean '${this.name.toString()}.${name.toString()}'?)`);
-		} else {
-			throw name.referenceError(`'${this.name.toString()}::${name.toString()}' undefined`);
-		}
-	}
-
-	/**
-	 * Gets insance member value.
-	 * If dryRun == true usage is triggered
-	 * @param {Word} name 
-	 * @param {boolean} dryRun 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name, dryRun = false) {
-		let i = this.findField(name);
-
-		if (i == -1) {
-			throw name.referenceError(`'${this.name.toString()}.${name.toString()}' undefined`);
-		} else {
-			return Instance.new(this.#fields[i].type);
-		}
-	}
-
-	use() {
-		if (!this.used) {
-			super.use();
-			
-			for (let f of this.#fields) {
-				f.use();
-			}
-		}
-	}
-
-	/**
-	 * @param {IRDefinitions} map
-	 * @param {boolean} isConstr
-	 */
-	toIR(map, isConstr = true) {
-		const getterBaseName = isConstr ? "__helios__common__field" : "__helios__common__tuple_field";
-
-		// add a getter for each field
-		for (let i = 0; i < this.#fields.length; i++) {
-			let f = this.#fields[i];
-			let key = `${this.path}__${f.name.toString()}`;
-			let isBool = f.type instanceof BoolType;
-
-			/**
-			 * @type {IR}
-			 */
-			let getter;
-
-			if (i < 20) {
-				getter = new IR(`${getterBaseName}_${i}`, f.site);
-
-				if (isBool) {
-					getter = new IR([
-						new IR("(self) "), new IR("->", f.site), new IR(" {"),
-						new IR(`__helios__common__unBoolData(${getterBaseName}_${i}(self))`),
-						new IR("}"),
-					]);
-				} else {
-					getter = new IR(`${getterBaseName}_${i}`, f.site);
-				}
-			} else {
-				let inner = isConstr ? new IR("__core__sndPair(__core__unConstrData(self))") : new IR("__core__unListData(self)");
-
-				for (let j = 0; j < i; j++) {
-					inner = new IR([new IR("__core__tailList("), inner, new IR(")")]);
-				}
-
-				inner = new IR([
-					new IR("__core__headList("),
-					inner,
-					new IR(")"),
-				]);
-
-				if (isBool) {
-					inner = new IR([new IR("__helios__common__unBoolData("), inner, new IR(")")]);
-				}
-
-				getter = new IR([
-					new IR("(self) "), new IR("->", f.site), new IR(" {"),
-					inner,
-					new IR("}"),
-				]);
-			}
-
-			map.set(key, getter)
-		}
-	}
-}
-
-/**
- * Struct statement
- */
-class StructStatement extends DataDefinition {
-	#impl;
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 * @param {DataField[]} fields 
-	 * @param {ImplDefinition} impl
-	 */
-	constructor(site, name, fields, impl) {
-		super(site, name, fields);
-
-		this.#impl = impl;
-	}
-
-	get type() {
-		return new StatementType(this);
-	}
-
-	toString() {
-		return "struct " + super.toString();
-	}
-
-	/**
-	 * Returns -1, which means -> don't use ConstrData, but use []Data directly
-	 * @param {Site} site 
-	 * @returns {number}
-	 */
-	getConstrIndex(site) {
-		return -1;
-	}
-
-	/**
-	 * Evaluates own type and adds to scope
-	 * @param {TopScope} scope 
-	 */
-	eval(scope) {
-		if (scope.isStrict() && this.fields.length == 0) {
-			throw this.syntaxError("expected at least 1 struct field");
-		}
-
-		scope.set(this.name, this.evalInternal(scope));
-
-		// check the types of the member methods
-		this.#impl.eval(scope);
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @param {boolean} dryRun 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name, dryRun = false) {
-		if (this.hasField(name)) {
-			return super.getInstanceMember(name, dryRun);
-		} else {
-			return this.#impl.getInstanceMember(name, dryRun);
-		}
-	}
-
-	/**
-	 * @param {Word} name
-	 * @param {boolean} dryRun
-	 * @returns {EvalEntity}
-	 */
-	getTypeMember(name, dryRun = false) {
-		// only the impl can contain potentially contain type members
-		return this.#impl.getTypeMember(name, dryRun);
-	}
-
-	/**
-	 * @param {Uint8Array} mask
-	 */
-	hideUnused(mask) {
-		super.hideUnused(mask);
-
-		this.#impl.hideUnused(mask);
-	}
-
-	/**
-	 * @param {IRDefinitions} map
-	 */
-	toIR(map) {
-		if (this.fields.length == 1) {
-			let f = this.fields[0];
-			let key = `${this.path}__${f.name.toString()}`;
-			let isBool = f.type instanceof BoolType;
-
-			if (isBool) {
-				map.set(key, new IR("__helios__common__unBoolData", f.site));
-			} else {
-				map.set(key, new IR("__helios__common__identity", f.site));
-			}
-		} else {
-			super.toIR(map, false);
-		}
-
-		this.#impl.toIR(map);
-	}
-}
-
-/**
- * Function statement
- * (basically just a named FuncLiteralExpr)
- */
-class FuncStatement extends Statement {
-	#funcExpr;
-	#recursive;
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 * @param {FuncLiteralExpr} funcExpr 
-	 */
-	constructor(site, name, funcExpr) {
-		super(site, name);
-		this.#funcExpr = funcExpr;
-		this.#recursive = false;
-	}
-
-	/**
-	 * @type {Type[]}
-	 */
-	get argTypes() {
-		return this.#funcExpr.argTypes;
-	}
-
-	/**
-	 * @type {string[]}
-	 */
-	get argTypeNames() {
-		return this.#funcExpr.argTypeNames;
-	}
-
-	/**
-	 * @type {Type[]}
-	 */
-	get retTypes() {
-		return this.#funcExpr.retTypes;
-	}
-
-	toString() {
-		return `func ${this.name.toString()}${this.#funcExpr.toString()}`;
-	}
-
-	/**
-	 * Evaluates a function and returns a func value
-	 * @param {Scope} scope 
-	 * @returns {Instance}
-	 */
-	evalInternal(scope) {
-		return this.#funcExpr.evalInternal(scope);
-	}
-
-	/**
-	 * Evaluates type of a funtion.
-	 * Separate from evalInternal so we can use this function recursively inside evalInternal
-	 * @param {Scope} scope 
-	 * @returns {FuncType}
-	 */
-	evalType(scope) {
-		return this.#funcExpr.evalType(scope);
-	}
-
-	use() {
-		if (!this.used) {
-			super.use();
-
-			this.#funcExpr.use();
-		}
-	}
-
-	isRecursive() {
-		return this.#recursive;
-	}
-
-	/**
-	 * Called in FuncStatementScope as soon as recursion is detected
-	 */
-	setRecursive() {
-		this.#recursive = true;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 */
-	eval(scope) {
-		// add to scope before evaluating, to allow recursive calls
-
-		let fnType = this.evalType(scope);
-
-		let fnVal = new FuncStatementInstance(fnType, this);
-
-		scope.set(this.name, fnVal);
-
-		void this.#funcExpr.evalInternal(new FuncStatementScope(scope, this));
-	}
-
-	/**
-	 * Returns IR of function.
-	 * @param {string} fullName - fullName has been prefixed with a type path for impl members
-	 * @returns {IR}
-	 */
-	toIRInternal(fullName = this.path) {
-		if (this.#recursive) {
-			return this.#funcExpr.toIRRecursive(fullName, TAB);
-		} else {
-			return this.#funcExpr.toIR(TAB);
-		}
-	}
-
-	/**
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		map.set(this.path, this.toIRInternal());
-	}
-
-	/**
-	 * @param {Statement} s 
-	 * @returns {boolean}
-	 */
-	static isMethod(s) {
-		if (s instanceof FuncStatement) {
-			return s.#funcExpr.isMethod();
-		} else {
-			return false;
-		}
-	}
-}
-
-/**
- * EnumMember defintion is similar to a struct definition
- */
-class EnumMember extends DataDefinition {
-	/** @type {?EnumStatement} */
-	#parent;
-
-	/** @type {?number} */
-	#constrIndex;
-
-	/**
-	 * @param {Word} name
-	 * @param {DataField[]} fields
-	 */
-	constructor(name, fields) {
-		super(name.site, name, fields);
-		this.#parent = null; // registered later
-		this.#constrIndex = null;
-	}
-
-	/** 
-	 * @param {EnumStatement} parent
-	 * @param {number} i
-	*/
-	registerParent(parent, i) {
-		this.#parent = parent;
-		this.#constrIndex = i;
-	}
-	
-	/**
-	 * @type {EnumStatement}
-	 */
-	get parent() {
-		if (this.#parent === null) {
-			throw new Error("parent not yet registered");
-		} else {
-			return this.#parent;
-		}
-	}
-
-	get type() {
-		return new StatementType(this);
-	}
-
-	/**
-	 * @param {Site} site 
-	 * @returns {number}
-	 */
-	getConstrIndex(site) {
-		if (this.#constrIndex === null) {
-			throw new Error("constrIndex not set");
-		} else {
-			return this.#constrIndex;
-		}
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 */
-	eval(scope) {
-		if (this.#parent === null) {
-			throw new Error("parent should've been registered");
-		}
-
-		void super.evalInternal(scope); // the internally created type isn't be added to the scope. (the parent enum type takes care of that)
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @param {boolean} dryRun 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name, dryRun = false) {
-		if (this.hasField(name)) {
-			return super.getInstanceMember(name, dryRun);
-		} else {
-			if (this.#parent === null) {
-				throw new Error("parent should've been registered");
-			} else {
-				return this.#parent.getInstanceMember(name, dryRun);
-			}
-		}
-	}
-
-	get path() {
-		return `${this.parent.path}__${this.name.toString()}`;
-	}
-}
-
-/**
- * Enum statement, containing at least one member
- */
-class EnumStatement extends Statement {
-	#members;
-	#impl;
-
-	/**
-	 * @param {Site} site 
-	 * @param {Word} name 
-	 * @param {EnumMember[]} members 
-	 * @param {ImplDefinition} impl
-	 */
-	constructor(site, name, members, impl) {
-		super(site, name);
-		this.#members = members;
-		this.#impl = impl;
-		
-		for (let i = 0; i < this.#members.length; i++) {
-			this.#members[i].registerParent(this, i);
-		}
-	}
-
-	get type() {
-		return new StatementType(this);
-	}
-
-	/**
-	 * Returns index of enum member.
-	 * Returns -1 if not found
-	 * @param {Word} name 
-	 * @returns {number}
-	 */
-	// returns an index
-	findEnumMember(name) {
-		let found = -1;
-		let i = 0;
-		for (let member of this.#members) {
-			if (member.name.toString() == name.toString()) {
-				found = i;
-				break;
-			}
-			i++;
-		}
-
-		return found;
-	}
-
-	/**
-	 * @param {Word} name
-	 * @returns {boolean}
-	 */
-	hasEnumMember(name) {
-		return this.findEnumMember(name) != -1;
-	}
-
-	toString() {
-		return `enum ${this.name.toString()} {${this.#members.map(m => m.toString()).join(", ")}}`;
-	}
-
-	/**
-	 * @param {Scope} scope 
-	 */
-	eval(scope) {
-		this.#members.forEach(m => {
-			m.eval(scope);
-		});
-
-		scope.set(this.name, this.type);
-
-		this.#impl.eval(scope);
-	}
-
-	use() {
-		if (!this.used) {
-			super.use();
-
-			for (let m of this.#members) {
-				m.use();
-			}
-		}
-	}
-
-	/**
-	 * @param {Site} site 
-	 * @returns {number}
-	 */
-	nFields(site) {
-		throw site.typeError("enum doesn't have fields");
+		throw new Error("can't get nFields of void");
 	}
 
 	/**
@@ -14905,34 +14000,7 @@ class EnumStatement extends Statement {
 	 * @returns {Type}
 	 */
 	getFieldType(site, i) {
-		throw site.typeError("enum doesn't have fields");
-	}
-
-	/** 
-	 * @param {Word} name 
-	 * @param {boolean} dryRun 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name, dryRun = false) {
-		if (this.hasEnumMember(name)) {
-			throw name.referenceError(`'${name.toString()}' is an enum of '${this.toString}' (did you mean '${this.toString()}::${name.toString()}'?)`);
-		} else {
-			return this.#impl.getInstanceMember(name, dryRun);
-		}
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @param {boolean} dryRun
-	 * @returns {EvalEntity}
-	 */
-	getTypeMember(name, dryRun = false) {
-		let i = this.findEnumMember(name);
-		if (i == -1) {
-			return this.#impl.getTypeMember(name, dryRun);
-		} else {
-			return this.#members[i].type;
-		}
+		throw new Error("can't get field-type of void");
 	}
 
 	/**
@@ -14940,2986 +14008,126 @@ class EnumStatement extends Statement {
 	 * @returns {number}
 	 */
 	getConstrIndex(site) {
-		throw site.typeError("can't construct an enum directly (cast to a concrete type first)");
+		throw new Error("can't get constr index of void");
+	}
+}
+
+/**
+ * Returned by an error()
+ * Special case of no-return-value that indicates that execution can't proceed.
+ * @package
+ */
+class ErrorInstance extends VoidInstance {
+	/**
+	 * @param {Site} site 
+	 * @returns {Type}
+	 */
+	 getType(site) {
+		return new ErrorType();
+	}
+}
+
+/**
+ * Parent-class for AssertFunc, ErrorFunc and PrintFunc
+ * @package
+ */
+class BuiltinFuncInstance extends FuncInstance {
+	/**
+	 * Returns the base path in the IR (eg. __helios__bool, __helios__error, etc.)
+	 * @type {string}
+	 */
+	get path() {
+		throw new Error("not implemented")
+	}
+}
+
+/**
+ * Special builtin function that throws an error if condition is false and returns Void
+ * @package
+ */
+ class AssertFunc extends BuiltinFuncInstance {
+	constructor() {
+		super(new FuncType([new BoolType(), new StringType()], new VoidType()));
+	}
+
+	get path() {
+		return "__helios__assert";
+	}
+}
+
+/**
+ * Special builtin function that throws an error and returns ErrorInstance (special case of Void)
+ * @package
+ */
+ class ErrorFunc extends BuiltinFuncInstance {
+	constructor() {
+		super(new FuncType([new StringType()], new ErrorType()));
+	}
+
+	get path() {
+		return "__helios__error";
+	}
+}
+
+/**
+ * Special builtin function that prints a message and returns void
+ * @package
+ */
+class PrintFunc extends BuiltinFuncInstance {
+	constructor() {
+		super(new FuncType([new StringType()], new VoidType()));
+	}
+
+	get path() {
+		return "__helios__print";
+	}
+}
+
+/**
+ * Type of return-value of functions that don't return anything (eg. assert, print, error)
+ * @package
+ */
+class VoidType extends Type {
+	constructor() {
+		super();
+	}
+
+	toString() {
+		return "()";
 	}
 
 	/**
 	 * @param {Site} site 
-	 * @returns {number}
+	 * @param {Type} type 
+	 * @returns {boolean}
 	 */
-	nEnumMembers(site) {
-		return this.#members.length;
-	}
-
-	/**
-	 * @param {Uint8Array} mask
-	 */
-	hideUnused(mask) {
-		super.hideUnused(mask);
-
-		this.#impl.hideUnused(mask);
-	}
-
-	/**
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		for (let member of this.#members) {
-			member.toIR(map);
-		}
-
-		this.#impl.toIR(map);
+	isBaseOf(site, type) {
+		return type instanceof VoidType;
 	}
 }
 
 /**
- * Impl statements, which add functions and constants to registry of user types (Struct, Enum Member and Enums)
+ * Type of special case of no-return value where execution can't continue.
+ * @package
  */
-class ImplDefinition {
-	#selfTypeExpr;
-	#statements;
-
-	/** @type {Instance[]} - filled during eval to allow same recursive behaviour as for top-level statements */
-	#statementValues;
-
-	/** @type {Set<string>} */
-	#usedStatements;
-
-	/**
-	 * @param {TypeRefExpr} selfTypeExpr;
-	 * @param {(FuncStatement | ConstStatement)[]} statements 
-	 */
-	constructor(selfTypeExpr, statements) {
-		this.#selfTypeExpr = selfTypeExpr;
-		this.#statements = statements;
-		this.#statementValues = [];
-		this.#usedStatements = new Set(); // used for code-generation, but not for cleanSource filtering
-	}
-
-	toString() {
-		return `${this.#statements.map(s => s.toString()).join("\n")}`;
+class ErrorType extends VoidType {
+	constructor() {
+		super();
 	}
 
 	/**
-	 * @param {Scope} scope 
+	 * @param {Site} site 
+	 * @param {Type} type 
+	 * @returns {boolean}
 	 */
-	eval(scope) {
-		let selfType = this.#selfTypeExpr.eval(scope);
-
-		if (!(selfType instanceof StatementType)) {
-			throw this.#selfTypeExpr.referenceError("not a user-type");
-		} else {
-			for (let s of this.#statements) {
-				if (s instanceof FuncStatement) {
-					// override eval() of FuncStatement because we don't want the function to add itself to the scope directly.
-					let v = new FuncStatementInstance(s.evalType(scope), s);
-
-					this.#statementValues.push(v); // add func type to #statementValues in order to allow recursive calls (acts as a special scope)
-
-					// eval internal doesn't add anything to scope
-					void s.evalInternal(new FuncStatementScope(scope, s));
-				} else {
-					// eval internal doesn't add anything to scope
-					this.#statementValues.push(s.evalInternal(scope));
-				}
-			}
-		}
-	}
-
-	/**
-	 * @param {Word} name
-	 * @param {boolean} dryRun
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name, dryRun = false) {
-		switch (name.value) {
-			case "serialize":
-				this.#usedStatements.add(name.toString());
-				return Instance.new(new FuncType([], new ByteArrayType()));
-			case "__eq":
-			case "__neq":
-				this.#usedStatements.add(name.toString());
-				return Instance.new(new FuncType([this.#selfTypeExpr.type], new BoolType()));
-			default:
-				// loop the contained statements to find one with name 'name'
-				for (let i = 0; i < this.#statementValues.length; i++) {
-					let s = this.#statements[i];
-
-					if (name.toString() == s.name.toString()) {
-						if (FuncStatement.isMethod(s)) {
-							if (!dryRun) {
-								this.#usedStatements.add(name.toString());
-							}
-
-							return this.#statementValues[i];
-						} else {
-							throw name.referenceError(`'${this.#selfTypeExpr.toString()}.${name.toString()}' isn't a method (did you mean '${this.#selfTypeExpr.toString()}::${name.toString()}'?)`);
-						}
-					}
-				}
-
-				throw name.referenceError(`'${this.#selfTypeExpr.toString()}.${name.toString()}' undefined`);
-		}
-	}
-	
-	/**
-	 * @param {Word} name 
-	 * @param {boolean} dryRun 
-	 * @returns {EvalEntity}
-	 */
-	getTypeMember(name, dryRun = false) {
-		switch (name.value) {
-			case "from_data":
-				this.#usedStatements.add(name.toString());
-				return Instance.new(new FuncType([new RawDataType()], this.#selfTypeExpr.type));
-			default:
-				for (let i = 0; i < this.#statementValues.length; i++) {
-					let s = this.#statements[i];
-
-					if (name.toString() == s.name.toString()) {
-						if (FuncStatement.isMethod(s)) {
-							throw name.referenceError(`'${this.#selfTypeExpr.toString()}::${name.value}' is a method (did you mean '${this.#selfTypeExpr.toString()}.${name.toString()}'?)`)
-						} else {
-							if (!dryRun) {
-								this.#usedStatements.add(name.toString());
-							}
-
-							return this.#statementValues[i];
-						}
-					}
-				}
-
-				throw name.referenceError(`'${this.#selfTypeExpr.toString()}::${name.toString()}' undefined`);
-		}
-	}
-
-	/**
-	 * @param {Uint8Array} mask
-	 */
-	hideUnused(mask) {
-		for (let s of this.#statements) {
-			if (!s.used) {
-				let site = s.site;
-
-				if (site.endSite === null) {
-					mask.fill(0, site.pos);
-				} else {
-					mask.fill(0, site.pos, site.endSite.pos);
-				}
-			}
-		}
-	}
-
-	/**
-	 * Returns IR of all impl members
-	 * @param {IRDefinitions} map 
-	 */
-	toIR(map) {
-		let path = this.#selfTypeExpr.path;
-		let site = this.#selfTypeExpr.site;
-
-		if (this.#usedStatements.has("__eq")) {
-			map.set(`${path}____eq`, new IR("__helios__common____eq", site));
-		}
-
-		if (this.#usedStatements.has("__neq")) {
-			map.set(`${path}____neq`, new IR("__helios__common____neq", site));
-		}
-
-		if (this.#usedStatements.has("serialize")) {
-			map.set(`${path}__serialize`, new IR("__helios__common__serialize", site));
-		}
-
-		if (this.#usedStatements.has("from_data")) {
-			map.set(`${path}__from_data`, new IR("__helios__common__identity", site));
-		}
-
-		for (let s of this.#statements) {
-			let key = `${path}__${s.name.toString()}`
-			if (s instanceof FuncStatement) {
-				map.set(key, s.toIRInternal(key));
-			} else {
-				map.set(key, s.toIRInternal());
-			}
-		}
+	isBaseOf(site, type) {
+		return type instanceof ErrorType;
 	}
 }
-
-/**
- * @typedef {Map<string, IR>} IRDefinitions
- */
-
-/**
- * A Module is a collection of statements
- */
-class Module {
-	#name;
-	#statements;
-
-	/**
-	 * @param {Word} name 
-	 * @param {Statement[]} statements
-	 */
-	constructor(name, statements) {
-		this.#name = name;
-		this.#statements = statements;
-
-		this.#statements.forEach(s => s.setBasePath(`__module__${this.#name.toString()}`));
-	}
-
-	/**
-	 * @param {string} rawSrc
-	 * @param {?number} fileIndex - a unique optional index passed in from outside that makes it possible to associate a UserError with a specific file
-	 * @returns {Module}
-	 */
-	static new(rawSrc, fileIndex = null) {
-		let src = new Source(rawSrc, fileIndex);
-
-		let ts = tokenize(src);
-
-		if (ts.length == 0) {
-			throw UserError.syntaxError(src, 0, "empty script");
-		}
-
-		let [purpose, name] = buildScriptPurpose(ts);
-
-		if (purpose != ScriptPurpose.Module) {
-			throw name.syntaxError("expected 'module' script purpose");
-		} else if (name.value == "main") {
-			throw name.syntaxError("name of 'module' can't be 'main'");
-		}
-
-		let statements = buildProgramStatements(ts);
-
-		return new Module(name, statements);
-	}
-
-	/**
-	 * @type {Word}
-	 */
-	get name() {
-		return this.#name;
-	}
-
-	/**
-	 * @type {Statement[]}
-	 */
-	get statements() {
-		return this.#statements.slice();
-	}
-
-	toString() {
-		return this.#statements.map(s => s.toString()).join("\n");
-	}
-
-	/**
-	 * @param {GlobalScope} globalScope 
-	 */
-	evalTypes(globalScope) {
-		let scope = new TopScope(globalScope);
-
-		for (let s of this.statements) {
-			s.eval(scope);
-		}
-	}
-
-	/**
-	 * Cleans the program by removing everything that is unecessary for the smart contract (easier to audit)
-	 * @returns {string}
-	 */
-	cleanSource() {
-		let raw = this.name.site.src.raw;
-		let n = raw.length;
-
-		let mask = new Uint8Array(n);
-
-		mask.fill(1); // hide the unused parts by setting to 0
-
-		for (let s of this.#statements) {
-			s.hideUnused(mask);
-		}
-
-		/** @type {string[]} */
-		let chars = [];
-
-		for (let i = 0; i < n; i++) {
-			let c = raw.charAt(i);
-
-			if (c == '\n' || c == ' ') {
-				chars.push(c);
-			} else if (mask[i] == 1) {
-				chars.push(c);
-			} else {
-				chars.push(' ');
-			}
-		}
-
-		let lines = chars.join("").split("\n").map(l => {
-			if (l.trim().length == 0) {
-				return "";
-			} else {
-				return l;
-			}
-		});
-
-		// remove more than one consecutive empty line
-
-		/**
-		 * @type {string[]}
-		 */
-		let parts = [];
-
-		for (let i = 0; i < lines.length; i++) {
-			if (!(i > 0 && lines[i-1].length == 0 && lines[i].length == 0)) {
-				parts.push(lines[i]);
-			}
-		}
-
-		return parts.join("\n");
-	}
-
-	/**
-	 * This module can depend on other modules
-	 * TODO: detect circular dependencies
-	 * @param {Module[]} modules 
-	 * @param {Module[]} stack
-	 * @returns {Module[]}
-	 */
-	filterDependencies(modules, stack = []) {
-		/**
-		 * @type {Module[]}
-		 */
-		let deps = [];
-
-		/** @type {Module[]} */
-		let newStack = [this];
-		newStack = newStack.concat(stack);
-
-		for (let s of this.#statements) {
-			if (s instanceof ImportStatement) {
-				let mn = s.moduleName.value;
-
-				if (mn == this.name.value) {
-					throw s.syntaxError("can't import self");
-				} else if (stack.some(d => d.name.value == mn)) {
-					throw s.syntaxError("circular import detected");
-				}
-
-				// if already in deps, then don't add (because it will have been added before along with all its dependencies)
-				if (!deps.some(d => d.name.value == mn)) {
-					let m = modules.find(m => m.name.value == mn);
-
-					if (m === undefined) {
-						throw s.referenceError(`module '${mn}' not found`);
-					} else {
-						// only add deps that weren't added before
-						let newDeps = m.filterDependencies(modules, newStack).concat([m]).filter(d => !deps.some(d_ => d_.name.value == d.name.value));
-
-						deps = deps.concat(newDeps);
-					}
-				}
-			}
-		}
-
-		return deps;
-	}
-}
-
-/**
- * The entrypoint module
- */
-class MainModule extends Module {
-	/**
-	 * @param {Word} name 
-	 * @param {Statement[]} statements 
-	 */
-	constructor(name, statements) {
-		super(name, statements);
-	}
-
-	/**
-	 * @type {FuncStatement}
-	 */
-	get mainFunc() {
-		for (let s of this.statements) {
-			if (s.name.value == "main") {
-				if (!(s instanceof FuncStatement)) {	
-					throw s.typeError("'main' isn't a function statement");
-				} else {
-					return s;
-				}
-			}
-		}
-
-		throw new Error("'main' not found (is a module being used as an entrypoint?)");
-	}
-}
-
-/**
- * Helios root object
- */
-export class Program {
-	#purpose;
-	#modules;
-	
-	/**
-	 * @param {number} purpose
-	 * @param {Module[]} modules
-	 */
-	constructor(purpose, modules) {
-		this.#purpose = purpose;
-		this.#modules = modules;
-	}
-
-	/**
-	 * @param {string} rawSrc 
-	 * @returns {[purpose, Module[]]}
-	 */
-	static parseMain(rawSrc) {
-		let src = new Source(rawSrc, 0);
-
-		let ts = tokenize(src);
-
-		if (ts.length == 0) {
-			throw UserError.syntaxError(src, 0, "empty script");
-		}
-
-		let [purpose, name] = buildScriptPurpose(ts);
-
-		if (name.value === "main") {
-			throw name.site.syntaxError("script can't be named 'main'");
-		}
-
-		let statements = buildProgramStatements(ts);
-
-		let mainIdx = statements.findIndex(s => s.name.value === "main");
-
-		if (mainIdx == -1) {
-			throw name.site.syntaxError("'main' not found");
-		}
-
-		/**
-		 * @type {Module[]}
-		 */
-		let modules = [new MainModule(name, statements.slice(0, mainIdx+1))];
-
-		if (mainIdx < statements.length - 1) {
-			modules.push(new Module(name, statements.slice(mainIdx+1)));
-		}
-
-		return [purpose, modules];
-	}
-
-	/**
-	 * 
-	 * @param {string} mainName 
-	 * @param {string[]} moduleSrcs
-	 * @returns {Module[]}
-	 */
-	static parseImports(mainName, moduleSrcs = []) {
-		let imports = moduleSrcs.map((src, i) => Module.new(src, i+1));
-
-		/**
-		 * @type {Set<string>}
-		 */
-		let names = new Set();
-
-		names.add(mainName);
-
-		for (let m of imports) {
-			if (names.has(m.name.value)) {
-				throw m.name.syntaxError(`non-unique module name '${m.name.value}'`);
-			}
-
-			names.add(m.name.value);
-		}
-
-		return imports;
-	}
-
-	/**
-	 * Creates  a new program.
-	 * @param {string} mainSrc 
-	 * @param {string[]} moduleSrcs - optional sources of modules, which can be used for imports
-	 * @returns {Program}
-	 */
-	static new(mainSrc, moduleSrcs = []) {
-		let [purpose, modules] = Program.parseMain(mainSrc);
-
-		let site = modules[0].name.site;
-
-		let imports = Program.parseImports(modules[0].name.value, moduleSrcs);
-		
-		let mainImports = modules[0].filterDependencies(imports);
-
-		/** @type {Module[]} */
-		let postImports = [];
-
-		if (modules.length > 1) {
-			postImports = modules[modules.length - 1].filterDependencies(imports).filter(m => !mainImports.some(d => d.name.value == m.name.value));
-		}
-
-		// create the final order of all the modules (this is the order in which statements will be added to the IR)
-		modules = mainImports.concat([modules[0]]).concat(postImports).concat(modules.slice(1));
-	
-		/**
-		 * @type {Program}
-		 */
-		let program;
-
-		switch (purpose) {
-			case ScriptPurpose.Testing:
-				program = new TestingProgram(modules);
-				break;
-			case ScriptPurpose.Spending:
-				program = new SpendingProgram(modules);
-				break;
-			case ScriptPurpose.Minting:
-				program = new MintingProgram(modules);
-				break
-			case ScriptPurpose.Staking:
-				program = new StakingProgram(modules);
-				break
-			case ScriptPurpose.Module:
-				throw site.syntaxError("can't use module for main");
-			default:
-				throw new Error("unhandled script purpose");
-		}
-
-		program.evalTypes();
-
-		return program;
-	}
-
-	/** 
-	 * @type {Module[]} 
-	 */
-	get mainImportedModules() {
-		/** @type {Module[]} */
-		let ms = [];
-
-		for (let m of this.#modules) {
-			if (m instanceof MainModule) {
-				break;
-			} else {
-				ms.push(m);
-			}
-		}
-
-		return ms;
-	}
-
-	/**
-	 * @type {MainModule}
-	 */
-	get mainModule() {
-		for (let m of this.#modules) {
-			if (m instanceof MainModule) {
-				return m;
-			}
-		}
-
-		throw new Error("MainModule not found");
-	}
-
-	/**
-	 * @type {?Module}
-	 */
-	get postModule() {
-		let m = this.#modules[this.#modules.length - 1];
-
-		if (m instanceof MainModule) {
-			return null;
-		} else {
-			return m;
-		}
-	}
-
-	/**
-	 * @type {string}
-	 */
-	get name() {
-		return this.mainModule.name.value;
-	}
-
-	/**
-	 * @type {FuncStatement}
-	 */
-	get mainFunc() {
-		return this.mainModule.mainFunc;
-	}
-
-	/**
-	 * @type {string}
-	 */
-	get mainPath() {
-		return this.mainFunc.path;
-	}
-
-	/**
-	 * Needed to list the paramTypes, and to call changeParam
-	 * @type {Statement[]}
-	 */
-	get mainAndPostStatements() {
-		let statements = this.mainModule.statements;
-
-		if (this.postModule != null) {
-			statements = statements.concat(this.postModule.statements);
-		}
-
-		return statements;
-	}
-
-	/**
-	 * @type {[Statement, boolean][]} - boolean value marks if statement is import or not
-	 */
-	get allStatements() {
-		/**
-		 * @type {[Statement, boolean][]}
-		 */
-		let statements = [];
-
-		for (let i = 0; i < this.#modules.length; i++) {
-			let m = this.#modules[i];
-
-			let isImport = !(m instanceof MainModule || (i == this.#modules.length - 1));
-
-			statements = statements.concat(m.statements.map(s => [s, isImport]));
-		}
-
-		return statements;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return this.#modules.map(m => m.toString()).join("\n");
-	}
-
-	/**
-	 * @returns {[string[], string]}
-	 */
-	cleanSource() {
-		return [this.mainImportedModules.map(m => m.cleanSource()), this.mainModule.cleanSource()];
-	}
-
-	/**
-	 * @param {GlobalScope} globalScope 
-	 */
-	evalTypesInternal(globalScope) {
-		let topScope = new TopScope(globalScope);
-
-		// loop through the modules
-
-		for (let i = 0; i < this.#modules.length; i++) {
-			let m = this.#modules[i];
-			let moduleScope = new ModuleScope(topScope);
-
-			// resuse main ModuleScope for post module
-			if (m ===  this.postModule) {
-				let maybeModuleScope = topScope.get(this.mainModule.name);
-				if (maybeModuleScope instanceof ModuleScope) {
-					moduleScope = maybeModuleScope;
-				} else {
-					throw new Error("unexpected");
-				}
-			}
-
-			for (let s of m.statements) {
-				s.eval(moduleScope);
-			}
-
-			if (m instanceof MainModule) {
-				globalScope.allowMacros();
-				topScope.setStrict(false);
-			}
-
-			// don't add the last module as it won't be used
-			if (i < this.#modules.length - 1) {
-				topScope.set(m.name, moduleScope);
-			}
-		}
-
-		this.mainFunc.use();
-	}
-
-	evalTypes() {
-		throw new Error("not yet implemeneted");
-	}
-
-	/**
-	 * @type {Object.<string, Type>}
-	 */
-	get paramTypes() {
-		/**
-		 * @type {Object.<string, Type>}
-		 */
-		let res = {};
-
-		for (let s of this.mainAndPostStatements) {
-			if (s instanceof ConstStatement) {
-				res[s.name.value] = s.type;
-			}
-		}
-
-		return res;
-	}
-
-	/**
-	 * Change the literal value of a const statements  
-	 * @param {string} name 
-	 * @param {string | UplcValue} value 
-	 * @returns {Program} - returns 'this' so that changeParam calls can be chained
-	 */
-	changeParam(name, value) {
-		for (let s of this.mainAndPostStatements) {
-			if (s instanceof ConstStatement && s.name.value == name) {
-				s.changeValue(value);
-				return this;
-			}
-		}
-
-		throw this.mainFunc.referenceError(`param '${name}' not found`);
-	}
-
-	/**
-	 * Doesn't use wrapEntryPoint
-	 * @param {string} name 
-	 * @returns {UplcValue}
-	 */
-	evalParam(name) {
-		/**
-		 * @type {Map<string, IR>}
-		 */
-		let map = new Map();
-
-		/** @type {?ConstStatement} */
-		let constStatement = null;
-
-		for (let [s, isImport] of this.allStatements) {
-			s.toIR(map);
-			if (s.name.value == name && s instanceof ConstStatement && !isImport) {
-				constStatement = s;
-				break;
-			}
-		}
-
-		if (constStatement === null) {
-			throw new Error(`param '${name}' not found`);
-		} else {
-			let path = constStatement.path;
-
-			let ir = assertDefined(map.get(path));
-
-			map.delete(path);
-
-			ir = wrapWithRawFunctions(IR.wrapWithDefinitions(ir, map));
-
-			let irProgram = IRProgram.new(ir, this.#purpose, true, true);
-
-			return new UplcDataValue(irProgram.site, irProgram.data);
-		}
-	}
-
-	/**
-	 * @param {IR} ir
-	 * @returns {IR}
-	 */
-	wrapEntryPoint(ir) {
-		/**
-		 * @type {Map<string, IR>}
-		 */
-		let map = new Map();
-
-		for (let [statement, _] of this.allStatements) {
-			statement.toIR(map);
-
-			if (statement.name.value == "main") {
-				break;
-			}
-		}
- 
-		// builtin functions are added when the IR program is built
-		// also replace all tabs with four spaces
-		return wrapWithRawFunctions(IR.wrapWithDefinitions(ir, map));
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	toIR() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	prettyIR(simplify = false) {
-		let ir = this.toIR();
-
-		let irProgram = IRProgram.new(ir, this.#purpose, simplify);
-
-		return new Source(irProgram.toString()).pretty();
-	}
-
-	/**
-	 * @param {boolean} simplify 
-	 * @returns {UplcProgram}
-	 */
-	compile(simplify = false) {
-		let ir = this.toIR();
-
-		let irProgram = IRProgram.new(ir, this.#purpose, simplify);
-		
-		//console.log(new Source(irProgram.toString()).pretty());
-		return irProgram.toUplc();
-	}
-}
-
-class RedeemerProgram extends Program {
-	/**
-	 * @param {number} purpose
-	 * @param {Module[]} modules 
-	 */
-	constructor(purpose, modules) {
-		super(purpose, modules);
-	}
-
-	/**
-	 * @param {GlobalScope} scope
-	 */
-	evalTypesInternal(scope) {
-		super.evalTypesInternal(scope);
-
-		// check the 'main' function
-
-		let main = this.mainFunc;
-		let argTypeNames = main.argTypeNames;
-		let retTypes = main.retTypes;
-		let haveRedeemer = false;
-		let haveScriptContext = false;
-
-		if (argTypeNames.length > 2) {
-			throw main.typeError("too many arguments for main");
-		}
-
-		for (let t of argTypeNames) {
-			if (t == "Redeemer") {
-				if (haveRedeemer) {
-					throw main.typeError(`duplicate 'Redeemer' argument`);
-				} else if (haveScriptContext) {
-					throw main.typeError(`'Redeemer' must come before 'ScriptContext'`);
-				} else {
-					haveRedeemer = true;
-				}
-			} else if (t == "ScriptContext") {
-				if (haveScriptContext) {
-					throw main.typeError(`duplicate 'ScriptContext' argument`);
-				} else {
-					haveScriptContext = true;
-				}
-			} else {
-				throw main.typeError(`illegal argument type, must be 'Redeemer' or 'ScriptContext', got '${t}'`);
-			}
-		}
-
-		if (retTypes.length !== 1) {
-			throw main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!(retTypes[0] instanceof BoolType)) {
-			throw main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
-		}
-	}
-
-	toIR() {
-		/** @type {IR[]} */
-		let outerArgs = [];
-
-		/** @type {IR[]} */
-		let innerArgs = [];
-
-		for (let t of this.mainFunc.argTypeNames) {
-			if (t == "Redeemer") {
-				innerArgs.push(new IR("redeemer"));
-				outerArgs.push(new IR("redeemer"));
-			} else if (t == "ScriptContext") {
-				innerArgs.push(new IR("ctx"));
-				if (outerArgs.length == 0) {
-					outerArgs.push(new IR("_"));
-				}
-				outerArgs.push(new IR("ctx"));
-			} else {
-				throw new Error("unexpected");
-			}
-		}
-
-		while(outerArgs.length < 2) {
-			outerArgs.push(new IR("_"));
-		}
-
-		let ir = new IR([
-			new IR(`${TAB}/*entry point*/\n${TAB}(`),
-			new IR(outerArgs).join(", "),
-			new IR(`) -> {\n${TAB}${TAB}`),
-			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
-			new IR(innerArgs).join(", "),
-			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
-			new IR(`\n${TAB}}`),
-		]);
-
-		return this.wrapEntryPoint(ir);
-	}
-}
-
-class DatumRedeemerProgram extends Program {
-	/**
-	 * @param {number} purpose
-	 * @param {Module[]} modules
-	 */
-	constructor(purpose, modules) {
-		super(purpose, modules);
-	}
-
-	/**
-	 * @param {GlobalScope} scope 
-	 */
-	evalTypesInternal(scope) {
-		super.evalTypesInternal(scope);
-
-		// check the 'main' function
-
-		let main = this.mainFunc;
-		let argTypeNames = main.argTypeNames;
-		let retTypes = main.retTypes;
-		let haveDatum = false;
-		let haveRedeemer = false;
-		let haveScriptContext = false;
-
-		if (argTypeNames.length > 3) {
-			throw main.typeError("too many arguments for main");
-		}
-
-		for (let t of argTypeNames) {
-			if (t == "Datum") {
-				if (haveDatum) {
-					throw main.typeError("duplicate 'Datum' argument");
-				} else if (haveRedeemer) {
-					throw main.typeError("'Datum' must come before 'Redeemer'");
-				} else if (haveScriptContext) {
-					throw main.typeError("'Datum' must come before 'ScriptContext'");
-				} else {
-					haveDatum = true;
-				}
-			} else if (t == "Redeemer") {
-				if (haveRedeemer) {
-					throw main.typeError("duplicate 'Redeemer' argument");
-				} else if (haveScriptContext) {
-					throw main.typeError("'Redeemer' must come before 'ScriptContext'");
-				} else {
-					haveRedeemer = true;
-				}
-			} else if (t == "ScriptContext") {
-				if (haveScriptContext) {
-					throw main.typeError("duplicate 'ScriptContext' argument");
-				} else {
-					haveScriptContext = true;
-				}
-			} else {
-				throw main.typeError(`illegal argument type, must be 'Datum', 'Redeemer' or 'ScriptContext', got '${t}'`);
-			}
-		}
-
-		if (retTypes.length !== 1) {
-			throw main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!(retTypes[0] instanceof BoolType)) {
-			throw main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
-		}
-	}
-
-	toIR() {
-		/** @type {IR[]} */
-		let outerArgs = [];
-
-		/** @type {IR[]} */
-		let innerArgs = [];
-
-		for (let t of this.mainFunc.argTypeNames) {
-			if (t == "Datum") {
-				innerArgs.push(new IR("datum"));
-				outerArgs.push(new IR("datum"));
-			} else if (t == "Redeemer") {
-				innerArgs.push(new IR("redeemer"));
-				if (outerArgs.length == 0) {
-					outerArgs.push(new IR("_"));
-				}
-				outerArgs.push(new IR("redeemer"));
-			} else if (t == "ScriptContext") {
-				innerArgs.push(new IR("ctx"));
-				while (outerArgs.length < 2) {
-					outerArgs.push(new IR("_"));
-				}
-				outerArgs.push(new IR("ctx"));
-			} else {
-				throw new Error("unexpected");
-			}
-		}
-
-		while(outerArgs.length < 3) {
-			outerArgs.push(new IR("_"));
-		}
-
-		let ir = new IR([
-			new IR(`${TAB}/*entry point*/\n${TAB}(`),
-			new IR(outerArgs).join(", "),
-			new IR(`) -> {\n${TAB}${TAB}`),
-			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
-			new IR(innerArgs).join(", "),
-			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
-			new IR(`\n${TAB}}`),
-		]);
-
-		return this.wrapEntryPoint(ir);
-	}
-}
-
-class TestingProgram extends Program {
-	/**
-	 * @param {Module[]} modules 
-	 */
-	constructor(modules) {
-		super(ScriptPurpose.Testing, modules);
-	}
-
-	toString() {
-		return `testing ${this.name}\n${super.toString()}`;
-	}
-
-	evalTypes() {
-		let scope = GlobalScope.new(ScriptPurpose.Testing);
-
-		this.evalTypesInternal(scope);
-
-		// main can have any arg types, and any return type 
-
-		if (this.mainFunc.retTypes.length > 1) {
-			throw this.mainFunc.typeError("program entry-point can only return one value");
-		}
-	}
-
-	/**
-	 * @returns {IR}
-	 */
-	toIR() {
-		let args = this.mainFunc.argTypes.map((_, i) => new IR(`arg${i}`));
-
-		let ir = new IR([
-			new IR(`${TAB}/*entry point*/\n${TAB}(`),
-			new IR(args).join(", "),
-			new IR(`) -> {\n${TAB}${TAB}`),
-			new IR([
-				new IR(`${this.mainPath}(`),
-				new IR(args).join(", "),
-				new IR(")"),
-			]),
-			new IR(`\n${TAB}}`),
-		]);
-
-		return this.wrapEntryPoint(ir);
-	}
-}
-
-class SpendingProgram extends DatumRedeemerProgram {
-	/**
-	 * @param {Module[]} modules
-	 */
-	constructor(modules) {
-		super(ScriptPurpose.Spending, modules);
-	}
-
-	toString() {
-		return `spending ${this.name}\n${super.toString()}`;
-	}
-
-	evalTypes() {
-		let scope = GlobalScope.new(ScriptPurpose.Spending);
-
-		this.evalTypesInternal(scope);	
-	}
-}
-
-class MintingProgram extends RedeemerProgram {
-	/**
-	 * @param {Module[]} modules 
-	 */
-	constructor(modules) {
-		super(ScriptPurpose.Minting, modules);
-	}
-
-	toString() {
-		return `minting ${this.name}\n${super.toString()}`;
-	}
-
-	evalTypes() {
-		let scope = GlobalScope.new(ScriptPurpose.Minting);
-
-		this.evalTypesInternal(scope);	
-	}
-}
-
-class StakingProgram extends RedeemerProgram {
-	/**
-	 * @param {Module[]} modules 
-	 */
-	constructor(modules) {
-		super(ScriptPurpose.Staking, modules);
-	}
-
-	toString() {
-		return `staking ${this.name}\n${super.toString()}`;
-	}
-
-	evalTypes() {
-		let scope = GlobalScope.new(ScriptPurpose.Staking);
-
-		this.evalTypesInternal(scope);	
-	}
-}
-
-
-//////////////////////////////////
-// Section 12: AST build functions
-//////////////////////////////////
-
-/**
- * @param {Token[]} ts
- * @returns {Statement[]}
- */
-function buildProgramStatements(ts) {
-	/**
-	 * @type {Statement[]}
-	 */
-	let statements = [];
-
-	while (ts.length != 0) {
-		let t = assertDefined(ts.shift()).assertWord();
-		let kw = t.value;
-
-		if (kw == "const") {
-			statements.push(buildConstStatement(t.site, ts));
-		} else if (kw == "struct") {
-			statements.push(buildStructStatement(t.site, ts));
-		} else if (kw == "func") {
-			statements.push(buildFuncStatement(t.site, ts));
-		} else if (kw == "enum") {
-			statements.push(buildEnumStatement(t.site, ts));
-		} else if (kw == "import") {
-			statements = statements.concat(buildImportStatements(t.site, ts));
-		} else {
-			throw t.syntaxError(`invalid top-level keyword '${kw}'`);
-		}
-	}
-
-	return statements;
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {[number, Word]} - [purpose, name] (ScriptPurpose is an integer)
- */
-function buildScriptPurpose(ts) {
-	// need at least 2 tokens for the script purpose
-	if (ts.length < 2) {
-		throw ts[0].syntaxError("invalid script purpose syntax");
-	}
-
-	let purposeWord = assertDefined(ts.shift()).assertWord();
-	let purpose;
-	if (purposeWord.isWord("spending")) {
-		purpose = ScriptPurpose.Spending;
-	} else if (purposeWord.isWord("minting")) {
-		purpose = ScriptPurpose.Minting;
-	} else if (purposeWord.isWord("staking")) {
-		purpose = ScriptPurpose.Staking;
-	} else if (purposeWord.isWord("testing")) { // 'test' is not reserved as a keyword though
-		purpose = ScriptPurpose.Testing;
-	} else if (purposeWord.isWord("module")) {
-		purpose = ScriptPurpose.Module;
-	} else if (purposeWord.isKeyword()) {
-		throw purposeWord.syntaxError(`script purpose missing`);
-	} else {
-		throw purposeWord.syntaxError(`unrecognized script purpose '${purposeWord.value}' (expected 'testing', 'spending', 'staking', 'minting' or 'module')`);
-	}
-
-	let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	return [purpose, name];
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {ConstStatement}
- */
-function buildConstStatement(site, ts) {
-	let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	let typeExpr = null;
-	if (ts[0].isSymbol(":")) {
-		ts.shift();
-
-		let equalsPos = Symbol.find(ts, "=");
-
-		if (equalsPos == -1) {
-			throw site.syntaxError("invalid syntax");
-		}
-
-		typeExpr = buildTypeExpr(ts.splice(0, equalsPos));
-	}
-
-	let maybeEquals = ts.shift();
-	if (maybeEquals === undefined) {
-		throw site.syntaxError("expected '=' after 'consts'");
-	} else {
-		void maybeEquals.assertSymbol("=");
-
-		let nextStatementPos = Word.find(ts, ["const", "func", "struct", "enum", "import"]);
-
-		let tsValue = nextStatementPos == -1 ? ts.splice(0) : ts.splice(0, nextStatementPos);
-
-		let valueExpr = buildValueExpr(tsValue);
-
-		if (ts.length > 0) {
-			site.setEndSite(ts[0].site);
-		}
-
-		return new ConstStatement(site, name, typeExpr, valueExpr);
-	}
-}
-
-/**
- * @param {Token[]} ts
- * @returns {[Token[], Token[]]}
- */
-function splitDataImpl(ts) {
-	let implPos = Word.find(ts, ["const", "func"]);
-
-	if (implPos == -1) {
-		return [ts, []];
-	} else {
-		return [ts.slice(0, implPos), ts.slice(implPos)];
-	}
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {StructStatement}
- */
-function buildStructStatement(site, ts) {
-	let maybeName = ts.shift();
-
-	if (maybeName === undefined) {
-		throw site.syntaxError("expected name after 'struct'");
-	} else {
-		let name = maybeName.assertWord().assertNotKeyword();
-
-		let maybeBraces = ts.shift();
-		if (maybeBraces === undefined) {
-			throw name.syntaxError(`expected '{...}' after 'struct ${name.toString()}'`);
-		} else {
-			let braces = maybeBraces.assertGroup("{", 1);
-
-			let [tsFields, tsImpl] = splitDataImpl(braces.fields[0]);
-
-			let fields = buildDataFields(tsFields);
-
-			let impl = buildImplDefinition(tsImpl, new TypeRefExpr(name), fields.map(f => f.name), braces.site.endSite);
-
-			if (ts.length > 0) {
-				site.setEndSite(ts[0].site);
-			}
-
-			return new StructStatement(site, name, fields, impl);
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {DataField[]}
- */
-function buildDataFields(ts) {
-	/** @type {DataField[]} */
-	let fields = []
-
-	/**
-	 * @param {Word} fieldName
-	 */
-	function assertUnique(fieldName) {
-		if (fields.findIndex(f => f.name.toString() == fieldName.toString()) != -1) {
-			throw fieldName.typeError(`duplicate field \'${fieldName.toString()}\'`);
-		}
-	}
-
-	while (ts.length > 0) {
-		let colonPos = Symbol.find(ts, ":");
-
-		if (colonPos == -1) {
-			throw ts[0].syntaxError("expected ':' in data field");
-		}
-
-		let tsBef = ts.slice(0, colonPos);
-		let tsAft = ts.slice(colonPos+1);
-		let maybeFieldName = tsBef.shift();
-		if (maybeFieldName === undefined) {
-			throw ts[colonPos].syntaxError("expected word before ':'");
-		} else {
-			let fieldName = maybeFieldName.assertWord().assertNotKeyword();
-
-			assertUnique(fieldName);
-
-			if (tsAft.length == 0) {
-				throw ts[colonPos].syntaxError("expected type expression after ':'");
-			}
-
-			let nextColonPos = Symbol.find(tsAft, ":");
-
-			if (nextColonPos != -1) {
-				if (nextColonPos == 0) {
-					throw tsAft[nextColonPos].syntaxError("expected word before ':'");
-				}
-
-				void tsAft[nextColonPos-1].assertWord();
-
-				ts = tsAft.splice(nextColonPos-1);
-			} else {
-				ts = [];
-			}
-
-			let typeExpr = buildTypeExpr(tsAft);
-
-			fields.push(new DataField(fieldName, typeExpr));
-		}
-	}
-
-	return fields;
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @param {?TypeExpr} methodOf - methodOf !== null then first arg can be named 'self'
- * @returns {FuncStatement}
- */
-function buildFuncStatement(site, ts, methodOf = null) {
-	let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	let fnExpr = buildFuncLiteralExpr(ts, methodOf);
-
-	if (ts.length > 0) {
-		site.setEndSite(ts[0].site);
-	}
-
-	return new FuncStatement(site, name, fnExpr);
-}
-
-/**
- * @param {Token[]} ts 
- * @param {?TypeExpr} methodOf - methodOf !== null then first arg can be named 'self'
- * @returns {FuncLiteralExpr}
- */
-function buildFuncLiteralExpr(ts, methodOf = null) {
-	let parens = assertDefined(ts.shift()).assertGroup("(");
-	let site = parens.site;
-	let args = buildFuncArgs(parens, methodOf);
-
-	const arrow = assertDefined(ts.shift()).assertSymbol("->");
-
-	let bodyPos = Group.find(ts, "{");
-
-	if (bodyPos == -1) {
-		throw site.syntaxError("no function body");
-	} else if (bodyPos == 0) {
-		throw site.syntaxError("no return type specified");
-	}
-
-	let retTypeExprs = buildFuncRetTypeExprs(arrow.site, ts.splice(0, bodyPos));
-	let bodyExpr = buildValueExpr(assertDefined(ts.shift()).assertGroup("{", 1).fields[0]);
-
-	return new FuncLiteralExpr(site, args, retTypeExprs, bodyExpr);
-}
-
-/**
- * @param {Group} parens 
- * @param {?TypeExpr} methodOf - methodOf !== nul then first arg can be named 'self'
- * @returns {FuncArg[]}
- */
-function buildFuncArgs(parens, methodOf = null) {
-	/** @type {FuncArg[]} */
-	let args = [];
-
-	let someNoneUnderscore = parens.fields.length == 0;
-
-	for (let i = 0; i < parens.fields.length; i++) {
-		let f = parens.fields[i];
-		let ts = f.slice();
-
-		let name = assertDefined(ts.shift()).assertWord();
-
-		if (name.toString() == "self") {
-			someNoneUnderscore = true;
-
-			if (i != 0 || methodOf === null) {
-				throw name.syntaxError("'self' is reserved");
-			} else {
-				if (ts.length > 0) {
-					if (ts[0].isSymbol(":")) {
-						throw ts[0].syntaxError("unexpected type expression after 'self'");
-					} else {
-						throw ts[0].syntaxError("unexpected token");
-					}
-				} else {
-					args.push(new FuncArg(name, methodOf));
-				}
-			}
-		} else if (name.toString() == "_") {
-			if (ts.length > 0) {
-				if (ts[0].isSymbol(":")) {
-					throw ts[0].syntaxError("unexpected type expression after '_'");
-				} else {
-					throw ts[0].syntaxError("unexpected token");
-				}
-			} else {
-				args.push(new FuncArg(name, methodOf));
-			}
-		} else {
-			someNoneUnderscore = true;
-
-			name = name.assertNotKeyword();
-
-			for (let prev of args) {
-				if (prev.name.toString() == name.toString()) {
-					throw name.syntaxError(`duplicate argument '${name.toString()}'`);
-				}
-			}
-
-			let maybeColon = ts.shift();
-			if (maybeColon === undefined) {
-				throw name.syntaxError(`expected ':' after '${name.toString()}'`);
-			} else {
-				let colon = maybeColon.assertSymbol(":");
-
-				if (ts.length == 0) {
-					throw colon.syntaxError("expected type expression after ':'");
-				}
-
-				let typeExpr = buildTypeExpr(ts);
-
-				args.push(new FuncArg(name, typeExpr));
-			}
-		}
-	}
-
-	if (!someNoneUnderscore) {
-		throw parens.syntaxError("expected at least one non-underscore function argument");
-	}
-
-	return args;
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {EnumStatement}
- */
-function buildEnumStatement(site, ts) {
-	let maybeName = ts.shift();
-
-	if (maybeName === undefined) {
-		throw site.syntaxError("expected word after 'enum'");
-	} else {
-		let name = maybeName.assertWord().assertNotKeyword();
-
-		let maybeBraces = ts.shift();
-		if (maybeBraces === undefined) {
-			throw name.syntaxError(`expected '{...}' after 'enum ${name.toString()}'`);
-		} else {
-			let braces = maybeBraces.assertGroup("{", 1);
-
-			let [tsMembers, tsImpl] = splitDataImpl(braces.fields[0]);
-
-			if (tsMembers.length == 0) {
-				throw braces.syntaxError("expected at least one enum member");
-			}
-
-			/** @type {EnumMember[]} */
-			let members = [];
-
-			while (tsMembers.length > 0) {
-				members.push(buildEnumMember(tsMembers));
-			}
-
-			let impl = buildImplDefinition(tsImpl, new TypeRefExpr(name), members.map(m => m.name), braces.site.endSite);
-
-			if (ts.length > 0) {
-				site.setEndSite(ts[0].site);
-			}
-
-			return new EnumStatement(site, name, members, impl);
-		}
-	}
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {ImportStatement[]}
- */
-function buildImportStatements(site, ts) {
-	let maybeBraces = ts.shift();
-
-	if (maybeBraces === undefined) {
-		throw site.syntaxError("expected '{...}' after 'import'");
-	} else {
-		let braces = maybeBraces.assertGroup("{");
-
-		let maybeFrom = ts.shift();
-
-		if (maybeFrom === undefined) {
-			throw maybeBraces.syntaxError("expected 'from' after 'import {...}'");
-		} else {
-			let maybeModuleName = ts.shift();
-
-			if (maybeModuleName === undefined) {
-				throw maybeFrom.syntaxError("expected module name after 'import {...} from'");
-			} else {
-				maybeFrom.assertWord("from");
-				let moduleName = maybeModuleName.assertWord().assertNotKeyword();
-
-				if (braces.fields.length === 0) {
-					throw braces.syntaxError("expected at least 1 import field");
-				}
-
-				return braces.fields.map(fts => {
-					let ts = fts.slice();
-					let maybeOrigName = ts.shift();
-
-					if (maybeOrigName === undefined) {
-						throw braces.syntaxError("empty import field");
-					} else {
-						let origName = maybeOrigName.assertWord();
-						if (ts.length === 0) {
-							return new ImportStatement(site, origName, origName, moduleName);
-						} else {
-						
-							let maybeAs = ts.shift();
-
-							if (maybeAs === undefined) {
-								throw maybeOrigName.syntaxError(`expected 'as' or nothing after '${origName.value}'`);
-							} else {
-								maybeAs.assertWord("as");
-
-								let maybeNewName = ts.shift();
-
-								if (maybeNewName === undefined) {
-									throw maybeAs.syntaxError("expected word after 'as'");
-								} else {
-									let newName = maybeNewName.assertWord();
-
-									let rem = ts.shift();
-									if (rem !== undefined) {
-										throw rem.syntaxError("unexpected");
-									} else {
-										return new ImportStatement(site, newName, origName, moduleName);
-									}
-								}
-							}
-						}
-					}
-				})
-			}
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {EnumMember}
- */
-function buildEnumMember(ts) {
-	let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	if (ts.length == 0 || ts[0].isWord()) {
-		return new EnumMember(name, []);
-	} else {
-		let braces = assertDefined(ts.shift()).assertGroup("{", 1);
-
-		let fields = buildDataFields(braces.fields[0]);
-
-		return new EnumMember(name, fields);
-	}
-}
-
-/** 
- * @param {Token[]} ts 
- * @param {TypeRefExpr} selfTypeExpr - reference to parent type
- * @param {Word[]} fieldNames - to check if impl statements have a unique name
- * @param {?Site} endSite
- * @returns {ImplDefinition}
- */
-function buildImplDefinition(ts, selfTypeExpr, fieldNames, endSite) {
-	/**
-	 * @param {Word} name 
-	 */
-	function assertNonAuto(name) {
-		if (name.toString() == "serialize" || name.toString() == "__eq" || name.toString() == "__neq" || name.toString() == "from_data") {
-			throw name.syntaxError(`'${name.toString()}' is a reserved member`);
-		}
-	}
-
-	for (let fieldName of fieldNames) {
-		assertNonAuto(fieldName);
-	}
-
-	let statements = buildImplMembers(ts, selfTypeExpr);
-
-	/** 
-	 * @param {number} i 
-	 */
-	function assertUnique(i) {
-		let s = statements[i];
-
-		assertNonAuto(s.name);
-
-		for (let fieldName of fieldNames) {
-			if (fieldName.toString() == s.name.toString()) {
-				throw s.name.syntaxError(`'${s.name.toString()}' is duplicate`);
-			}
-		}
-
-		for (let j = i+1; j < statements.length; j++) {
-			if (statements[j].name.toString() == s.name.toString()) {
-				throw statements[j].name.syntaxError(`'${s.name.toString()}' is duplicate`);
-			}
-		}
-	}
-
-	let n = statements.length;
-
-	for (let i = 0; i < n; i++) {
-		assertUnique(i);
-	}
-
-	if (n > 0 && endSite !== null) {
-		statements[n-1].site.setEndSite(endSite);
-	}
-
-	return new ImplDefinition(selfTypeExpr, statements);
-}
-
-/**
- * @param {Token[]} ts 
- * @param {TypeExpr} methodOf
- * @returns {(ConstStatement | FuncStatement)[]}
- */
-function buildImplMembers(ts, methodOf) {
-	/** @type {(ConstStatement | FuncStatement)[]} */
-	let statements = [];
-
-
-	while (ts.length != 0) {
-		let t = assertDefined(ts.shift()).assertWord();
-		let kw = t.value;
-		let s;
-
-		if (kw == "const") {
-			s = buildConstStatement(t.site, ts);
-		} else if (kw == "func") {
-			s = buildFuncStatement(t.site, ts, methodOf);
-		} else {
-			throw t.syntaxError("invalid impl syntax");
-		}
-
-		statements.push(s);
-	}
-
-	return statements
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {TypeExpr}
- */
-function buildTypeExpr(ts) {
-	assert(ts.length > 0);
-
-	if (ts[0].isGroup("[")) {
-		return buildListTypeExpr(ts);
-	} else if (ts[0].isWord("Map")) {
-		return buildMapTypeExpr(ts);
-	} else if (ts[0].isWord("Option")) {
-		return buildOptionTypeExpr(ts);
-	} else if (ts.length > 1 && ts[0].isGroup("(") && ts[1].isSymbol("->")) {
-		return buildFuncTypeExpr(ts);
-	} else if (ts.length > 1 && ts[0].isWord() && ts[1].isSymbol("::")) {
-		return buildTypePathExpr(ts);
-	} else if (ts[0].isWord()) {
-		return buildTypeRefExpr(ts);
-	} else {
-		throw ts[0].syntaxError("invalid type syntax")
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {ListTypeExpr}
- */
-function buildListTypeExpr(ts) {
-	let brackets = assertDefined(ts.shift()).assertGroup("[", 0);
-
-	let itemTypeExpr = buildTypeExpr(ts);
-
-	return new ListTypeExpr(brackets.site, itemTypeExpr);
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {MapTypeExpr}
- */
-function buildMapTypeExpr(ts) {
-	let kw = assertDefined(ts.shift()).assertWord("Map");
-
-	let maybeKeyTypeExpr = ts.shift();
-
-	if (maybeKeyTypeExpr === undefined) {
-		throw kw.syntaxError("missing Map key-type");
-	} else {
-		let keyTypeTs = maybeKeyTypeExpr.assertGroup("[", 1).fields[0];
-		if (keyTypeTs.length == 0) {
-			throw kw.syntaxError("missing Map key-type (brackets can't be empty)");
-		} else {
-			let keyTypeExpr = buildTypeExpr(keyTypeTs);
-
-			if (ts.length == 0) {
-				throw kw.syntaxError("missing Map value-type");
-			} else {
-				let valueTypeExpr = buildTypeExpr(ts);
-
-				return new MapTypeExpr(kw.site, keyTypeExpr, valueTypeExpr);
-			}
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {TypeExpr}
- */
-function buildOptionTypeExpr(ts) {
-	let kw = assertDefined(ts.shift()).assertWord("Option");
-
-	let someTypeExpr = buildTypeExpr(assertDefined(ts.shift()).assertGroup("[", 1).fields[0]);
-
-	let typeExpr = new OptionTypeExpr(kw.site, someTypeExpr);
-	if (ts.length > 0) {
-		if (ts[0].isSymbol("::") && ts[1].isWord(["Some", "None"])) {
-			if (ts.length > 2) {
-				throw ts[2].syntaxError("unexpected token");
-			}
-
-			return new TypePathExpr(ts[0].site, typeExpr, ts[1].assertWord());
-		} else {
-			throw ts[0].syntaxError("invalid option type syntax");
-		}
-	} else {
-		return typeExpr;
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {FuncTypeExpr}
- */
-function buildFuncTypeExpr(ts) {
-	let parens = assertDefined(ts.shift()).assertGroup("(");
-
-	let argTypes = parens.fields.map(f => buildTypeExpr(f.slice()));
-
-	let arrow = assertDefined(ts.shift()).assertSymbol("->");
-
-	let retTypes = buildFuncRetTypeExprs(arrow.site, ts);
-
-	return new FuncTypeExpr(parens.site, argTypes, retTypes);
-}
-
-/**
- * 
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {TypeExpr[]}
- */
-function buildFuncRetTypeExprs(site, ts) {
-	if (ts.length === 0) {
-		throw site.syntaxError("expected type expression after '->'");
-	} else {
-		if (ts[0].isGroup("(")) {
-			let group = assertDefined(ts.shift()).assertGroup("(");
-
-			if (group.fields.length < 2) {
-				throw group.syntaxError("expected 2 or more types in multi return type");
-			} else {
-				return group.fields.map(fts => {
-					fts = fts.slice();
-
-					return buildTypeExpr(fts);
-				});
-			}
-		} else {
-			return [buildTypeExpr(ts)];
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {TypePathExpr}
- */
-function buildTypePathExpr(ts) {
-	let baseName = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	let symbol = assertDefined(ts.shift()).assertSymbol("::");
-
-	let memberName = assertDefined(ts.shift()).assertWord();
-
-	if (ts.length > 0) {
-		throw ts[0].syntaxError("invalid type syntax");
-	}
-
-	return new TypePathExpr(symbol.site, new TypeRefExpr(baseName), memberName);
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {TypeRefExpr}
- */
-function buildTypeRefExpr(ts) {
-	let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-	if (ts.length > 0) {
-		throw ts[0].syntaxError("invalid type syntax");
-	}
-
-	return new TypeRefExpr(name);
-}
-
-/**
- * @param {Token[]} ts 
- * @param {number} prec 
- * @returns {ValueExpr}
- */
-function buildValueExpr(ts, prec = 0) {
-	assert(ts.length > 0);
-
-	// lower index in exprBuilders is lower precedence
-	/** @type {((ts: Token[], prev: number) => ValueExpr)[]} */
-	const exprBuilders = [
-		/**
-		 * 0: lowest precedence is assignment
-		 * @param {Token[]} ts_ 
-		 * @param {number} prec_ 
-		 * @returns 
-		 */
-		function (ts_, prec_) {
-			return buildMaybeAssignOrPrintExpr(ts_, prec_);
-		},
-		makeBinaryExprBuilder('||'), // 1: logical or operator
-		makeBinaryExprBuilder('&&'), // 2: logical and operator
-		makeBinaryExprBuilder(['==', '!=']), // 3: eq or neq
-		makeBinaryExprBuilder(['<', '<=', '>', '>=']), // 4: comparison
-		makeBinaryExprBuilder(['+', '-']), // 5: addition subtraction
-		makeBinaryExprBuilder(['*', '/', '%']), // 6: multiplication division remainder
-		makeUnaryExprBuilder(['!', '+', '-']), // 7: logical not, negate
-		/**
-		 * 8: variables or literal values chained with: (enum)member access, indexing and calling
-		 * @param {Token[]} ts_ 
-		 * @param {number} prec_ 
-		 * @returns 
-		 */
-		function (ts_, prec_) {
-			return buildChainedValueExpr(ts_, prec_);
-		}
-	];
-
-	return exprBuilders[prec](ts, prec);
-}
-
-/**
- * @param {Token[]} ts
- * @param {number} prec
- * @returns {ValueExpr}
- */
-function buildMaybeAssignOrPrintExpr(ts, prec) {
-	let semicolonPos = Symbol.find(ts, ";");
-	let equalsPos = Symbol.find(ts, "=");
-	let printPos = Word.find(ts, "print");
-
-	if (semicolonPos == -1) {
-		if (equalsPos != -1) {
-			throw ts[equalsPos].syntaxError("invalid assignment syntax, expected ';' after '...=...'");
-		} else if (printPos != -1) {
-			throw ts[printPos].syntaxError("invalid print expression, expected ';' after 'print(...)'");
-		} else {
-			return buildValueExpr(ts, prec + 1);
-		}
-	} else {
-		if (equalsPos == -1 && printPos == -1) {
-			throw ts[semicolonPos].syntaxError("expected '=', or 'print', before ';'");
-		}
-
-		if (equalsPos != -1 && equalsPos < semicolonPos) {
-			if (printPos != -1) {
-				if (printPos <= semicolonPos) {
-					throw ts[printPos].syntaxError("expected ';' after 'print(...)'");
-				}
-			}
-
-			let equalsSite = ts[equalsPos].assertSymbol("=").site;
-
-			let lts = ts.splice(0, equalsPos);
-
-			let lhs = buildAssignLhs(equalsSite, lts);
-			
-			assertDefined(ts.shift()).assertSymbol("=");
-
-			semicolonPos = Symbol.find(ts, ";");
-			assert(semicolonPos != -1);
-
-			let upstreamTs = ts.splice(0, semicolonPos);
-			if (upstreamTs.length == 0) {
-				throw equalsSite.syntaxError("expected expression between '=' and ';'");
-			}
-
-			let upstreamExpr = buildValueExpr(upstreamTs, prec + 1);
-
-			let semicolonSite = assertDefined(ts.shift()).assertSymbol(";").site;
-
-			if (ts.length == 0) {
-				throw semicolonSite.syntaxError("expected expression after ';'");
-			}
-
-			let downstreamExpr = buildValueExpr(ts, prec);
-
-			return new AssignExpr(equalsSite, lhs, upstreamExpr, downstreamExpr);
-		} else if (printPos != -1 && printPos < semicolonPos) {
-			if (equalsPos != -1) {
-				if (equalsPos <= semicolonPos) {
-					throw ts[equalsPos].syntaxError("expected ';' after '...=...'");
-				}
-			}
-
-			let printSite = assertDefined(ts.shift()).assertWord("print").site;
-
-			let maybeParens = ts.shift();
-
-			if (maybeParens === undefined) {
-				throw ts[printPos].syntaxError("expected '(...)' after 'print'");
-			} else {
-				let parens = maybeParens.assertGroup("(", 1);
-
-				let msgExpr = buildValueExpr(parens.fields[0]);
-
-				let semicolonSite = assertDefined(ts.shift()).assertSymbol(";").site;
-
-				if (ts.length == 0) {
-					throw semicolonSite.syntaxError("expected expression after ';'");
-				}
-
-				let downstreamExpr = buildValueExpr(ts, prec);
-
-				return new PrintExpr(printSite, msgExpr, downstreamExpr);
-			}
-		} else {
-			throw new Error("unhandled");
-		}
-	}
-}
-
-/**
- * @param {Site} site 
- * @param {Token[]} ts 
- * @returns {NameTypePair[]}
- */
-function buildAssignLhs(site, ts) {
-	let maybeName = ts.shift();
-	if (maybeName === undefined) {
-		throw site.syntaxError("expected a name before '='");
-	} else {
-		/**
-		 * @type {NameTypePair[]}
-		 */
-		let pairs = [];
-
-		if (maybeName.isWord()) {
-			let name = maybeName.assertWord().assertNotKeyword();
-
-			if (ts.length > 0) {
-				let colon = assertDefined(ts.shift()).assertSymbol(":");
-
-				if (ts.length == 0) {
-					throw colon.syntaxError("expected type expression after ':'");
-				} else {
-					let typeExpr = buildTypeExpr(ts);
-
-					pairs.push(new NameTypePair(name, typeExpr));
-				}
-			} else {
-				pairs.push(new NameTypePair(name, null));
-			}
-		} else if (maybeName.isGroup("(")) {
-			let group = maybeName.assertGroup("(");
-
-			if (group.fields.length < 2) {
-				throw group.syntaxError("expected at least 2 lhs' for multi-assign");
-			}
-
-			let someNoneUnderscore = false;
-			for (let fts of group.fields) {
-				if (fts.length == 0) {
-					throw group.syntaxError("unexpected empty field for multi-assign");
-				}
-
-				fts = fts.slice();
-
-				let name = fts.shift().assertWord();
-
-				if (name.value === "_") {
-					if (fts.length !== 0) {
-						throw fts[0].syntaxError("unexpected token after '_' in multi-assign");
-					}
-
-					pairs.push(new NameTypePair(name, null));
-				} else {
-					someNoneUnderscore = true;
-
-					name.assertNotKeyword();
-
-					let maybeColon = fts.shift();
-					
-					if (maybeColon === undefined) {
-						throw name.syntaxError(`expected ':' after '${name.toString()}'`);
-					}
-					
-					let colon = maybeColon.assertSymbol(":");
-
-					if (fts.length === 0) {
-						throw colon.syntaxError("expected type expression after ':'");
-					}
-
-					let typeExpr = buildTypeExpr(fts);
-
-					// check that name is unique
-					pairs.forEach(p => {
-						if (p.name.value === name.value) {
-							throw name.syntaxError(`duplicate name '${name.value}' in lhs of multi-assign`);
-						}
-					});
-
-					pairs.push(new NameTypePair(name, typeExpr));
-				}
-			}
-
-			if (!someNoneUnderscore) {
-				throw group.syntaxError("expected at least one non-underscore in lhs of multi-assign");
-			}
-		} else {
-			throw maybeName.syntaxError("unexpected syntax for lhs of =");
-		}
-
-		return pairs;
-	}
-}
-
-/**
- * 
- * @param {Token[]} ts 
- * @returns {ValueExpr}
- */
-function buildMaybeErrorExpr(ts) {
-	let n = ts.length;
-
-	if (n >= 2 && ts[n-1].isGroup("(") && ts[n-2].isWord("error")) {
-		let parens = ts[n-1].assertGroup("(", 1);
-
-		if (n > 2) {
-			ts[n-3].assertSymbol(";");
-		}
-
-		let tsCombined = ts.slice(0, n-2).concat(parens.fields[0].slice());
-
-		let inner = buildValueExpr(tsCombined);
-
-		return new ErrorExpr(ts[n-2].site, inner);
-	} else {
-		return buildValueExpr(ts);
-	}
-}
-
-/**
- * @param {string | string[]} symbol 
- * @returns {(ts: Token[], prec: number) => ValueExpr}
- */
-function makeBinaryExprBuilder(symbol) {
-	// default behaviour is left-to-right associative
-	return function (ts, prec) {
-		let iOp = Symbol.findLast(ts, symbol);
-
-		if (iOp == ts.length - 1) {
-			// post-unary operator, which is invalid
-			throw ts[iOp].syntaxError(`invalid syntax, '${ts[iOp].toString()}' can't be used as a post-unary operator`);
-		} else if (iOp > 0) { // iOp == 0 means maybe a (pre)unary op, which is handled by a higher precedence
-			let a = buildValueExpr(ts.slice(0, iOp), prec);
-			let b = buildValueExpr(ts.slice(iOp + 1), prec + 1);
-
-			return new BinaryExpr(ts[iOp].assertSymbol(), a, b);
-		} else {
-			return buildValueExpr(ts, prec + 1);
-		}
-	};
-}
-
-/**
- * @param {string | string[]} symbol 
- * @returns {(ts: Token[], prec: number) => ValueExpr}
- */
-function makeUnaryExprBuilder(symbol) {
-	// default behaviour is right-to-left associative
-	return function (ts, prec) {
-		if (ts[0].isSymbol(symbol)) {
-			let rhs = buildValueExpr(ts.slice(1), prec);
-
-			return new UnaryExpr(ts[0].assertSymbol(), rhs);
-		} else {
-			return buildValueExpr(ts, prec + 1);
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @param {number} prec 
- * @returns {ValueExpr}
- */
-function buildChainedValueExpr(ts, prec) {
-	/** @type {ValueExpr} */
-	let expr = buildChainStartValueExpr(ts);
-
-	// now we can parse the rest of the chaining
-	while (ts.length > 0) {
-		let t = assertDefined(ts.shift());
-
-		if (t.isGroup("(")) {
-			expr = new CallExpr(t.site, expr, buildCallArgs(t.assertGroup()));
-		} else if (t.isGroup("[")) {
-			throw t.syntaxError("invalid expression '[...]'");
-		} else if (t.isSymbol(".") && ts.length > 0 && ts[0].isWord("switch")) {
-			expr = buildSwitchExpr(expr, ts);
-		} else if (t.isSymbol(".")) {
-			let name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-
-			expr = new MemberExpr(t.site, expr, name);
-		} else if (t.isGroup("{")) {
-			throw t.syntaxError("invalid syntax");
-		} else if (t.isSymbol("::")) {
-			throw t.syntaxError("invalid syntax");
-		} else {
-			throw t.syntaxError(`invalid syntax '${t.toString()}'`);
-		}
-	}
-
-	return expr;
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {ValueExpr}
- */
-function buildChainStartValueExpr(ts) {
-	if (ts.length > 1 && ts[0].isGroup("(") && ts[1].isSymbol("->")) {
-		return buildFuncLiteralExpr(ts);
-	} else if (ts[0].isWord("if")) {
-		return buildIfElseExpr(ts);
-	} else if (ts[0].isWord("switch")) {
-		throw ts[0].syntaxError("expected '... .switch' instead of 'switch'");
-	} else if (ts[0].isLiteral()) {
-		return new PrimitiveLiteralExpr(assertDefined(ts.shift())); // can simply be reused
-	} else if (ts[0].isGroup("(")) {
-		return buildParensExpr(ts);
-	} else if (Group.find(ts, "{") != -1) {
-		if (ts[0].isGroup("[")) {
-			return buildListLiteralExpr(ts);
-		} else if (ts[0].isWord("Map") && ts[1].isGroup("[")) {
-			return buildMapLiteralExpr(ts); 
-		} else {
-			// could be switch or literal struct construction
-			let iBraces = Group.find(ts, "{");
-			let iSwitch = Word.find(ts, "switch");
-			let iPeriod = Symbol.find(ts, ".");
-
-			if (iSwitch != -1 && iPeriod != -1 && iSwitch < iBraces && iPeriod < iBraces && iSwitch > iPeriod) {
-				return buildValueExpr(ts.splice(0, iPeriod));
-			} else {
-				return buildStructLiteralExpr(ts);
-			}
-		}
-	} else if (Symbol.find(ts, "::") != -1) {
-		return buildValuePathExpr(ts);
-	} else if (ts[0].isWord()) {
-		if (ts[0].isWord("const") || ts[0].isWord("struct") || ts[0].isWord("enum") || ts[0].isWord("func") || ts[0].isWord("import")) {
-			throw ts[0].syntaxError(`invalid use of '${ts[0].assertWord().value}', can only be used as top-level statement`);
-		} else {
-			let name = assertDefined(ts.shift()).assertWord();
-
-			// only place where a word can be "self"
-			return new ValueRefExpr(name.value == "self" ? name : name.assertNotKeyword());
-		}
-	} else {
-		throw ts[0].syntaxError("invalid syntax");
-	}
-}
-
-/**
- * @param {Token[]} ts
- * @returns {ValueExpr}
- */
-function buildParensExpr(ts) {
-	let group = ts.shift().assertGroup("(");
-	let site = group.site;
-
-	if (group.fields.length === 0) {
-		throw group.syntaxError("expected at least one expr in parens");
-	} else {
-		return new ParensExpr(site, group.fields.map(fts => buildValueExpr(fts)));
-	}
-}
-
-/**
- * @param {Group} parens 
- * @returns {ValueExpr[]}
- */
-function buildCallArgs(parens) {
-	return parens.fields.map(fts => buildValueExpr(fts));
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {IfElseExpr}
- */
-function buildIfElseExpr(ts) {
-	let site = assertDefined(ts.shift()).assertWord("if").site;
-
-	/** @type {ValueExpr[]} */
-	let conditions = [];
-
-	/** @type {ValueExpr[]} */
-	let branches = [];
-	while (true) {
-		let parens = assertDefined(ts.shift()).assertGroup("(");
-		let braces = assertDefined(ts.shift()).assertGroup("{");
-
-		if (parens.fields.length != 1) {
-			throw parens.syntaxError("expected single if-else condition");
-		}
-
-		if (braces.fields.length != 1) {
-			throw braces.syntaxError("expected single if-else branch expession");
-		}
-
-		conditions.push(buildValueExpr(parens.fields[0]));
-		branches.push(buildMaybeErrorExpr(braces.fields[0]));
-
-		assertDefined(ts.shift()).assertWord("else");
-
-		let next = assertDefined(ts.shift());
-		if (next.isGroup("{")) {
-			// last group
-			let braces = next.assertGroup();
-			if (braces.fields.length != 1) {
-				throw braces.syntaxError("expected single expession for if-else branch");
-			}
-			branches.push(buildMaybeErrorExpr(braces.fields[0]));
-			break;
-		} else if (next.isWord("if")) {
-			continue;
-		} else {
-			throw next.syntaxError("unexpected token");
-		}
-	}
-
-	if (branches.every(b => b instanceof ErrorExpr)) {
-		throw site.syntaxError("every if-else branch throws an error");
-	}
-
-	return new IfElseExpr(site, conditions, branches);
-}
-
-/**
- * @param {ValueExpr} controlExpr
- * @param {Token[]} ts 
- * @returns {ValueExpr} - EnumSwitchExpr or DataSwitchExpr
- */
-function buildSwitchExpr(controlExpr, ts) {
-	let site = assertDefined(ts.shift()).assertWord("switch").site;
-
-	let braces = assertDefined(ts.shift()).assertGroup("{");
-
-	/** @type {SwitchCase[]} */
-	let cases = [];
-
-	/** @type {?SwitchDefault} */
-	let def = null;
-
-	for (let tsInner of braces.fields) {
-		if (tsInner[0].isWord("else")) {
-			if (def !== null) {
-				throw def.syntaxError("duplicate 'else' in switch");
-			}
-
-			def = buildSwitchDefault(tsInner);
-		} else {
-			if (def !== null) {
-				throw def.syntaxError("switch 'else' must come last");
-			}
-
-			cases.push(buildSwitchCase(tsInner));
-		}
-	}
-
-	// check the uniqueness of each case here
-	/** @type {Set<string>} */
-	let set = new Set()
-	for (let c of cases) {
-		let t = c.memberName.toString();
-		if (set.has(t)) {
-			throw c.memberName.syntaxError(`duplicate switch case '${t}')`);
-		}
-
-		set.add(t);
-	}
-
-	if (cases.length < 1) {
-		throw site.syntaxError("expected at least one switch case");
-	}
-
-	if (cases.every(c => c.isError()) && (def === null || def.isError())) {
-		throw site.syntaxError("every switch case throws an error");
-	}
-
-	if (cases.some(c => c.isDataMember())) {
-		if (cases.length + (def === null ? 0 : 1) > 5) {
-			throw site.syntaxError(`too many cases for data switch, expected 5 or less, got ${cases.length.toString()}`);
-		} else {
-			let count = 0;
-			cases.forEach(c => {if (!c.isDataMember()){count++}});
-
-			if (count > 1) {
-				throw site.syntaxError(`expected at most 1 enum case in data switch, got ${count}`);
-			} else {
-				return new DataSwitchExpr(site, controlExpr, cases, def);
-			}
-		}
-	} else {
-		return new EnumSwitchExpr(site, controlExpr, cases, def);
-	}
-}
-
-/**
- * @param {Site} site
- * @param {Token[]} ts
- * @param {boolean} isAfterColon
- * @returns {Word} 
- */
-function buildSwitchCaseName(site, ts, isAfterColon) {
-	let first = ts.shift();
-
-	if (first === undefined) {
-		if (isAfterColon) {
-			throw site.syntaxError("invalid switch case syntax, expected member name after ':'");
-		} else {
-			throw site.syntaxError("invalid switch case syntax");
-		}
-	}
-		
-	if (first.isWord("Map")) {
-		let second = ts.shift();
-
-		if (second === undefined) {
-			throw site.syntaxError("expected token after 'Map'");
-		}
-
-		let keyTs = second.assertGroup("[]", 1).fields[0];
-
-		let key = keyTs.shift();
-
-		if (key === undefined) {
-			throw second.syntaxError("expected 'Map[Data]Data'");
-		}
-
-		key.assertWord("Data");
-
-		if (keyTs.length > 0) {
-			throw keyTs[0].syntaxError("unexpected token after 'Data'");
-		}
-
-		let third = ts.shift();
-
-		if (third === undefined) {
-			throw site.syntaxError("expected token after 'Map[Data]")
-		}
-
-		third.assertWord("Data");
-
-		if (ts.length > 0) {
-			throw ts[0].syntaxError("unexpected token after 'Map[Data]Data'");
-		}
-
-		return new Word(first.site, "Map[Data]Data");
-	} else if (first.isWord()) {
-		if (ts.length > 0) {
-			throw ts[0].syntaxError("unexpected token");
-		}
-
-		return first.assertWord().assertNotKeyword();
-	} else if (first.isGroup("[")) {
-		// list 
-		first.assertGroup("[", 0);
-
-		let second = ts.shift();
-
-		if (second === undefined) {
-			throw site.syntaxError("expected token after '[]'");
-		} else if (ts.length > 0) {
-			throw ts[0].syntaxError("unexpected token");
-		}
-
-		second.assertWord("Data");
-
-		return new Word(first.site, "[]Data");
-	} else {
-		throw first.syntaxError("invalid switch case name syntax");
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {SwitchCase}
- */
-function buildSwitchCase(ts) {
-	/** @type {?Word} */
-	let varName = null;
-
-	/** @type {?Word} */
-	let memberName = null;
-
-	let arrowPos = Symbol.find(ts, "=>");
-
-	if (arrowPos == -1) {
-		throw ts[0].syntaxError("expected '=>' in switch case");
-	} else if (arrowPos == 0) {
-		throw ts[0].syntaxError("expected '<word>' or '<word>: <word>' to the left of '=>'");
-	}
-
-	let tsLeft = ts.splice(0, arrowPos);
-
-	let colonPos = Symbol.find(tsLeft, ":");
-
-	if (colonPos != -1) {
-		varName = assertDefined(tsLeft.shift()).assertWord().assertNotKeyword();
-		
-		let maybeColon = tsLeft.shift();
-		if (maybeColon === undefined) {
-			throw varName.syntaxError("invalid switch case syntax, expected '(<name>: <enum-member>)', got '(<name>)'");
-		} else {
-			void maybeColon.assertSymbol(":");
-
-			memberName = buildSwitchCaseName(maybeColon.site, tsLeft, true);
-		}
-	} else {
-		memberName = buildSwitchCaseName(tsLeft[0].site, tsLeft, false);
-	}
-
-	if (memberName === null) {
-		throw new Error("unexpected");
-	} else {
-		let maybeArrow = ts.shift();
-
-		if (maybeArrow === undefined) {
-			throw memberName.syntaxError("expected '=>'");
-		} else {
-			let arrow = maybeArrow.assertSymbol("=>");
-
-			/** @type {?ValueExpr} */
-			let bodyExpr = null;
-
-			if (ts.length == 0) {
-				throw arrow.syntaxError("expected expression after '=>'");
-			} else if (ts[0].isGroup("{")) {
-				if (ts.length > 1) {
-					throw ts[1].syntaxError("unexpected token");
-				}
-
-				let tsBody = ts[0].assertGroup("{", 1).fields[0];
-				bodyExpr = buildMaybeErrorExpr(tsBody);
-			} else {
-				bodyExpr = buildMaybeErrorExpr(ts);
-			}
-
-			if (bodyExpr === null) {
-				throw arrow.syntaxError("empty switch case body");
-			} else {
-				return new SwitchCase(arrow.site, varName, memberName, bodyExpr);
-			}
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {SwitchDefault}
- */
-function buildSwitchDefault(ts) {
-	let site = assertDefined(ts.shift()).assertWord("else").site;
-
-	let maybeArrow = ts.shift();
-	if (maybeArrow === undefined) {
-		throw site.syntaxError("expected '=>' after 'else'");
-	} else {
-		let arrow = maybeArrow.assertSymbol("=>");
-
-		/** @type {?ValueExpr} */
-		let bodyExpr = null;
-		if (ts.length == 0) {
-			throw arrow.syntaxError("expected expression after '=>'");
-		} else if (ts[0].isGroup("{")) {
-			if (ts.length > 1) {
-				throw ts[1].syntaxError("unexpected token");
-			} else {
-				bodyExpr = buildMaybeErrorExpr(ts[0].assertGroup("{", 1).fields[0]);
-			}
-		} else {
-			bodyExpr = buildMaybeErrorExpr(ts);
-		}
-
-		if (bodyExpr === null) {
-			throw arrow.syntaxError("empty else body");
-		} else {
-			return new SwitchDefault(arrow.site, bodyExpr);
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {ListLiteralExpr}
- */
-function buildListLiteralExpr(ts) {
-	let site = assertDefined(ts.shift()).assertGroup("[", 0).site;
-
-	let bracesPos = Group.find(ts, "{");
-
-	if (bracesPos == -1) {
-		throw site.syntaxError("invalid list literal expression syntax");
-	}
-
-	let itemTypeExpr = buildTypeExpr(ts.splice(0, bracesPos));
-
-	let braces = assertDefined(ts.shift()).assertGroup("{");
-
-	let itemExprs = braces.fields.map(fts => buildValueExpr(fts));
-
-	return new ListLiteralExpr(site, itemTypeExpr, itemExprs);
-}
-
-/**
- * @param {Token[]} ts
- * @returns {MapLiteralExpr}
- */
-function buildMapLiteralExpr(ts) {
-	let site = assertDefined(ts.shift()).assertWord("Map").site;
-
-	let bracket = assertDefined(ts.shift()).assertGroup("[", 1);
-
-	let keyTypeExpr = buildTypeExpr(bracket.fields[0]);
-
-	let bracesPos = Group.find(ts, "{");
-
-	if (bracesPos == -1) {
-		throw site.syntaxError("invalid map literal expression syntax");
-	}
-
-	let valueTypeExpr = buildTypeExpr(ts.splice(0, bracesPos));
-
-	let braces = assertDefined(ts.shift()).assertGroup("{");
-
-	/**
-	 * @type {[ValueExpr, ValueExpr][]}
-	 */
-	let pairs = braces.fields.map(fts => {
-		let colonPos = Symbol.find(fts, ":");
-
-		if (colonPos == -1) {
-			if (fts.length == 0) {
-				throw braces.syntaxError("unexpected empty field");
-			} else {
-				throw fts[0].syntaxError("expected ':' in map literal field");
-			}
-		} else if (colonPos == 0) {
-			throw fts[colonPos].syntaxError("expected expression before ':' in map literal field");
-		} else if (colonPos == fts.length - 1) {
-			throw fts[colonPos].syntaxError("expected expression after ':' in map literal field");
-		}
-
-		let keyExpr = buildValueExpr(fts.slice(0, colonPos));
-
-		let valueExpr = buildValueExpr(fts.slice(colonPos+1));
-
-		/**
-		 * @type {[ValueExpr, ValueExpr]}
-		 */
-		return [keyExpr, valueExpr];
-	});
-
-	return new MapLiteralExpr(site, keyTypeExpr, valueTypeExpr, pairs);
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {StructLiteralExpr}
- */
-function buildStructLiteralExpr(ts) {
-	let bracesPos = Group.find(ts, "{");
-
-	assert(bracesPos != -1);
-
-	let typeExpr = buildTypeExpr(ts.splice(0, bracesPos));
-
-	let braces = assertDefined(ts.shift()).assertGroup("{");
-
-	let nFields = braces.fields.length;
-
-	let fields = braces.fields.map(fts => buildStructLiteralField(braces.site, fts, nFields > 1));
-
-	return new StructLiteralExpr(typeExpr, fields);
-}
-
-/**
- * @param {Site} bracesSite
- * @param {Token[]} ts 
- * @param {boolean} isNamed
- * @returns {StructLiteralField}
- */
-function buildStructLiteralField(bracesSite, ts, isNamed) {
-	if (isNamed) {
-		let maybeName = ts.shift();
-		if (maybeName === undefined) {
-			throw bracesSite.syntaxError("empty struct literal field");
-		} else {
-			let name = maybeName.assertWord();
-
-			let maybeColon = ts.shift();
-			if (maybeColon === undefined) {
-				throw bracesSite.syntaxError("expected ':'");
-			} else {
-				let colon = maybeColon.assertSymbol(":");
-
-				if (ts.length == 0) {
-					throw colon.syntaxError("expected expression after ':'");
-				} else {
-					let valueExpr = buildValueExpr(ts);
-
-					return new StructLiteralField(name.assertNotKeyword(), valueExpr);
-				}
-			}
-		}
-	} else {
-		if (ts.length > 1 && ts[0].isWord() && ts[1].isSymbol(":")) {
-			throw ts[0].syntaxError(`unexpected key '${ts[0].toString()}' (struct literals with only 1 field don't use keys)`);
-		} else {
-			let valueExpr = buildValueExpr(ts);
-
-			return new StructLiteralField(null, valueExpr);
-		}
-	}
-}
-
-/**
- * @param {Token[]} ts 
- * @returns {ValueExpr}
- */
-function buildValuePathExpr(ts) {
-	let dcolonPos = Symbol.findLast(ts, "::");
-
-	assert(dcolonPos != -1);
-
-	let typeExpr = buildTypeExpr(ts.splice(0, dcolonPos));
-
-	assertDefined(ts.shift()).assertSymbol("::");
-
-	let memberName = assertDefined(ts.shift()).assertWord().assertNotKeyword();
-	
-	return new ValuePathExpr(typeExpr, memberName);
-}
-
-/**
- * @param {Site} site
- * @param {Type} type - expected type
- * @param {any} value - result of JSON.parse(string)
- * @param {string} path - context for debugging
- * @returns {ValueExpr}
- */
-function buildLiteralExprFromJson(site, type, value, path) {
-	if (value === null) {
-		throw site.typeError(`expected non-null value for parameter '${path}'`);
-	} else if (type instanceof BoolType) {
-		if (typeof value == "boolean") {
-			return new PrimitiveLiteralExpr(new BoolLiteral(site, value));
-		} else {
-			throw site.typeError(`expected boolean for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof StringType) {
-		if (typeof value == "string") {
-			return new PrimitiveLiteralExpr(new StringLiteral(site, value));
-		} else {
-			throw site.typeError(`expected string for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof IntType) {
-		if (typeof value == "number") {
-			if (value%1 == 0.0) {
-				return new PrimitiveLiteralExpr(new IntLiteral(site, BigInt(value)));
-			} else {
-				throw site.typeError(`expected round number for parameter '${path}', got '${value}'`);
-			}
-		} else {
-			throw site.typeError(`expected number for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof ByteArrayType || type instanceof HashType) {
-		if (value instanceof Array) {
-			/**
-			 * @type {number[]}
-			 */
-			let bytes = [];
-
-			for (let item of value) {
-				if (typeof item == "number" && item%1 == 0.0 && item >= 0 && item < 256) {
-					bytes.push(item);
-				} else {
-					throw site.typeError(`expected uint8[] for parameter '${path}', got '${value}'`);
-				}
-			}
-
-			/** @type {ValueExpr} */
-			let litExpr = new PrimitiveLiteralExpr(new ByteArrayLiteral(site, bytes));
-
-			if (type instanceof HashType) {
-				litExpr = new CallExpr(site, new ValuePathExpr(new TypeRefExpr(new Word(site, type.toString()), type), new Word(site, "new")), [litExpr]);
-			}
-
-			return litExpr;
-		} else {
-			throw site.typeError(`expected array for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof ListType) {
-		if (value instanceof Array) {
-			/**
-			 * @type {ValueExpr[]}
-			 */
-			let items = [];
-
-			for (let item of value) {
-				items.push(buildLiteralExprFromJson(site, type.itemType, item, path + "[]"));
-			}
-
-			return new ListLiteralExpr(site, new TypeExpr(site, type.itemType), items);
-		} else {
-			throw site.typeError(`expected array for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof MapType) {
-		/**
-		 * @type {[ValueExpr, ValueExpr][]}
-		 */
-		let pairs = [];
-
-		if (value instanceof Object && type.keyType instanceof StringType) {
-			for (let key in value) {
-				pairs.push([new PrimitiveLiteralExpr(new StringLiteral(site, key)), buildLiteralExprFromJson(site, type.valueType, value[key], path + "." + key)]);
-			}
-		} else if (value instanceof Array) {
-			for (let item of value) {
-				if (item instanceof Array && item.length == 2) {
-					pairs.push([
-						buildLiteralExprFromJson(site, type.keyType, item[0], path + "[0]"),
-						buildLiteralExprFromJson(site, type.valueType, item[1], path + "[1]"),
-					]);
-				} else {
-					throw site.typeError(`expected array of pairs for parameter '${path}', got '${value}'`);
-				}
-			}
-		} else {
-			throw site.typeError(`expected array or object for parameter '${path}', got '${value}'`);
-		}
-
-		return new MapLiteralExpr(
-			site, 
-			new TypeExpr(site, type.keyType), 
-			new TypeExpr(site, type.valueType),
-			pairs
-		);
-	} else if (type instanceof StatementType && type.statement instanceof DataDefinition) {
-		if (value instanceof Object) {
-			let nFields = type.statement.nFields(site);
-			/**
-			 * @type {StructLiteralField[]}
-			 */
-			let fields = new Array(nFields);
-
-			let nActual = Object.entries(value).length;
-
-			if (nFields != nActual) {
-				throw site.typeError(`expected object with ${nFields.toString} fields for parameter '${path}', got '${value}' with ${nActual.toString()} fields`);
-			}
-
-			for (let i = 0; i < nFields; i++) {
-				let key = type.statement.getFieldName(i);
-
-				let subValue = value[key];
-
-				if (subValue === undefined) {
-					throw site.typeError(`expected object with key '${key}' for parameter '${path}', got '${value}`);
-				}
-
-				let fieldType = type.statement.getFieldType(site, i);
-
-				let valueExpr = buildLiteralExprFromJson(site, fieldType, subValue, path + "." + key);
-
-				fields[i] = new StructLiteralField(nFields == 1 ? null : new Word(site, key), valueExpr);
-			}
-
-			return new StructLiteralExpr(new TypeExpr(site, type), fields);
-		} else {
-			throw site.typeError(`expected object for parameter '${path}', got '${value}'`);
-		}
-	} else {
-		throw site.typeError(`unhandled parameter type '${type.toString()}', for parameter ${path}`);
-	}
-}
-
-/**
- * @param {Site} site
- * @param {Type} type - expected type
- * @param {UplcValue} value 
- * @param {string} path - context for debugging
- * @returns {ValueExpr}
- */
-function buildLiteralExprFromValue(site, type, value, path) {
-	if (type instanceof BoolType) {
-		if (value instanceof UplcBool) {
-			return new PrimitiveLiteralExpr(new BoolLiteral(site, value.bool));
-		} else {
-			throw site.typeError(`expected UplcBool for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof StringType) {
-		if (value instanceof UplcDataValue && value.data instanceof ByteArrayData) {
-			return new PrimitiveLiteralExpr(new StringLiteral(site, bytesToText(value.data.bytes)));
-		} else {
-			throw site.typeError(`expected ByteArrayData for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof IntType) {
-		if (value instanceof UplcDataValue && value.data instanceof IntData) {
-			return new PrimitiveLiteralExpr(new IntLiteral(site, value.data.value));
-		} else {
-			throw site.typeError(`expected IntData for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof ByteArrayType) {
-		if (value instanceof UplcDataValue && value.data instanceof ByteArrayData) {
-			return new PrimitiveLiteralExpr(new ByteArrayLiteral(site, value.data.bytes));
-		} else {
-			throw site.typeError(`expected ByteArrayData for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof ListType) {
-		if (value instanceof UplcDataValue && value.data instanceof ListData) {
-			/**
-			 * @type {ValueExpr[]}
-			 */
-			let items = [];
-
-			for (let data of value.data.list) {
-				items.push(buildLiteralExprFromValue(site, type.itemType, new UplcDataValue(site, data), path + "[]"));
-			}
-
-			return new ListLiteralExpr(site, new TypeExpr(site, type.itemType), items);
-		} else {
-			throw site.typeError(`expected ListData for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof MapType) {
-		if (value instanceof UplcDataValue && value.data instanceof MapData) {
-			/**
-			 * @type {[ValueExpr, ValueExpr][]}
-			 */
-			let pairs = [];
-
-			for (let dataPair of value.data.map) {
-				let keyExpr = buildLiteralExprFromValue(site, type.keyType, new UplcDataValue(site, dataPair[0]), path + "{key}");
-				let valueExpr = buildLiteralExprFromValue(site, type.valueType, new UplcDataValue(site, dataPair[1]), path + "{value}");
-
-				pairs.push([keyExpr, valueExpr]);
-			}
-
-			return new MapLiteralExpr(
-				site, 
-				new TypeExpr(site, type.keyType), 
-				new TypeExpr(site, type.valueType),
-				pairs
-			);
-		} else {
-			throw site.typeError(`expected ListData for parameter '${path}', got '${value}'`);
-		}
-	} else if (type instanceof StatementType && type.statement instanceof DataDefinition) {
-		if (value instanceof UplcDataValue && value.data instanceof ConstrData) {
-			let nFields = type.statement.nFields(site);
-			/**
-			 * @type {StructLiteralField[]}
-			 */
-			let fields = new Array(nFields);
-
-			if (nFields != value.data.fields.length) {
-				throw site.typeError(`expected ConstrData with ${nFields.toString} fields for parameter '${path}', got '${value}' with ${value.data.fields.length.toString()} fields`);
-			}
-
-			for (let i = 0; i < nFields; i++) {
-				let f = value.data.fields[i];
-
-				let fieldType = type.statement.getFieldType(site, i);
-
-				let valueExpr = buildLiteralExprFromValue(site, fieldType, new UplcDataValue(site, f), path + "." + i.toString());
-
-				fields[i] = new StructLiteralField(nFields == 1 ? null : new Word(site, type.statement.getFieldName(i)), valueExpr);
-			}
-
-			return new StructLiteralExpr(new TypeExpr(site, type), fields);
-		} else {
-			throw site.typeError(`expected ConstrData for parameter '${path}', got '${value}'`);
-		}
-	} else {
-		throw site.typeError(`unhandled parameter type '${type.toString()}', for parameter ${path}`);
-	}
-}
-
-
-////////////////////////////
-// Section 13: Builtin types
-////////////////////////////
 
 /**
  * Builtin Int type
+ * @package
  */
 class IntType extends BuiltinType {
 	constructor() {
@@ -17978,21 +14186,30 @@ class IntType extends BuiltinType {
 	get path() {
 		return "__helios__int";
 	}
+
+	get userType() {
+		return Int;
+	}
 }
 
 /**
  * Builtin bool type
+ * @package
  */
 class BoolType extends BuiltinType {
 	constructor() {
 		super();
 	}
 
+	/**
+	 * @returns {string}
+	 */
 	toString() {
 		return "Bool";
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -18007,6 +14224,7 @@ class BoolType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -18028,13 +14246,26 @@ class BoolType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__bool";
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return Bool;
 	}
 }
 
 /**
  * Builtin string type
+ * @package
  */
 class StringType extends BuiltinType {
 	constructor() {
@@ -18046,6 +14277,7 @@ class StringType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -18063,13 +14295,25 @@ class StringType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__string";
+	}
+
+	/**
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return HeliosString;
 	}
 }
 
 /**
  * Builtin bytearray type
+ * @package
  */
 class ByteArrayType extends BuiltinType {
 	#size;
@@ -18119,259 +14363,23 @@ class ByteArrayType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return `__helios__bytearray${this.#size === null ? "" : this.#size}`;
 	}
-}
-
-/**
- * Builtin list type
- */
-class ListType extends BuiltinType {
-	#itemType;
 
 	/**
-	 * @param {Type} itemType 
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
 	 */
-	constructor(itemType) {
-		super();
-		this.#itemType = itemType;
-	}
-
-	get itemType() {
-		return this.#itemType;
-	}
-
-	toString() {
-		return `[]${this.#itemType.toString()}`;
-	}
-
-	/**
-	 * @param {Site} site 
-	 * @param {Type} type 
-	 * @returns 
-	 */
-	isBaseOf(site, type) {
-		type = ParamType.unwrap(type, this);
-
-		if (type instanceof ListType) {
-			return this.#itemType.isBaseOf(site, type.itemType);
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {EvalEntity}
-	 */
-	getTypeMember(name) {
-		switch (name.value) {
-			case "new":
-				return Instance.new(new FuncType([new IntType(), new FuncType([new IntType()], this.#itemType)], this));
-			case "new_const":
-				return Instance.new(new FuncType([new IntType(), this.#itemType], this));
-			default:
-				return super.getTypeMember(name);
-		}
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name) {
-		switch (name.value) {
-			case "__add":
-				return Instance.new(new FuncType([this], this));
-			case "length":
-				return Instance.new(new IntType());
-			case "head":
-				return Instance.new(this.#itemType);
-			case "tail":
-				return Instance.new(new ListType(this.#itemType));
-			case "is_empty":
-				return Instance.new(new FuncType([], new BoolType()));
-			case "get":
-				return Instance.new(new FuncType([new IntType()], this.#itemType));
-			case "prepend":
-				return Instance.new(new FuncType([this.#itemType], new ListType(this.#itemType)));
-			case "any":
-			case "all":
-				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new BoolType()));
-			case "find":
-				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], this.#itemType));
-			case "find_safe":
-				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new OptionType(this.#itemType)));
-			case "filter":
-				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new ListType(this.#itemType)));
-			case "fold": {
-				let a = new ParamType("a");
-				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#itemType], a), a], a));
-			}
-			case "fold_lazy": {
-				let a = new ParamType("a");
-				return new ParamFuncValue([a], new FuncType([new FuncType([this.#itemType, new FuncType([], a)], a), a], a));
-			}
-			case "map": {
-				let a = new ParamType("a");
-				return new ParamFuncValue([a], new FuncType([new FuncType([this.#itemType], a)], new ListType(a)), () => {
-					let type = a.type;
-					if (type === null) {
-						throw new Error("should've been inferred by now");
-					} else {
-						if ((new BoolType()).isBaseOf(Site.dummy(), type)) {
-							return "map_to_bool";
-						} else {
-							return "map";
-						}
-					}
-				});
-			}
-			case "sort":
-				return Instance.new(new FuncType([new FuncType([this.#itemType, this.#itemType], new BoolType())], new ListType(this.#itemType)));
-			default:
-				return super.getInstanceMember(name);
-		}
-	}
-
-	get path() {
-		return `__helios__${this.#itemType instanceof BoolType ? "bool" : ""}list`;
+	get userType() {
+		return ByteArray;
 	}
 }
 
-/**
- * Builtin map type (in reality list of key-value pairs)
- */
-class MapType extends BuiltinType {
-	#keyType;
-	#valueType;
-
-	/**
-	 * @param {Type} keyType 
-	 * @param {Type} valueType 
-	 */
-	constructor(keyType, valueType) {
-		super();
-		this.#keyType = keyType;
-		this.#valueType = valueType;
-	}
-
-	get keyType() {
-		return this.#keyType;
-	}
-
-	get valueType() {
-		return this.#valueType;
-	}
-
-	toString() {
-		return `Map[${this.#keyType.toString()}]${this.#valueType.toString()}`;
-	}
-
-	/**
-	 * @param {Site} site 
-	 * @param {Type} type 
-	 * @returns 
-	 */
-	isBaseOf(site, type) {
-		type = ParamType.unwrap(type, this);
-
-		if (type instanceof MapType) {
-			return this.#keyType.isBaseOf(site, type.#keyType) && this.#valueType.isBaseOf(site, type.#valueType);
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * @param {Word} name 
-	 * @returns {Instance}
-	 */
-	getInstanceMember(name) {
-		switch (name.value) {
-			case "__add":
-				return Instance.new(new FuncType([this], this));
-			case "all":
-			case "any":
-				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], new BoolType()));
-			case "delete":
-				return Instance.new(new FuncType([this.#keyType], this));
-			case "filter":
-				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], this));
-			case "find":
-				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], [this.#keyType, this.#valueType]));
-			case "find_safe":
-				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], [new FuncType([], [this.#keyType, this.#valueType]), new BoolType()]))
-			case "find_key":
-				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], this.#keyType));
-			case "find_key_safe":
-				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], new OptionType(this.#keyType)));
-			case "find_value":
-				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], this.#valueType));
-			case "find_value_safe":
-				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], new OptionType(this.#valueType)));
-			case "fold": {
-				let a = new ParamType("a");
-				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#keyType, this.#valueType], a), a], a));
-			}
-			case "fold_lazy": {
-				let a = new ParamType("a");
-				return new ParamFuncValue([a], new FuncType([new FuncType([this.#keyType, this.#valueType, new FuncType([], a)], a), a], a));
-			}
-			case "get":
-				return Instance.new(new FuncType([this.#keyType], this.#valueType));
-			case "get_safe":
-				return Instance.new(new FuncType([this.#keyType], new OptionType(this.#valueType)));
-			case "head":
-				return Instance.new(new FuncType([], [this.#keyType, this.#valueType]));
-			case "head_key":
-				return Instance.new(this.#keyType);
-			case "head_value":
-				return Instance.new(this.#valueType);
-			case "is_empty":
-				return Instance.new(new FuncType([], new BoolType()));
-			case "length":
-				return Instance.new(new IntType());
-			case "map": {
-				let a = new ParamType("a", (site, type) => {
-					if ((new BoolType()).isBaseOf(site, type)) {
-						throw site.typeError("Map keys can't be of 'Bool' type");
-					}
-				});
-
-				let b = new ParamType("b");
-
-				return new ParamFuncValue([a, b], new FuncType([new FuncType([this.#keyType, this.#valueType], [a, b])], new MapType(a, b)), () => {
-					let type = b.type;
-					if (type === null) {
-						throw new Error("should've been inferred by now");
-					} else {
-						if ((new BoolType()).isBaseOf(Site.dummy(), type)) {
-							return "map_to_bool";
-						} else {
-							return "map";
-						}
-					}
-				});
-			}
-			case "prepend":
-				return Instance.new(new FuncType([this.#keyType, this.#valueType], this));
-			case "set":
-				return Instance.new(new FuncType([this.#keyType, this.#valueType], this));
-			case "sort":
-				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType, this.#keyType, this.#valueType], new BoolType())], new MapType(this.#keyType, this.#valueType)));
-			case "tail":
-				return Instance.new(this);
-			default:
-				return super.getInstanceMember(name);
-		}
-	}
-
-	get path() {
-		return `__helios__${this.#valueType instanceof BoolType ? "bool" : ""}map`;
-	}
-}
 
 class ParamType extends Type {
 	/** @type {?Type} */
@@ -18452,6 +14460,21 @@ class ParamType extends Type {
 			return this.#type;
 		}
 	}
+
+    /**
+     * @type {DataType}
+     */
+    get dataType() {
+        const t = this.type;
+
+        if (t == null) {
+            throw new Error("expected non-null type");
+        } else if (t instanceof DataType) {
+            return t;
+        } else {
+            throw new Error("expected a dataType");
+        }
+    }
 
 	toString() {
 		if (this.#type === null) {
@@ -18543,6 +14566,9 @@ class ParamType extends Type {
 	}
 }
 
+/**
+ * @package
+ */
 class ParamFuncValue extends FuncInstance {
 	#params;
 	#fnType;
@@ -18611,7 +14637,300 @@ class ParamFuncValue extends FuncInstance {
 }
 
 /**
+ * Builtin list type
+ * @package
+ */
+class ListType extends BuiltinType {
+	#itemType;
+
+	/**
+	 * @param {Type} itemType 
+	 */
+	constructor(itemType) {
+		super();
+		this.#itemType = itemType;
+	}
+
+	/**
+	 * @package
+	 * @type {Type}
+	 */
+	get itemType() {
+		return this.#itemType;
+	}
+
+	toString() {
+		return `[]${this.#itemType.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @param {Site} site 
+	 * @param {Type} type 
+	 * @returns {boolean}
+	 */
+	isBaseOf(site, type) {
+		type = ParamType.unwrap(type, this);
+
+		if (type instanceof ListType) {
+			return this.#itemType.isBaseOf(site, type.itemType);
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @package
+	 * @param {Word} name 
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name) {
+		switch (name.value) {
+			case "new":
+				return Instance.new(new FuncType([new IntType(), new FuncType([new IntType()], this.#itemType)], this));
+			case "new_const":
+				return Instance.new(new FuncType([new IntType(), this.#itemType], this));
+			default:
+				return super.getTypeMember(name);
+		}
+	}
+
+	/**
+	 * @package
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "__add":
+				return Instance.new(new FuncType([this], this));
+			case "length":
+				return Instance.new(new IntType());
+			case "head":
+				return Instance.new(this.#itemType);
+			case "tail":
+				return Instance.new(new ListType(this.#itemType));
+			case "is_empty":
+				return Instance.new(new FuncType([], new BoolType()));
+			case "get":
+				return Instance.new(new FuncType([new IntType()], this.#itemType));
+			case "prepend":
+				return Instance.new(new FuncType([this.#itemType], new ListType(this.#itemType)));
+			case "any":
+			case "all":
+				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new BoolType()));
+			case "find":
+				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], this.#itemType));
+			case "find_safe":
+				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new OptionType(this.#itemType)));
+			case "filter":
+				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new ListType(this.#itemType)));
+			case "fold": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#itemType], a), a], a));
+			}
+			case "fold_lazy": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([this.#itemType, new FuncType([], a)], a), a], a));
+			}
+			case "map": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([this.#itemType], a)], new ListType(a)), () => {
+					let type = a.type;
+					if (type === null) {
+						throw new Error("should've been inferred by now");
+					} else {
+						if ((new BoolType()).isBaseOf(Site.dummy(), type)) {
+							return "map_to_bool";
+						} else {
+							return "map";
+						}
+					}
+				});
+			}
+			case "sort":
+				return Instance.new(new FuncType([new FuncType([this.#itemType, this.#itemType], new BoolType())], new ListType(this.#itemType)));
+			default:
+				return super.getInstanceMember(name);
+		}
+	}
+
+	/**
+	 * @package
+	 * @type {string}
+	 */
+	get path() {
+		return `__helios__${this.#itemType instanceof BoolType ? "bool" : ""}list`;
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return List(this.#itemType.userType);
+	}
+}
+
+/**
+ * Builtin map type (in reality list of key-value pairs)
+ * @package
+ */
+class MapType extends BuiltinType {
+	#keyType;
+	#valueType;
+
+	/**
+	 * @param {Type} keyType 
+	 * @param {Type} valueType 
+	 */
+	constructor(keyType, valueType) {
+		super();
+		this.#keyType = keyType;
+		this.#valueType = valueType;
+	}
+
+	/**
+	 * @package
+	 * @type {Type}
+	 */
+	get keyType() {
+		return this.#keyType;
+	}
+
+	/**
+	 * @package
+	 * @type {Type}
+	 */
+	get valueType() {
+		return this.#valueType;
+	}
+
+	toString() {
+		return `Map[${this.#keyType.toString()}]${this.#valueType.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @param {Site} site 
+	 * @param {Type} type 
+	 * @returns {boolean}
+	 */
+	isBaseOf(site, type) {
+		type = ParamType.unwrap(type, this);
+
+		if (type instanceof MapType) {
+			return this.#keyType.isBaseOf(site, type.#keyType) && this.#valueType.isBaseOf(site, type.#valueType);
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @package
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "__add":
+				return Instance.new(new FuncType([this], this));
+			case "all":
+			case "any":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], new BoolType()));
+			case "delete":
+				return Instance.new(new FuncType([this.#keyType], this));
+			case "filter":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], this));
+			case "find":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], [this.#keyType, this.#valueType]));
+			case "find_safe":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new BoolType())], [new FuncType([], [this.#keyType, this.#valueType]), new BoolType()]))
+			case "find_key":
+				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], this.#keyType));
+			case "find_key_safe":
+				return Instance.new(new FuncType([new FuncType([this.#keyType], new BoolType())], new OptionType(this.#keyType)));
+			case "find_value":
+				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], this.#valueType));
+			case "find_value_safe":
+				return Instance.new(new FuncType([new FuncType([this.#valueType], new BoolType())], new OptionType(this.#valueType)));
+			case "fold": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#keyType, this.#valueType], a), a], a));
+			}
+			case "fold_lazy": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([this.#keyType, this.#valueType, new FuncType([], a)], a), a], a));
+			}
+			case "get":
+				return Instance.new(new FuncType([this.#keyType], this.#valueType));
+			case "get_safe":
+				return Instance.new(new FuncType([this.#keyType], new OptionType(this.#valueType)));
+			case "head":
+				return Instance.new(new FuncType([], [this.#keyType, this.#valueType]));
+			case "head_key":
+				return Instance.new(this.#keyType);
+			case "head_value":
+				return Instance.new(this.#valueType);
+			case "is_empty":
+				return Instance.new(new FuncType([], new BoolType()));
+			case "length":
+				return Instance.new(new IntType());
+			case "map": {
+				let a = new ParamType("a", (site, type) => {
+					if ((new BoolType()).isBaseOf(site, type)) {
+						throw site.typeError("Map keys can't be of 'Bool' type");
+					}
+				});
+
+				let b = new ParamType("b");
+
+				return new ParamFuncValue([a, b], new FuncType([new FuncType([this.#keyType, this.#valueType], [a, b])], new MapType(a, b)), () => {
+					let type = b.type;
+					if (type === null) {
+						throw new Error("should've been inferred by now");
+					} else {
+						if ((new BoolType()).isBaseOf(Site.dummy(), type)) {
+							return "map_to_bool";
+						} else {
+							return "map";
+						}
+					}
+				});
+			}
+			case "prepend":
+				return Instance.new(new FuncType([this.#keyType, this.#valueType], this));
+			case "set":
+				return Instance.new(new FuncType([this.#keyType, this.#valueType], this));
+			case "sort":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType, this.#keyType, this.#valueType], new BoolType())], new MapType(this.#keyType, this.#valueType)));
+			case "tail":
+				return Instance.new(this);
+			default:
+				return super.getInstanceMember(name);
+		}
+	}
+
+	/**
+	 * @package
+	 * @type {string}
+	 */
+	get path() {
+		return `__helios__${this.#valueType instanceof BoolType ? "bool" : ""}map`;
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return HeliosMap(this.#keyType.userType, this.#valueType.userType);
+	}
+}
+
+/**
  * Builtin option type
+ * @package
  */
 class OptionType extends BuiltinType {
 	#someType;
@@ -18629,6 +14948,7 @@ class OptionType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Site} site 
 	 * @returns {number}
 	 */
@@ -18637,6 +14957,7 @@ class OptionType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Site} site 
 	 * @param {Type} type 
 	 * @returns {boolean}
@@ -18653,6 +14974,7 @@ class OptionType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -18668,6 +14990,7 @@ class OptionType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -18680,8 +15003,20 @@ class OptionType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return `__helios__${this.#someType instanceof BoolType ? "bool" : ""}option`;
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return Option(this.#someType.userType);
 	}
 }
 
@@ -18763,6 +15098,7 @@ class OptionSomeType extends BuiltinEnumMember {
 
 /**
  * Member type of OptionType with no content
+ * @package
  */
 class OptionNoneType extends BuiltinEnumMember {
 	#someType;
@@ -18818,6 +15154,7 @@ class OptionNoneType extends BuiltinEnumMember {
 
 /**
  * Base type of other ValidatorHash etc. (all functionality is actually implemented here)
+ * @package
  */
 class HashType extends BuiltinType {
 	constructor() {
@@ -18862,35 +15199,51 @@ class HashType extends BuiltinType {
 
 /**
  * Builtin PubKeyHash type
+ * @package
  */
 class PubKeyHashType extends HashType {
 	toString() {
 		return "PubKeyHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return PubKeyHash;
+	}
 }
 
 /**
  * Builtin StakeKeyHash type
+ * @package
  */
 class StakeKeyHashType extends HashType {
 	toString() {
 		return "StakeKeyHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return StakeKeyHash;
+	}
 }
 
 /**
  * Builtin PubKey type
+ * @package
  */
 class PubKeyType extends BuiltinType {
 	toString() {
 		return "PubKey";
 	}
 
-	get path() {
-		return "__helios__pubkey";
-	}
-
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -18904,6 +15257,7 @@ class PubKeyType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name
 	 * @returns {Instance}
 	 */
@@ -18917,11 +15271,20 @@ class PubKeyType extends BuiltinType {
 				return super.getInstanceMember(name);
 		}
 	}
+
+	/**
+	 * @package
+	 * @type {string}
+	 */
+	get path() {
+		return "__helios__pubkey";
+	}
 }
 
 /**
  * Generalization of ValidatorHash type and MintingPolicyHash type
  * Must be cast before being able to use the Hash type methods
+ * @package
  */
 class ScriptHashType extends BuiltinType {
 	constructor() {
@@ -18939,6 +15302,7 @@ class ScriptHashType extends BuiltinType {
 
 /**
  * Builtin ValidatorHash type
+ * @package
  */
 class ValidatorHashType extends HashType {
 	#purpose;
@@ -18952,6 +15316,7 @@ class ValidatorHashType extends HashType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -18977,10 +15342,19 @@ class ValidatorHashType extends HashType {
 	toString() {
 		return "ValidatorHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return ValidatorHash;
+	}
 }
 
 /**
  * Builtin MintingPolicyHash type
+ * @package
  */
 class MintingPolicyHashType extends HashType {
 	#purpose;
@@ -18994,6 +15368,7 @@ class MintingPolicyHashType extends HashType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -19019,10 +15394,19 @@ class MintingPolicyHashType extends HashType {
 	toString() {
 		return "MintingPolicyHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return MintingPolicyHash;
+	}
 }
 
 /**
  * Builtin StakingValidatorHash type
+ * @package
  */
 class StakingValidatorHashType extends HashType {
 	#purpose;
@@ -19036,6 +15420,7 @@ class StakingValidatorHashType extends HashType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -19061,19 +15446,37 @@ class StakingValidatorHashType extends HashType {
 	toString() {
 		return "StakingValidatorHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return StakingValidatorHash;
+	}
 }
 
 /**
  * Builtin DatumHash type
+ * @package
  */
 class DatumHashType extends HashType {
 	toString() {
 		return "DatumHash";
 	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return DatumHash;
+	}
 }
 
 /**
  * Builtin ScriptContext type
+ * @package
  */
 class ScriptContextType extends BuiltinType {
 	#purpose;
@@ -19209,8 +15612,9 @@ class ScriptContextType extends BuiltinType {
 
 /**
  * Builtin ScriptPurpose type (Minting| Spending| Rewarding | Certifying)
+ * @package
  */
- class ScriptPurposeType extends BuiltinType {
+class ScriptPurposeType extends BuiltinType {
 	toString() {
 		return "ScriptPurpose";
 	}
@@ -19431,8 +15835,9 @@ class CertifyingScriptPurposeType extends BuiltinEnumMember {
 
 /**
  * Builtin StakingPurpose type (Rewarding or Certifying)
+ * @package
  */
- class StakingPurposeType extends BuiltinType {
+class StakingPurposeType extends BuiltinType {
 	toString() {
 		return "StakingPurpose";
 	}
@@ -19512,6 +15917,11 @@ class StakingCertifyingPurposeType extends CertifyingScriptPurposeType {
 	}
 }
 
+/**
+ * Staking action type (confusingly named D(igest)(of)?Cert(ificate))
+ * TODO: think of better name
+ * @package
+ */
 class DCertType extends BuiltinType {
 	toString() {
 		return "DCert";
@@ -19760,6 +16170,7 @@ class RetirePoolDCertType extends BuiltinEnumMember {
 
 /**
  * Builtin Tx type
+ * @package
  */
 class TxType extends BuiltinType {
 	constructor() {
@@ -19859,17 +16270,15 @@ class TxType extends BuiltinType {
 
 /**
  * Builtin TxId type
+ * @package
  */
 class TxIdType extends BuiltinType {
 	toString() {
 		return "TxId";
 	}
 
-	get path() {
-		return "__helios__txid";
-	}
-
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -19889,24 +16298,44 @@ class TxIdType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
-	 getInstanceMember(name) {
+	getInstanceMember(name) {
 		switch (name.value) {
 			case "__geq":
 			case "__gt":
 			case "__leq":
 			case "__lt":
 				return Instance.new(new FuncType([this], new BoolType()));
+			case "show":
+				return Instance.new(new FuncType([], new StringType()));
 			default:
 				return super.getInstanceMember(name);
 		}
+	}
+
+	/**
+	 * @package
+	 * @type {string}
+	 */
+	get path() {
+		return "__helios__txid";
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return TxId;
 	}
 }
 
 /**
  * Builtin TxInput type
+ * @package
  */
 class TxInputType extends BuiltinType {
 	toString() {
@@ -19955,6 +16384,7 @@ class TxInputType extends BuiltinType {
 
 /**
  * Builtin TxOutput type
+ * @package
  */
 class TxOutputType extends BuiltinType {
 	toString() {
@@ -20006,6 +16436,9 @@ class TxOutputType extends BuiltinType {
 	}
 }
 
+/**
+ * @package
+ */
 class OutputDatumType extends BuiltinType {
 	toString() {
 		return "OutputDatum";
@@ -20061,6 +16494,19 @@ class OutputDatumType extends BuiltinType {
 	}
 
 	/**
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "get_inline_data":
+				return Instance.new(new FuncType([], new RawDataType()));
+			default:
+				return super.getInstanceMember(name);
+		}
+	}
+
+	/**
 	 * @param {Site} site 
 	 * @returns {number}
 	 */
@@ -20073,6 +16519,9 @@ class OutputDatumType extends BuiltinType {
 	}
 }
 
+/**
+ * @package
+ */
 class NoOutputDatumType extends BuiltinEnumMember {
 	constructor() {
 		super(new OutputDatumType);
@@ -20095,6 +16544,9 @@ class NoOutputDatumType extends BuiltinEnumMember {
 	}
 }
 
+/**
+ * @package
+ */
 class HashedOutputDatumType extends BuiltinEnumMember {
 	constructor() {
 		super(new OutputDatumType());
@@ -20130,6 +16582,9 @@ class HashedOutputDatumType extends BuiltinEnumMember {
 	}
 }
 
+/**
+ * @package
+ */
 class InlineOutputDatumType extends BuiltinEnumMember {
 	constructor() {
 		super(new OutputDatumType());
@@ -20165,6 +16620,11 @@ class InlineOutputDatumType extends BuiltinEnumMember {
 	}
 }
 
+/**
+ * Type of external data that must be cast/type-checked before using
+ * Not named 'Data' in Js because it's too generic
+ * @package
+ */
 class RawDataType extends BuiltinType {
 	toString() {
 		return "Data";
@@ -20190,6 +16650,7 @@ class RawDataType extends BuiltinType {
 
 /**
  * Builtin TxOutputId type
+ * @package
  */
 class TxOutputIdType extends BuiltinType {
 	toString() {
@@ -20197,6 +16658,7 @@ class TxOutputIdType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -20210,6 +16672,7 @@ class TxOutputIdType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -20229,13 +16692,26 @@ class TxOutputIdType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__txoutputid";
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return TxOutputId;
 	}
 }
 
 /**
  * Buitin Address type
+ * @package
  */
 class AddressType extends BuiltinType {
 	toString() {
@@ -20243,6 +16719,7 @@ class AddressType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -20253,12 +16730,15 @@ class AddressType extends BuiltinType {
 					new CredentialType(), // 0
 					new OptionType(new StakingCredentialType()), // 1
 				], this));
+			case "new_empty":
+				return Instance.new(new FuncType([], this));
 			default:
 				return super.getTypeMember(name);
 		}
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -20273,13 +16753,26 @@ class AddressType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__address";
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return Address;
 	}
 }
 
 /**
  * Builtin Credential type
+ * @package
  */
 class CredentialType extends BuiltinType {
 	toString() {
@@ -20287,6 +16780,7 @@ class CredentialType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Site} site 
 	 * @param {Type} type 
 	 * @returns {boolean}
@@ -20300,6 +16794,7 @@ class CredentialType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -20319,6 +16814,7 @@ class CredentialType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Site} site 
 	 * @returns {number}
 	 */
@@ -20326,6 +16822,10 @@ class CredentialType extends BuiltinType {
 		return 2;
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__credential";
 	}
@@ -20409,6 +16909,7 @@ class CredentialValidatorType extends BuiltinEnumMember {
 
 /**
  * Builtin StakingHash type
+ * @package
  */
 class StakingHashType extends BuiltinType {
 	toString() {
@@ -20538,6 +17039,7 @@ class StakingHashValidatorType extends BuiltinEnumMember {
 
 /**
  * Builtin StakingCredential type
+ * @package
  */
 class StakingCredentialType extends BuiltinType {
 	toString() {
@@ -20655,7 +17157,7 @@ class StakingPtrCredentialType extends BuiltinEnumMember {
 /**
  * Builtin Time type. Opaque alias of Int representing milliseconds since 1970
  */
-class TimeType extends BuiltinType {
+export class TimeType extends BuiltinType {
 	toString() {
 		return "Time";
 	}
@@ -20700,10 +17202,18 @@ class TimeType extends BuiltinType {
 	get path() {
 		return "__helios__time";
 	}
+
+	/**
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return Time;
+	}
 }
 
 /**
  * Builtin Duration type
+ * @package
  */
 class DurationType extends BuiltinType {
 	toString() {
@@ -20751,10 +17261,15 @@ class DurationType extends BuiltinType {
 	get path() {
 		return "__helios__duration";
 	}
+
+	get userType() {
+		return Duration;
+	}
 }
 
 /**
  * Builtin TimeRange type
+ * @package
  */
 class TimeRangeType extends BuiltinType {
 	toString() {
@@ -20806,6 +17321,7 @@ class TimeRangeType extends BuiltinType {
 
 /**
  * Builtin AssetClass type
+ * @package
  */
 class AssetClassType extends BuiltinType {
 	toString() {
@@ -20834,6 +17350,7 @@ class AssetClassType extends BuiltinType {
 
 /**
  * Builtin money Value type
+ * @package
  */
 class ValueType extends BuiltinType {
 	toString() {
@@ -20841,6 +17358,7 @@ class ValueType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {EvalEntity}
 	 */
@@ -20860,6 +17378,7 @@ class ValueType extends BuiltinType {
 	}
 
 	/**
+	 * @package
 	 * @param {Word} name 
 	 * @returns {Instance}
 	 */
@@ -20894,15 +17413,6723 @@ class ValueType extends BuiltinType {
 		}
 	}
 
+	/**
+	 * @package
+	 * @type {string}
+	 */
 	get path() {
 		return "__helios__value";
+	}
+
+	/**
+	 * @package
+	 * @type {HeliosDataClass<HeliosData>}
+	 */
+	get userType() {
+		return Value;
 	}
 }
 
 
-//////////////////////////////////////////
-// Section 14: Builtin low-level functions
-//////////////////////////////////////////
+/////////////////////
+// Section 14: Scopes
+/////////////////////
+
+/**
+ * GlobalScope sits above the top-level scope and contains references to all the builtin Values and Types
+ * @package
+ */
+class GlobalScope {
+	/**
+	 * @type {[Word, EvalEntity][]}
+	 */
+	#values;
+
+	constructor() {
+		this.#values = [];
+	}
+
+	/**
+	 * Checks if scope contains a name
+	 * @param {Word} name 
+	 * @returns {boolean}
+	 */
+	has(name) {
+		for (let pair of this.#values) {
+			if (pair[0].toString() == name.toString()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Sets a global name, doesn't check for uniqueness
+	 * Called when initializing GlobalScope
+	 * @param {string | Word} name
+	 * @param {EvalEntity} value
+	 */
+	set(name, value) {
+		/** @type {Word} */
+		let nameWord = !(name instanceof Word) ? Word.new(name) : name;
+
+		this.#values.push([nameWord, value]);
+	}
+
+	/**
+	 * Gets a named value from the scope.
+	 * Throws an error if not found.
+	 * @param {Word} name 
+	 * @returns {EvalEntity}
+	 */
+	get(name) {
+		for (let pair of this.#values) {
+			if (pair[0].toString() == name.toString()) {
+				pair[1].markAsUsed();
+				return pair[1];
+			}
+		}
+
+		throw name.referenceError(`'${name.toString()}' undefined`);
+	}
+
+	/**
+	 * Check if funcstatement is called recursively (always false here)
+	 * @param {RecurseableStatement} statement
+	 * @returns {boolean}
+	 */
+	isRecursive(statement) {
+		return false;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isStrict() {
+		throw new Error("should've been returned be TopScope");
+	}
+
+	/**
+	 * Initialize the GlobalScope with all the builtins
+	 * @param {number} purpose
+	 * @returns {GlobalScope}
+	 */
+	static new(purpose) {
+		let scope = new GlobalScope();
+
+		// List (aka '[]'), Option, and Map types are accessed through special expressions
+
+		// fill the global scope with builtin types
+        scope.set("Address",              new AddressType());
+        scope.set("AssetClass",           new AssetClassType());
+        scope.set("Bool",                 new BoolType());
+        scope.set("ByteArray",            new ByteArrayType());
+        scope.set("Credential",           new CredentialType());
+        scope.set("DatumHash",            new DatumHashType());
+        scope.set("Data",                 new RawDataType());
+        scope.set("DCert",                new DCertType());
+        scope.set("Duration",             new DurationType());
+		scope.set("Int",                  new IntType());
+        scope.set("MintingPolicyHash",    new MintingPolicyHashType(purpose));
+        scope.set("OutputDatum",          new OutputDatumType());
+        scope.set("PubKey",               new PubKeyType());
+		scope.set("PubKeyHash",           new PubKeyHashType());
+        scope.set("ScriptContext",        new ScriptContextType(purpose));
+        scope.set("ScriptHash",           new ScriptHashType());
+        scope.set("ScriptPurpose",        new ScriptPurposeType());
+        scope.set("StakeKeyHash",         new StakeKeyHashType());
+        scope.set("StakingCredential",    new StakingCredentialType());
+        scope.set("StakingHash",          new StakingHashType());
+        scope.set("StakingPurpose",       new StakingPurposeType());
+        scope.set("StakingValidatorHash", new StakingValidatorHashType(purpose));
+		scope.set("String",               new StringType());
+        scope.set("Time",                 new TimeType());
+        scope.set("TimeRange",            new TimeRangeType());
+        scope.set("Tx",                   new TxType());
+        scope.set("TxId",                 new TxIdType());
+        scope.set("TxInput",              new TxInputType());
+        scope.set("TxOutput",             new TxOutputType());
+        scope.set("TxOutputId",           new TxOutputIdType());
+		scope.set("ValidatorHash",        new ValidatorHashType(purpose));
+        scope.set("Value",                new ValueType());
+
+        // builtin functions
+        scope.set("assert",               new AssertFunc());
+		scope.set("error",                new ErrorFunc());
+        scope.set("print",                new PrintFunc());
+		
+
+		return scope;
+	}
+
+	allowMacros() {
+		for (let [_, value] of this.#values) {
+			if (value instanceof BuiltinType) {
+				value.allowMacros();
+			}
+		}
+	}
+
+	/**
+	 * @param {(name: string, type: Type) => void} callback 
+	 */
+	loopTypes(callback) {
+		for (let [k, v] of this.#values) {
+			if (v instanceof Type) {
+				callback(k.value, v);
+			}
+		}
+	}
+}
+
+/**
+ * User scope
+ * @package
+ */
+class Scope {
+	/** @type {GlobalScope | Scope} */
+	#parent;
+
+	/** 
+	 * TopScope can elverage the #values to store ModuleScopes
+	 * @type {[Word, (EvalEntity | Scope)][]} 
+	 */
+	#values;
+
+	/**
+	 * @param {GlobalScope | Scope} parent 
+	 */
+	constructor(parent) {
+		this.#parent = parent;
+		this.#values = []; // list of pairs
+	}
+
+	/**
+	 * Used by top-scope to loop over all the statements
+	 */
+	get values() {
+		return this.#values.slice();
+	}
+
+	/**
+	 * Checks if scope contains a name
+	 * @param {Word} name 
+	 * @returns {boolean}
+	 */
+	has(name) {
+		for (let pair of this.#values) {
+			if (pair[0].toString() == name.toString()) {
+				return true;
+			}
+		}
+
+		if (this.#parent !== null) {
+			return this.#parent.has(name);
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Sets a named value. Throws an error if not unique
+	 * @param {Word} name 
+	 * @param {EvalEntity | Scope} value 
+	 */
+	set(name, value) {
+		if (this.has(name)) {
+			throw name.syntaxError(`'${name.toString()}' already defined`);
+		}
+
+		this.#values.push([name, value]);
+	}
+
+	/**
+	 * Gets a named value from the scope. Throws an error if not found
+	 * @param {Word} name 
+	 * @returns {EvalEntity | Scope}
+	 */
+	get(name) {
+		if (!(name instanceof Word)) {
+			name = Word.new(name);
+		}
+
+		for (let [key, entity] of this.#values) {
+			if (key.toString() == name.toString()) {
+				if (entity instanceof EvalEntity) {
+					entity.markAsUsed();
+				}
+
+				return entity;
+			}
+		}
+
+		if (this.#parent !== null) {
+			return this.#parent.get(name);
+		} else {
+			throw name.referenceError(`'${name.toString()}' undefined`);
+		}
+	}
+
+	/**
+	 * Check if function statement is called recursively
+	 * @param {RecurseableStatement} statement
+	 * @returns {boolean}
+	 */
+	isRecursive(statement) {
+		return this.#parent.isRecursive(statement);
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isStrict() {
+		return this.#parent.isStrict();
+	}
+
+	/**
+	 * Asserts that all named values are user.
+	 * Throws an error if some are unused.
+	 * Check is only run if we are in strict mode
+	 * @param {boolean} onlyIfStrict
+	 */
+	assertAllUsed(onlyIfStrict = true) {
+		if (!onlyIfStrict || this.isStrict()) {
+			for (let [name, entity] of this.#values) {
+				if (entity instanceof EvalEntity && !entity.isUsed()) {
+					throw name.referenceError(`'${name.toString()}' unused`);
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {boolean}
+	 */
+	isUsed(name) {
+		for (let [name, entity] of this.#values) {
+			if (name.value == name.value && entity instanceof EvalEntity) {
+				return entity.isUsed();
+			}
+		}
+
+		throw new Error(`${name.value} not found`);
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {Type}
+	 */
+	assertType(site) {
+		throw site.typeError("expected a type, got a module");
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {Instance}
+	 */
+	assertValue(site) {
+		throw site.typeError("expected a value, got a module");
+	}
+
+	dump() {
+		console.log("DUMPING SCOPE", this.#values.length);
+		this.#values.forEach(([w, v]) => {
+			console.log(w.value, v);
+		});
+	}
+
+	/**
+	 * @param {(name: string, type: Type) => void} callback 
+	 */
+	loopTypes(callback) {
+		this.#parent.loopTypes(callback);
+
+		for (let [k, v] of this.#values) {
+			if (v instanceof Type) {
+				callback(k.value, v);
+			}
+		}
+	}
+}
+
+/**
+ * TopScope is a special scope that can contain UserTypes
+ * @package
+ */
+class TopScope extends Scope {
+	#strict;
+
+	/**
+	 * @param {GlobalScope} parent 
+	 * @param {boolean} strict
+	 */
+	constructor(parent, strict = true) {
+		super(parent);
+		this.#strict = strict;
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @param {EvalEntity | Scope} value 
+	 */
+	set(name, value) {
+		super.set(name, value);
+	}
+
+	/**
+	 * @param {boolean} s 
+	 */
+	setStrict(s) {
+		this.#strict = s;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isStrict() {
+		return this.#strict;
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {ModuleScope}
+	 */
+	getModuleScope(name) {
+		const maybeModuleScope = this.get(name);
+		if (maybeModuleScope instanceof ModuleScope) {
+			return maybeModuleScope;
+		} else {
+			throw new Error("expected ModuleScope");
+		}
+	}
+}
+
+/**
+ * @package
+ */
+class ModuleScope extends Scope {
+}
+
+/**
+ * FuncStatementScope is a special scope used to detect recursion
+ * @package
+ */
+class FuncStatementScope extends Scope {
+	#statement;
+
+	/**
+	 * @param {Scope} parent
+	 * @param {RecurseableStatement} statement
+	 */
+	constructor(parent, statement) {
+		super(parent);
+
+		this.#statement = statement;
+	}
+
+	/**
+	 * @param {RecurseableStatement} statement 
+	 * @returns {boolean}
+	 */
+	isRecursive(statement) {
+		if (this.#statement === statement) {
+			this.#statement.setRecursive();
+			return true;
+		} else {
+			return super.isRecursive(statement);
+		}
+	}
+}
+
+
+/////////////////////////////////////
+// Section 15: Helios AST expressions
+/////////////////////////////////////
+
+/**
+ * Base class of every Type and Instance expression.
+ */
+class Expr extends Token {
+	/**
+	 * @param {Site} site 
+	 */
+	constructor(site) {
+		super(site);
+	}
+
+	use() {
+		throw new Error("not yet implemented");
+	}
+}
+
+/**
+ * Base class of every Type expression
+ * Caches evaluated Type.
+ * @package
+ */
+class TypeExpr extends Expr {
+	#cache;
+
+	/**
+	 * @param {Site} site 
+	 * @param {?Type} cache
+	 */
+	constructor(site, cache = null) {
+		super(site);
+		this.#cache = cache;
+	}
+
+	get type() {
+		if (this.#cache === null) {
+			throw new Error("type not yet evaluated");
+		} else {
+			return this.#cache;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	eval(scope) {
+		if (this.#cache === null) {
+			this.#cache = this.evalInternal(scope);
+		}
+
+		return this.#cache;
+	}
+}
+
+/**
+ * Type reference class (i.e. using a Word)
+ * @package
+ */
+class TypeRefExpr extends TypeExpr {
+	#name;
+
+	/**
+	 * @param {Word} name
+	 * @param {?Type} cache
+	 */
+	constructor(name, cache = null) {
+		super(name.site, cache);
+		this.#name = name;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#name.toString();
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let type = scope.get(this.#name);
+
+		return type.assertType(this.#name.site);
+	}
+
+	get path() {
+		return this.type.path;
+	}
+
+	use() {
+		let t = this.type;
+
+		if (t instanceof StatementType) {
+			t.statement.use();
+		}
+	}
+}
+
+/**
+ * Type::Member expression
+ * @package
+ */
+class TypePathExpr extends TypeExpr {
+	#baseExpr;
+	#memberName;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} baseExpr 
+	 * @param {Word} memberName
+	 */
+	constructor(site, baseExpr, memberName) {
+		super(site);
+		this.#baseExpr = baseExpr;
+		this.#memberName = memberName;
+	}
+
+	toString() {
+		return `${this.#baseExpr.toString()}::${this.#memberName.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let enumType = this.#baseExpr.eval(scope);
+
+		let memberType = enumType.getTypeMember(this.#memberName);
+
+		return memberType.assertType(this.#memberName.site);
+	}
+
+	get path() {
+		return this.type.path;
+	}
+
+	use() {
+		this.#baseExpr.use();
+	}
+}
+
+/**
+ * []ItemType
+ * @package
+ */
+class ListTypeExpr extends TypeExpr {
+	#itemTypeExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} itemTypeExpr 
+	 */
+	constructor(site, itemTypeExpr) {
+		super(site);
+		this.#itemTypeExpr = itemTypeExpr;
+	}
+
+	toString() {
+		return `[]${this.#itemTypeExpr.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let itemType = this.#itemTypeExpr.eval(scope);
+
+		if (itemType instanceof FuncType) {
+			throw this.#itemTypeExpr.typeError("list item type can't be function");
+		}
+
+		return new ListType(itemType);
+	}
+
+	use() {
+		this.#itemTypeExpr.use();
+	}
+}
+
+/**
+ * Map[KeyType]ValueType expression
+ * @package
+ */
+class MapTypeExpr extends TypeExpr {
+	#keyTypeExpr;
+	#valueTypeExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} keyTypeExpr 
+	 * @param {TypeExpr} valueTypeExpr 
+	 */
+	constructor(site, keyTypeExpr, valueTypeExpr) {
+		super(site);
+		this.#keyTypeExpr = keyTypeExpr;
+		this.#valueTypeExpr = valueTypeExpr;
+	}
+
+	toString() {
+		return `Map[${this.#keyTypeExpr.toString()}]${this.#valueTypeExpr.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let keyType = this.#keyTypeExpr.eval(scope);
+
+		if (keyType instanceof FuncType) {
+			throw this.#keyTypeExpr.typeError("map key type can't be function");
+		} else if (keyType instanceof BoolType) {
+			throw this.#keyTypeExpr.typeError("map key type can't be a boolean");
+		}
+
+		let valueType = this.#valueTypeExpr.eval(scope);
+
+		if (valueType instanceof FuncType) {
+			throw this.#valueTypeExpr.typeError("map value type can't be function");
+		}
+
+		return new MapType(keyType, valueType);
+	}
+
+	use() {
+		this.#keyTypeExpr.use();
+		this.#valueTypeExpr.use();
+	}
+}
+
+/**
+ * Option[SomeType] expression
+ * @package
+ */
+class OptionTypeExpr extends TypeExpr {
+	#someTypeExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} someTypeExpr 
+	 */
+	constructor(site, someTypeExpr) {
+		super(site);
+		this.#someTypeExpr = someTypeExpr;
+	}
+
+	toString() {
+		return `Option[${this.#someTypeExpr.toString()}]`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let someType = this.#someTypeExpr.eval(scope);
+
+		if (someType instanceof FuncType) {
+			throw this.#someTypeExpr.typeError("option some type can't be function");
+		}
+
+		return new OptionType(someType);
+	}
+
+	use() {
+		this.#someTypeExpr.use();
+	}
+}
+
+/**
+ * '()' which can only be used as return type of func
+ * @package
+ */
+class VoidTypeExpr extends TypeExpr {
+	constructor(site) {
+		super(site);
+	}
+
+	toString() {
+		return "()";
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		return new VoidType();
+	}
+	
+	use() {
+	}
+}
+
+/**
+ * (ArgType1, ...) -> RetType expression
+ * @package
+ */
+class FuncTypeExpr extends TypeExpr {
+	#argTypeExprs;
+	#retTypeExprs;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr[]} argTypeExprs 
+	 * @param {TypeExpr[]} retTypeExprs 
+	 */
+	constructor(site, argTypeExprs, retTypeExprs) {
+		super(site);
+		this.#argTypeExprs = argTypeExprs;
+		this.#retTypeExprs = retTypeExprs;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		if (this.#retTypeExprs.length === 1) {
+			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExprs.toString()}`;
+		} else {
+			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => e.toString()).join(", ")})`;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		let argTypes = this.#argTypeExprs.map(a => a.eval(scope));
+
+		let retTypes = this.#retTypeExprs.map(e => e.eval(scope));
+
+		return new FuncType(argTypes, retTypes);
+	}
+
+	use() {
+		this.#argTypeExprs.forEach(arg => arg.use());
+		this.#retTypeExprs.forEach(e => e.use());
+	}
+}
+
+/**
+ * Base class of expression that evaluate to Values.
+ * @package
+ */
+class ValueExpr extends Expr {
+	/** @type {?Instance} */
+	#cache;
+
+	/**
+	 * @param {Site} site 
+	 */
+	constructor(site) {
+		super(site);
+
+		this.#cache = null;
+	}
+
+	/**
+	 * @type {Instance}
+	 */
+	get value() {
+		if (this.#cache === null) {
+			throw new Error("type not yet evaluated");
+		} else {
+			return this.#cache;
+		}
+	}
+
+	get type() {
+		return this.value.getType(this.site);
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	eval(scope) {
+		if (this.#cache === null) {
+			this.#cache = this.evalInternal(scope);
+		}
+
+		return this.#cache;
+	}
+
+	/**
+	 * Returns Intermediate Representation of a value expression.
+	 * The IR should be indented to make debugging easier.
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		throw new Error("not implemented");
+	}
+}
+
+/**
+ * '... = ... ; ...' expression
+ * @package
+ */
+class AssignExpr extends ValueExpr {
+	#nameTypes;
+	#upstreamExpr;
+	#downstreamExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {NameTypePair[]} nameTypes 
+	 * @param {ValueExpr} upstreamExpr 
+	 * @param {ValueExpr} downstreamExpr 
+	 */
+	constructor(site, nameTypes, upstreamExpr, downstreamExpr) {
+		super(site);
+		assert(nameTypes.length > 0);
+		this.#nameTypes = nameTypes;
+		this.#upstreamExpr = assertDefined(upstreamExpr);
+		this.#downstreamExpr = assertDefined(downstreamExpr);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		let downstreamStr = this.#downstreamExpr.toString();
+		assert(downstreamStr != undefined);
+
+		if (this.#nameTypes.length === 1) {
+			return `${this.#nameTypes.toString()} = ${this.#upstreamExpr.toString()}; ${downstreamStr}`;
+		} else {
+			return `(${this.#nameTypes.map(nt => nt.toString()).join(", ")}) = ${this.#upstreamExpr.toString()}; ${downstreamStr}`;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let subScope = new Scope(scope);
+
+		let upstreamVal = this.#upstreamExpr.eval(scope);
+
+		if (this.#nameTypes.length > 1) {
+			if (!(upstreamVal instanceof MultiInstance)) {
+				throw this.typeError("rhs ins't a multi-value");
+			} else {
+				let types = this.#nameTypes.map(nt => nt.evalType(scope));
+
+				let vals = upstreamVal.values;
+
+				if (types.length != vals.length) {
+					throw this.typeError(`expected ${types.length} rhs in multi-assign, got ${vals.length}`);
+				} else {
+					types.forEach((t, i) => {
+						if (!vals[i].isInstanceOf(this.#upstreamExpr.site, t)) {
+							throw this.#upstreamExpr.typeError(`expected ${t.toString()} for rhs ${i+1}, got ${vals[i].toString()}`);
+						}
+					});
+
+					vals.forEach((v, i) => {
+						if (!this.#nameTypes[i].isIgnored()) {
+							// TODO: take into account ghost type parameters
+							v = Instance.new(types[i]);
+
+							subScope.set(this.#nameTypes[i].name, v);
+						}
+					});
+				}
+			}
+		} else {
+			if (!upstreamVal.isValue()) {
+				throw this.typeError("rhs isn't a value");
+			}
+
+			if (this.#nameTypes[0].hasType()) {
+				let type = this.#nameTypes[0].evalType(scope);
+
+				assert(type.isType());
+
+				if (!upstreamVal.isInstanceOf(this.#upstreamExpr.site, type)) {
+					throw this.#upstreamExpr.typeError(`expected ${type.toString()}, got ${upstreamVal.toString()}`);
+				}
+
+				// TODO: take into account ghost type parameters
+				upstreamVal = Instance.new(type);
+			} else if (this.#upstreamExpr.isLiteral()) {
+				// enum variant type resulting from a constructor-like associated function must be cast back into its enum type
+				if ((this.#upstreamExpr instanceof CallExpr &&
+					this.#upstreamExpr.fnExpr instanceof ValuePathExpr) || 
+					(this.#upstreamExpr instanceof ValuePathExpr && 
+					!this.#upstreamExpr.isZeroFieldConstructor())) 
+				{
+					let upstreamType = upstreamVal.getType(this.#upstreamExpr.site);
+
+					if (upstreamType instanceof EnumMemberStatementType) {
+						upstreamVal = Instance.new(new StatementType(upstreamType.statement.parent));
+					} else if (upstreamType instanceof BuiltinEnumMember) {
+						upstreamVal = Instance.new(upstreamType.parentType);
+					}
+				}
+			} else {
+				throw this.typeError("unable to infer type of assignment rhs");
+			}
+
+			subScope.set(this.#nameTypes[0].name, upstreamVal);
+		}
+
+		let downstreamVal = this.#downstreamExpr.eval(subScope);
+
+		subScope.assertAllUsed();
+
+		return downstreamVal;
+	}
+
+	use() {
+		this.#nameTypes.forEach(nt => nt.use());
+		this.#upstreamExpr.use();
+		this.#downstreamExpr.use();
+	}
+
+	/**
+	 * 
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		if (this.#nameTypes.length === 1) {
+			return new IR([
+				new IR(`(${this.#nameTypes[0].name.toString()}) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
+				this.#downstreamExpr.toIR(indent + TAB),
+				new IR(`\n${indent}}(`),
+				this.#upstreamExpr.toIR(indent),
+				new IR(")")
+			]);
+		} else {
+			let ir = new IR([
+				this.#upstreamExpr.toIR(indent),
+				new IR(`(\n${indent + TAB}(`), new IR(this.#nameTypes.map(nt => new IR(nt.name.toString()))).join(", "), new IR(") ->", this.site), new IR(` {\n${indent}${TAB}${TAB}`),
+				this.#downstreamExpr.toIR(indent + TAB + TAB),
+				new IR(`\n${indent + TAB}}\n${indent})`)
+			]);
+
+			return ir;
+		}
+	}
+}
+
+/**
+ * print(...); ... expression
+ * @package
+ */
+class PrintExpr extends ValueExpr {
+	#msgExpr;
+	#downstreamExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr} msgExpr 
+	 * @param {ValueExpr} downstreamExpr 
+	 */
+	constructor(site, msgExpr, downstreamExpr) {
+		super(site);
+		this.#msgExpr = msgExpr;
+		this.#downstreamExpr = downstreamExpr;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		let downstreamStr = this.#downstreamExpr.toString();
+		assert(downstreamStr != undefined);
+		return `print(${this.#msgExpr.toString()}); ${downstreamStr}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let msgVal = this.#msgExpr.eval(scope);
+
+		assert(msgVal.isValue());
+
+		if (!msgVal.isInstanceOf(this.#msgExpr.site, StringType)) {
+			throw this.#msgExpr.typeError("expected string arg for print");
+		}
+
+		let downstreamVal = this.#downstreamExpr.eval(scope);
+
+		return downstreamVal;
+	}
+
+	use() {
+		this.#msgExpr.use();
+		this.#downstreamExpr.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return new IR([
+			new IR("__core__trace", this.site), new IR("("), new IR("__helios__common__unStringData("),
+			this.#msgExpr.toIR(indent),
+			new IR(`), () -> {\n${indent}${TAB}`),
+			this.#downstreamExpr.toIR(indent + TAB),
+			new IR(`\n${indent}})()`)
+		]);
+	}
+}
+
+/**
+ * Helios equivalent of unit
+ * @package
+ */
+class VoidExpr extends ValueExpr {
+	/**
+	 * @param {Site} site
+	 */
+	constructor(site) {
+		super(site);
+	}
+
+	toString() {
+		return "()";
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		return new VoidInstance();
+	}
+
+	use() {
+	}
+
+	toIR() {
+		return new IR("()", this.site);
+	}
+}
+
+/**
+ * expr(...); ...
+ * @package
+ */
+class ChainExpr extends ValueExpr {
+	#upstreamExpr;
+	#downstreamExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr} upstreamExpr 
+	 * @param {ValueExpr} downstreamExpr 
+	 */
+	constructor(site, upstreamExpr, downstreamExpr) {
+		super(site);
+		this.#upstreamExpr = upstreamExpr;
+		this.#downstreamExpr = downstreamExpr;
+	}
+
+	toString() {
+		return `${this.#upstreamExpr.toString()}; ${this.#downstreamExpr.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let upstreamVal = this.#upstreamExpr.eval(scope);
+
+		if (upstreamVal instanceof ErrorInstance) {
+			throw this.#downstreamExpr.typeError("unreachable code (upstream always throws error)");
+		} else if (!(upstreamVal instanceof VoidInstance)) {
+			throw this.#upstreamExpr.typeError("unexpected return value (hint: use '='");
+		}
+
+		return this.#downstreamExpr.eval(scope);
+	}
+
+	use() {
+		this.#upstreamExpr.use();
+		this.#downstreamExpr.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return new IR([
+			new IR("__core__chooseUnit(", this.site),
+			this.#upstreamExpr.toIR(indent),
+			new IR(", "),
+			this.#downstreamExpr.toIR(indent),
+			new IR(")")
+		]);
+	}
+}
+
+/**
+ * Literal expression class (wraps literal tokens)
+ * @package
+ */
+class PrimitiveLiteralExpr extends ValueExpr {
+	#primitive;
+
+	/**
+	 * @param {PrimitiveLiteral} primitive 
+	 */
+	constructor(primitive) {
+		super(primitive.site);
+		this.#primitive = primitive;
+	}
+
+	isLiteral() {
+		return true;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#primitive.toString();
+	}
+
+	/**
+	 * @type {Type}
+	 */
+	get type() {
+		if (this.#primitive instanceof IntLiteral) {
+			return new IntType();
+		} else if (this.#primitive instanceof BoolLiteral) {
+			return new BoolType();
+		} else if (this.#primitive instanceof StringLiteral) {
+			return new StringType();
+		} else if (this.#primitive instanceof ByteArrayLiteral) {
+			return new ByteArrayType(this.#primitive.bytes.length == 32 ? 32 : null);
+		} else {
+			throw new Error("unhandled primitive type");
+		}	
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		return new DataInstance(this.type);
+	}
+
+	use() {
+	}
+
+	/**
+	 * @param {string} indent
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		// all literals can be reused in their string-form in the IR
+		let inner = new IR(this.#primitive.toString(), this.#primitive.site);
+
+		if (this.#primitive instanceof IntLiteral) {
+			return new IR([new IR("__core__iData", this.site), new IR("("), inner, new IR(")")]);
+		} else if (this.#primitive instanceof BoolLiteral) {
+			return inner;
+		} else if (this.#primitive instanceof StringLiteral) {
+			return new IR([new IR("__helios__common__stringData", this.site), new IR("("), inner, new IR(")")]);
+		} else if (this.#primitive instanceof ByteArrayLiteral) {
+			return new IR([new IR("__core__bData", this.site), new IR("("), inner, new IR(")")]);
+		} else {
+			throw new Error("unhandled primitive type");
+		}
+	}
+}
+
+/**
+ * Literal UplcData which is the result of parameter substitutions.
+ * @package
+ */
+class LiteralDataExpr extends ValueExpr {
+	#type;
+	#data;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Type} type
+	 * @param {UplcData} data
+	 */
+	constructor(site, type, data) {
+		super(site);
+		this.#type = type;
+		this.#data = data;
+	}
+
+	/**
+	 * @package
+	 * @type {Type}
+	 */
+	get type() {
+		return this.#type;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		return true;
+	}
+
+	toString() {
+		return `##${bytesToHex(this.#data.toCbor())}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		return Instance.new(this.#type);
+	}
+
+	use() {
+	}
+
+	toIR(indent = "") {
+		return new IR(this.toString(), this.site);
+	}
+}
+
+/**
+ * Struct field (part of a literal struct constructor)
+ * @package
+ */
+class StructLiteralField {
+	#name;
+	#value;
+
+	/**
+	 * @param {?Word} name 
+	 * @param {ValueExpr} value 
+	 */
+	constructor(name, value) {
+		this.#name = name;
+		this.#value = value;
+	}
+
+	get site() {
+		if (this.#name === null) {
+			return this.#value.site;
+		} else {
+			return this.#name.site;
+		}
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isNamed() {
+		return this.#name !== null;
+	}
+
+	get name() {
+		if (this.#name === null) {
+			throw new Error("name of field not given");
+		} else {
+			return this.#name;
+		}
+	}
+
+	toString() {
+		if (this.#name === null) {
+			return this.#value.toString();
+		} else {
+			return `${this.#name.toString()}: ${this.#value.toString()}`;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	eval(scope) {
+		return this.#value.eval(scope);
+	}
+
+	use() {
+		this.#value.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return this.#value.toIR(indent);
+	}
+}
+
+/**
+ * Struct literal constructor
+ * @package
+ */
+class StructLiteralExpr extends ValueExpr {
+	#typeExpr;
+	#fields;
+	/** @type {?number} - set during evaluation */
+	#constrIndex;
+
+	/**
+	 * @param {TypeExpr} typeExpr 
+	 * @param {StructLiteralField[]} fields 
+	 */
+	constructor(typeExpr, fields) {
+		super(typeExpr.site);
+		this.#typeExpr = typeExpr;
+		this.#fields = fields;
+		this.#constrIndex = null;
+	}
+
+	isLiteral() {
+		return true;
+	}
+
+	toString() {
+		return `${this.#typeExpr.toString()}{${this.#fields.map(f => f.toString()).join(", ")}}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns 
+	 */
+	evalInternal(scope) {
+		let type = this.#typeExpr.eval(scope);
+
+		assert(type.isType());
+
+		this.#constrIndex = type.getConstrIndex(this.site);
+
+		let instance = Instance.new(type);
+
+		if (instance.nFields(this.site) != this.#fields.length) {
+			throw this.typeError("wrong number of fields");
+		}
+
+		for (let i = 0; i < this.#fields.length; i++) {
+			let f = this.#fields[i];
+		
+			let fieldVal = f.eval(scope);
+
+			if (f.isNamed()) {
+				// check the named type
+				let memberType = instance.getInstanceMember(f.name).getType(f.name.site);
+
+				if (!fieldVal.isInstanceOf(f.site, memberType)) {
+					throw f.site.typeError(`wrong field type for '${f.name.toString()}'`);
+				}
+			}
+			
+			// check the positional type
+			let memberType = instance.getFieldType(f.site, i);
+			
+			if (!fieldVal.isInstanceOf(f.site, memberType)) {
+				if (f.isNamed()) {
+					throw f.site.typeError("wrond field order");
+				} else {
+					throw f.site.typeError("wrong field type");
+				}
+			}
+		}
+
+		return instance;
+	}
+
+	use() {
+		this.#typeExpr.use();
+
+		for (let f of this.#fields) {
+			f.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let res = new IR("__core__mkNilData(())");
+
+		let fields = this.#fields.slice();
+
+		let instance = Instance.new(this.#typeExpr.type);
+
+		for (let i = fields.length - 1; i >= 0; i--) {
+			let f = fields[i];
+
+			let isBool = instance.getFieldType(f.site, i) instanceof BoolType;
+
+			let fIR = f.toIR(indent);
+
+			if (isBool) {
+				fIR = new IR([
+					new IR("__helios__common__boolData("),
+					fIR,
+					new IR(")"),
+				]);
+			}
+
+			// in case of a struct with only one field, return that field directly 
+			if (fields.length == 1 && this.#typeExpr.type instanceof StructStatementType) {
+				return fIR;
+			}
+
+			res = new IR([
+				new IR("__core__mkCons("),
+				fIR,
+				new IR(", "),
+				res,
+				new IR(")")
+			]);
+		}
+
+		let index = this.#constrIndex;
+
+		if (index === null) {
+			throw new Error("constrIndex not yet set");
+		} else if (index == -1) {
+			// regular struct
+			return new IR([
+				new IR("__core__listData", this.site),
+				new IR("("), 
+				res,
+				new IR(")")
+			]);
+		} else {
+			return new IR([
+				new IR("__core__constrData", this.site), new IR(`(${index.toString()}, `),
+				res,
+				new IR(")")
+			]);
+		}
+	}
+}
+
+/**
+ * []{...} expression
+ * @package
+ */
+class ListLiteralExpr extends ValueExpr {
+	#itemTypeExpr;
+	#itemExprs;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} itemTypeExpr 
+	 * @param {ValueExpr[]} itemExprs 
+	 */
+	constructor(site, itemTypeExpr, itemExprs) {
+		super(site);
+		this.#itemTypeExpr = itemTypeExpr;
+		this.#itemExprs = itemExprs;
+	}
+
+	isLiteral() {
+		return true;
+	}
+
+	toString() {
+		return `[]${this.#itemTypeExpr.toString()}{${this.#itemExprs.map(itemExpr => itemExpr.toString()).join(', ')}}`;
+	}
+
+	/**
+	 * @param {Scope} scope
+	 */
+	evalInternal(scope) {
+		let itemType = this.#itemTypeExpr.eval(scope);
+
+		if (itemType instanceof FuncType) {
+			throw this.#itemTypeExpr.typeError("content of list can't be func");
+		}
+
+		for (let itemExpr of this.#itemExprs) {
+			let itemVal = itemExpr.eval(scope);
+
+			if (!itemVal.isInstanceOf(itemExpr.site, itemType)) {
+				throw itemExpr.typeError(`expected ${itemType.toString()}, got ${itemVal.toString()}`);
+			}
+		}
+
+		return Instance.new(new ListType(itemType));
+	}
+
+	use() {
+		this.#itemTypeExpr.use();
+
+		for (let item of this.#itemExprs) {
+			item.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let isBool = this.#itemTypeExpr.type instanceof BoolType;
+
+		// unsure if list literals in untyped Plutus-core accept arbitrary terms, so we will use the more verbose constructor functions 
+		let res = new IR("__core__mkNilData(())");
+
+		// starting from last element, keeping prepending a data version of that item
+
+		for (let i = this.#itemExprs.length - 1; i >= 0; i--) {
+			let itemIR = this.#itemExprs[i].toIR(indent);
+
+			if (isBool) {
+				itemIR = new IR([
+					new IR("__helios__common__boolData("),
+					itemIR,
+					new IR(")"),
+				]);
+			}
+
+			res = new IR([
+				new IR("__core__mkCons("),
+				itemIR,
+				new IR(", "),
+				res,
+				new IR(")")
+			]);
+		}
+
+		return new IR([new IR("__core__listData", this.site), new IR("("), res, new IR(")")]);
+	}
+}
+
+/**
+ * Map[...]...{... : ...} expression
+ * @package
+ */
+class MapLiteralExpr extends ValueExpr {
+	#keyTypeExpr;
+	#valueTypeExpr;
+	#pairExprs;
+
+	/**
+	 * @param {Site} site 
+	 * @param {TypeExpr} keyTypeExpr 
+	 * @param {TypeExpr} valueTypeExpr
+	 * @param {[ValueExpr, ValueExpr][]} pairExprs 
+	 */
+	constructor(site, keyTypeExpr, valueTypeExpr, pairExprs) {
+		super(site);
+		this.#keyTypeExpr = keyTypeExpr;
+		this.#valueTypeExpr = valueTypeExpr;
+		this.#pairExprs = pairExprs;
+	}
+
+	isLiteral() {
+		return true;
+	}
+
+	toString() {
+		return `Map[${this.#keyTypeExpr.toString()}]${this.#valueTypeExpr.toString()}{${this.#pairExprs.map(([keyExpr, valueExpr]) => `${keyExpr.toString()}: ${valueExpr.toString()}`).join(', ')}}`;
+	}
+
+	/**
+	 * @param {Scope} scope
+	 */
+	evalInternal(scope) {
+		let keyType = this.#keyTypeExpr.eval(scope);
+		let valueType = this.#valueTypeExpr.eval(scope);
+
+		if (keyType instanceof FuncType) {
+			throw this.#keyTypeExpr.typeError("key-type of Map can't be func");
+		} else if (valueType instanceof FuncType) {
+			throw this.#valueTypeExpr.typeError("value-type of Map can't be func");
+		}
+
+		for (let [keyExpr, valueExpr] of this.#pairExprs) {
+			let keyVal = keyExpr.eval(scope);
+			let valueVal = valueExpr.eval(scope);
+
+			if (!keyVal.isInstanceOf(keyExpr.site, keyType)) {
+				throw keyExpr.typeError(`expected ${keyType.toString()} for map key, got ${keyVal.toString()}`);
+			} else if (!valueVal.isInstanceOf(valueExpr.site, valueType)) {
+				throw valueExpr.typeError(`expected ${valueType.toString()} for map value, got ${valueVal.toString()}`);
+			}
+		}
+
+		return Instance.new(new MapType(keyType, valueType));
+	}
+
+	use() {
+		this.#keyTypeExpr.use();
+		this.#valueTypeExpr.use();
+
+		for (let [fst, snd] of this.#pairExprs) {
+			fst.use();
+			snd.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let isBoolValue = this.#valueTypeExpr.type instanceof BoolType;
+
+		// unsure if list literals in untyped Plutus-core accept arbitrary terms, so we will use the more verbose constructor functions 
+		let res = new IR("__core__mkNilPairData(())");
+
+		// starting from last element, keeping prepending a data version of that item
+
+		for (let i = this.#pairExprs.length - 1; i >= 0; i--) {
+			let [keyExpr, valueExpr] = this.#pairExprs[i];
+
+			let valueIR = valueExpr.toIR(indent);
+
+			if (isBoolValue) {
+				valueIR = new IR([
+					new IR("__helios__common__boolData("),
+					valueIR,
+					new IR(")"),
+				]);
+			}
+
+			res = new IR([
+				new IR("__core__mkCons("),
+				new IR("__core__mkPairData("),
+				keyExpr.toIR(indent),
+				new IR(","),
+				valueIR,
+				new IR(")"),
+				new IR(", "),
+				res,
+				new IR(")")
+			]);
+		}
+
+		return new IR([new IR("__core__mapData", this.site), new IR("("), res, new IR(")")]);
+	}
+}
+
+/**
+ * NameTypePair is base class of FuncArg and DataField (differs from StructLiteralField) 
+ * @package
+ */
+class NameTypePair {
+	#name;
+	#typeExpr;
+
+	/**
+	 * @param {Word} name 
+	 * @param {?TypeExpr} typeExpr 
+	 */
+	constructor(name, typeExpr) {
+		this.#name = name;
+		this.#typeExpr = typeExpr;
+	}
+
+	/**
+	 * @type {Site}
+	 */
+	get site() {
+		return this.#name.site;
+	}
+
+	/**
+	 * @type {Word}
+	 */
+	get name() {
+		return this.#name;
+	}
+
+	isIgnored() {
+		return this.name.value === "_";
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	hasType() {
+		return this.#typeExpr !== null;
+	}
+
+	/**
+	 * Throws an error if called before evalType()
+	 * @type {Type}
+	 */
+	get type() {
+		if (this.isIgnored()) {
+			return new AnyType();
+		} else if (this.#typeExpr === null) {
+			throw new Error("typeExpr not set");
+		} else {
+			return this.#typeExpr.type;
+		}
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get typeName() {
+		if (this.#typeExpr === null) {
+			return "";
+		} else {
+			return this.#typeExpr.toString();
+		}
+	}
+
+	toString() {
+		if (this.#typeExpr === null) {
+			return this.name.toString();
+		} else {
+			return `${this.name.toString()}: ${this.#typeExpr.toString()}`;
+		}
+	}
+
+	/**
+	 * Evaluates the type, used by FuncLiteralExpr and DataDefinition
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalType(scope) {
+		if (this.isIgnored()) {
+			return new AnyType();
+		} else if (this.#typeExpr === null) {
+			throw new Error("typeExpr not set");
+		} else {
+			return this.#typeExpr.eval(scope);
+		}
+	}
+
+	use() {
+		if (this.#typeExpr !== null) {
+			this.#typeExpr.use();
+		}
+	}
+
+	toIR() {
+		return new IR(this.#name.toString(), this.#name.site);
+	}
+}
+
+/**
+ * Function argument class
+ * @package
+ */
+class FuncArg extends NameTypePair {
+	/**
+	 * @param {Word} name 
+	 * @param {?TypeExpr} typeExpr 
+	 */
+	constructor(name, typeExpr) {
+		super(name, typeExpr);
+	}
+}
+
+/**
+ * (..) -> RetTypeExpr {...} expression
+ * @package
+ */
+class FuncLiteralExpr extends ValueExpr {
+	#args;
+	#retTypeExprs;
+	#bodyExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {FuncArg[]} args 
+	 * @param {(?TypeExpr)[]} retTypeExprs 
+	 * @param {ValueExpr} bodyExpr 
+	 */
+	constructor(site, args, retTypeExprs, bodyExpr) {
+		super(site);
+		this.#args = args;
+		this.#retTypeExprs = retTypeExprs;
+		this.#bodyExpr = bodyExpr;
+	}
+
+	/**
+	 * @type {Type[]}
+	 */
+	get argTypes() {
+		return this.#args.map(a => a.type);
+	}
+
+	/**
+	 * @type {string[]}
+	 */
+	get argTypeNames() {
+		return this.#args.map(a => a.typeName)
+	}
+
+	/**
+	 * @type {Type[]}
+	 */
+	get retTypes() {
+		return this.#retTypeExprs.map(e => {
+			if (e == null) {
+				return new AnyType();
+			} else {
+				return e.type
+			}
+		});
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		return true;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		if (this.#retTypeExprs.length === 1) {
+			let retTypeExpr = this.#retTypeExprs[0];
+			if (retTypeExpr == null) {
+				return `(${this.#args.map(a => a.toString()).join(", ")}) -> {${this.#bodyExpr.toString()}}`;
+			} else {
+				return `(${this.#args.map(a => a.toString()).join(", ")}) -> ${retTypeExpr.toString()} {${this.#bodyExpr.toString()}}`;
+			}
+		} else {
+			return `(${this.#args.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => assertDefined(e).toString()).join(", ")}) {${this.#bodyExpr.toString()}}`;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns 
+	 */
+	evalType(scope) {
+		let args = this.#args;
+		if (this.isMethod()) {
+			args = args.slice(1);
+		}
+
+		let argTypes = args.map(a => a.evalType(scope));
+		let retTypes = this.#retTypeExprs.map(e => {
+			if (e == null) {
+				return new AnyType();
+			} else {
+				return e.eval(scope)
+			}
+		});
+
+		return new FuncType(argTypes, retTypes);
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {FuncInstance}
+	 */
+	evalInternal(scope) {
+		let fnType = this.evalType(scope);
+		
+		// argTypes is calculated separately again here so it includes self
+		let argTypes = this.#args.map(a => a.evalType(scope));
+
+		let res = new FuncInstance(fnType);
+
+		let subScope = new Scope(scope);
+		argTypes.forEach((a, i) => {
+			if (!this.#args[i].isIgnored()) {
+				subScope.set(this.#args[i].name, Instance.new(a));
+			}
+		});
+
+		let bodyVal = this.#bodyExpr.eval(subScope);
+
+		if (this.#retTypeExprs.length === 1) {
+			if (this.#retTypeExprs[0] == null) {
+				if (bodyVal instanceof MultiInstance) {
+					return new FuncInstance(new FuncType(fnType.argTypes, bodyVal.values.map(v => v.getType(this.site))));
+				} else {
+					return new FuncInstance(new FuncType(fnType.argTypes, bodyVal.getType(this.site)));
+				}
+			} else if (bodyVal instanceof MultiInstance) {
+				throw this.#retTypeExprs[0].typeError("unexpected multi-value body");
+			} else if (!bodyVal.isInstanceOf(this.#retTypeExprs[0].site, fnType.retTypes[0])) {
+				throw this.#retTypeExprs[0].typeError(`wrong return type, expected ${fnType.retTypes[0].toString()} but got ${this.#bodyExpr.type.toString()}`);
+			}
+		} else {
+			if (bodyVal instanceof MultiInstance) {
+				/** @type {Instance[]} */
+				let bodyVals = bodyVal.values;
+
+				if (bodyVals.length !== this.#retTypeExprs.length) {
+					throw this.#bodyExpr.typeError(`expected multi-value function body with ${this.#retTypeExprs.length} values, but got ${bodyVals.length} values`);
+				} else {
+					for (let i = 0; i < bodyVals.length; i++) {
+						let v = bodyVals[i];
+
+						let retTypeExpr = assertDefined(this.#retTypeExprs[i]);
+						if (!v.isInstanceOf(retTypeExpr.site, fnType.retTypes[i])) {
+							throw retTypeExpr.typeError(`wrong return type for value ${i}, expected ${fnType.retTypes[i].toString()} but got ${v.getType(this.#bodyExpr.site).toString()}`);
+						}
+					}
+				}
+			} else {
+				throw this.#bodyExpr.typeError(`expected multi-value function body, but got ${this.#bodyExpr.type.toString()}`);
+			}
+		}
+
+		subScope.assertAllUsed();
+
+		return res;
+	}
+
+	isMethod() {
+		return this.#args.length > 0 && this.#args[0].name.toString() == "self";
+	}
+
+	use() {
+		for (let arg of this.#args) {
+			arg.use();
+		}
+
+		this.#retTypeExprs.forEach(e => {
+			if (e !== null) {
+				e.use();
+			}
+		});
+		this.#bodyExpr.use();
+	}
+
+	/**
+	 * @returns {IR}
+	 */
+	argsToIR() {
+		let args = this.#args.map(a => a.toIR());
+		if (this.isMethod()) {
+			args = args.slice(1);
+		}
+
+		return (new IR(args)).join(", ");
+	}
+
+	/**
+	 * @param {?string} recursiveName 
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIRInternal(recursiveName, indent = "") {
+		let argsWithCommas = this.argsToIR();
+
+		let innerIndent = indent;
+		let methodIndent = indent;
+		if (this.isMethod()) {
+			innerIndent += TAB;
+		}
+
+		if (recursiveName !== null) {
+			innerIndent += TAB;
+			methodIndent += TAB;
+		}
+
+		let ir = new IR([
+			new IR("("),
+			argsWithCommas,
+			new IR(") "), new IR("->", this.site), new IR(` {\n${innerIndent}${TAB}`),
+			this.#bodyExpr.toIR(innerIndent + TAB),
+			new IR(`\n${innerIndent}}`),
+		]);
+
+		// wrap with 'self'
+		if (this.isMethod()) {
+			ir = new IR([
+				new IR(`(self) -> {\n${methodIndent}${TAB}`),
+				ir,
+				new IR(`\n${methodIndent}}`),
+			]);
+		}
+
+		if (recursiveName !== null) {
+			ir = new IR([
+				new IR("("),
+				new IR(recursiveName),
+				new IR(`) -> {\n${indent}${TAB}`),
+				ir,
+				new IR(`\n${indent}}`)
+			]);
+		}
+
+		return ir;
+	}
+
+	/**
+	 * @param {string} recursiveName 
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIRRecursive(recursiveName, indent = "") {
+		return this.toIRInternal(recursiveName, indent);
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return this.toIRInternal(null, indent);
+	}
+}
+
+/**
+ * Variable expression
+ * @package
+ */
+class ValueRefExpr extends ValueExpr {
+	#name;
+	#isRecursiveFunc;
+
+	/**
+	 * @param {Word} name 
+	 */
+	constructor(name) {
+		super(name.site);
+		this.#name = name;
+		this.#isRecursiveFunc = false;
+	}
+
+	toString() {
+		return this.#name.toString();
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let val = scope.get(this.#name);
+
+		if (val instanceof FuncInstance && val.isRecursive(scope)) {
+			this.#isRecursiveFunc = true;
+		}
+
+		return val.assertValue(this.#name.site);
+	}
+
+	use() {
+		if (this.value instanceof FuncStatementInstance) {
+			this.value.statement.use();
+		} else if (this.value instanceof ConstStatementInstance) {
+			this.value.statement.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let path = this.toString();
+
+		if (this.value instanceof FuncStatementInstance || this.value instanceof ConstStatementInstance) {
+			path = this.value.statement.path;
+		} else if (this.value instanceof BuiltinFuncInstance) {
+			path = this.value.path;
+		}
+
+		let ir = new IR(path, this.site);
+
+		if (this.#isRecursiveFunc) {
+			ir = new IR([
+				ir,
+				new IR("("),
+				ir,
+				new IR(")")
+			]);
+		}
+		
+		return ir;
+	}
+}
+
+/**
+ * Word::Word::... expression
+ * @package
+ */
+class ValuePathExpr extends ValueExpr {
+	#baseTypeExpr;
+	#memberName;
+	#isRecursiveFunc;
+
+	/**
+	 * @param {TypeExpr} baseTypeExpr 
+	 * @param {Word} memberName 
+	 */
+	constructor(baseTypeExpr, memberName) {
+		super(memberName.site);
+		this.#baseTypeExpr = baseTypeExpr;
+		this.#memberName = memberName;
+		this.#isRecursiveFunc = false;
+	}
+
+	/**
+	 * @type {Type}
+	 */
+	get baseType() {
+		return this.#baseTypeExpr.type;
+	}
+
+	toString() {
+		return `${this.#baseTypeExpr.toString()}::${this.#memberName.toString()}`;
+	}
+
+	isZeroFieldConstructor() {
+		let type = this.type;
+
+		if (type instanceof EnumMemberStatementType && type.statement.name.value === this.#memberName.value) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Returns true if ValuePathExpr constructs a literal enum member with zero field or
+	 * if this baseType is also a baseType of the returned value
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		if (this.isZeroFieldConstructor()) {
+			return true;
+		} else {
+			let type = this.type;
+
+			if (this.baseType.isBaseOf(this.site, type)) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let baseType = this.#baseTypeExpr.eval(scope);
+		assert(baseType.isType());
+
+		let memberVal = baseType.getTypeMember(this.#memberName);
+
+		if (memberVal instanceof FuncInstance && memberVal.isRecursive(scope)) {
+			this.#isRecursiveFunc = true;
+		}
+
+		return memberVal.assertValue(this.#memberName.site);
+	}
+
+	use() {
+		this.#baseTypeExpr.use();
+
+		if (this.value instanceof ConstStatementInstance) {
+			this.value.statement.use();
+		} else if (this.value instanceof FuncStatementInstance) {
+			this.value.statement.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		// if we are directly accessing an enum member as a zero-field constructor we must change the code a bit
+		let memberVal = this.#baseTypeExpr.type.getTypeMember(this.#memberName);
+
+		if ((memberVal instanceof EnumMemberStatementType) || (memberVal instanceof OptionNoneType)) {
+			let cId = memberVal.getConstrIndex(this.#memberName.site);
+
+			assert(cId >= 0);
+
+			return new IR(`__core__constrData(${cId.toString()}, __core__mkNilData(()))`, this.site)
+		} else {
+			let ir = new IR(`${this.#baseTypeExpr.type.path}__${this.#memberName.toString()}`, this.site);
+
+			if (this.#isRecursiveFunc) {
+				ir = new IR([
+					ir,
+					new IR("("),
+					ir,
+					new IR(")")
+				]);
+			}
+
+			return ir;
+		}
+	}
+}
+
+/**
+ * Unary operator expression
+ * Note: there are no post-unary operators, only pre
+ * @package
+ */
+class UnaryExpr extends ValueExpr {
+	#op;
+	#a;
+
+	/**
+	 * @param {SymbolToken} op 
+	 * @param {ValueExpr} a 
+	 */
+	constructor(op, a) {
+		super(op.site);
+		this.#op = op;
+		this.#a = a;
+	}
+
+	toString() {
+		return `${this.#op.toString()}${this.#a.toString()}`;
+	}
+
+	/**
+	 * Turns an op symbol into an internal name
+	 * @returns {Word}
+	 */
+	translateOp() {
+		let op = this.#op.toString();
+		let site = this.#op.site;
+
+		if (op == "+") {
+			return new Word(site, "__pos");
+		} else if (op == "-") {
+			return new Word(site, "__neg");
+		} else if (op == "!") {
+			return new Word(site, "__not");
+		} else {
+			throw new Error("unhandled unary op");
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let a = this.#a.eval(scope);
+
+		let fnVal = a.assertValue(this.#a.site).getInstanceMember(this.translateOp());
+
+		// ops are immediately applied
+		return fnVal.call(this.#op.site, []);
+	}
+
+	use() {
+		this.#a.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let path = this.type.path;
+
+		return new IR([
+			new IR(`${path}__${this.translateOp().value}`, this.site), new IR("("),
+			this.#a.toIR(indent),
+			new IR(")()")
+		]);
+	}
+}
+
+/**
+ * Binary operator expression
+ * @package
+ */
+class BinaryExpr extends ValueExpr {
+	#op;
+	#a;
+	#b;
+	#swap; // swap a and b for commutative ops
+	#alt; // use alt (each operator can have one overload)
+
+	/**
+	 * @param {SymbolToken} op 
+	 * @param {ValueExpr} a 
+	 * @param {ValueExpr} b 
+	 */
+	constructor(op, a, b) {
+		super(op.site);
+		this.#op = op;
+		this.#a = a;
+		this.#b = b;
+		this.#swap = false;
+		this.#alt = false;
+	}
+
+	/** 
+	 * @type {ValueExpr}
+	 */
+	get first() {
+		return this.#swap ? this.#b : this.#a;
+	}
+
+	/**
+	 * @type {ValueExpr} 
+	 */
+	get second() {
+		return this.#swap ? this.#a : this.#b;
+	}
+
+	toString() {
+		return `${this.#a.toString()} ${this.#op.toString()} ${this.#b.toString()}`;
+	}
+
+	/**
+	 * Turns op symbol into internal name
+	 * @param {boolean} alt
+	 * @returns {Word}
+	 */
+	translateOp(alt = false) {
+		let op = this.#op.toString();
+		let site = this.#op.site;
+		let name;
+
+		if (op == "||") {
+			name = "__or";
+		} else if (op == "&&") {
+			name = "__and";
+		} else if (op == "==") {
+			name = "__eq";
+		} else if (op == "!=") {
+			name = "__neq";
+		} else if (op == "<") {
+			name = "__lt";
+		} else if (op == "<=") {
+			name = "__leq";
+		} else if (op == ">") {
+			name = "__gt";
+		} else if (op == ">=") {
+			name = "__geq";
+		} else if (op == "+") {
+			name = "__add";
+		} else if (op == "-") {
+			name = "__sub";
+		} else if (op == "*") {
+			name = "__mul";
+		} else if (op == "/") {
+			name = "__div";
+		} else if (op == "%") {
+			name = "__mod";
+		} else {
+			throw new Error("unhandled");
+		}
+
+		if (alt) {
+			name += "_alt";
+		}
+
+		return new Word(site, name);
+	}
+
+	isCommutative() {
+		let op = this.#op.toString();
+		return op == "+" || op == "*";
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let a = this.#a.eval(scope);
+		let b = this.#b.eval(scope);
+
+		assert(a.isValue() && b.isValue());
+
+		/**
+		 * @type {?UserError}
+		 */
+		let firstError = null;
+
+		for (let swap of (this.isCommutative() ? [false, true] : [false])) {
+			for (let alt of [false, true]) {
+				let first  = swap ? b : a;
+				let second = swap ? a : b;
+
+				try {
+					let fnVal = first.getInstanceMember(this.translateOp(alt));
+
+					let res = fnVal.call(this.#op.site, [second]);
+
+					this.#swap = swap;
+					this.#alt  = alt;
+
+					return res;
+				} catch (e) {
+					if (e instanceof UserError) {
+						if (firstError === null) {
+							firstError = e;
+						}
+						continue;
+					} else {
+						throw e;
+					}
+				}
+			}
+		}
+
+		if (firstError !== null) {
+			throw firstError;
+		} else {
+			throw new Error("unexpected");
+		}
+	}
+
+	use() {
+		this.#a.use();
+		this.#b.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let path = this.first.type.path;
+
+		let op = this.translateOp(this.#alt).value;
+
+		if (op == "__and" || op == "__or") {
+			return new IR([
+				new IR(`${path}${op}`, this.site), new IR(`(\n${indent}${TAB}() -> {`),
+				this.first.toIR(indent + TAB),
+				new IR(`},\n${indent}${TAB}() -> {`),
+				this.second.toIR(indent + TAB),
+				new IR(`}\n${indent})`)
+			]);
+		} else {
+			return new IR([
+				new IR(`${path}__${op}`, this.site), new IR("("),
+				this.first.toIR(indent),
+				new IR(")("),
+				this.second.toIR(indent),
+				new IR(")")
+			]);
+		}
+	}
+}
+
+/**
+ * Parentheses expression
+ * @package
+ */
+class ParensExpr extends ValueExpr {
+	#exprs;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr[]} exprs
+	 */
+	constructor(site, exprs) {
+		super(site);
+		this.#exprs = exprs;
+	}
+
+	toString() {
+		return `(${this.#exprs.map(e => e.toString()).join(", ")})`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		if (this.#exprs.length === 1) {
+			return this.#exprs[0].eval(scope);
+		} else {
+			return new MultiInstance(this.#exprs.map(e => e.eval(scope)));
+		}
+	}
+
+	use() {
+		this.#exprs.forEach(e => e.use());
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		if (this.#exprs.length === 1) {
+			return this.#exprs[0].toIR(indent);
+		} else {
+			return new IR(
+				[new IR(`(callback) -> {\n${indent + TAB}callback(\n${indent + TAB + TAB}`, this.site)]
+				.concat(new IR(this.#exprs.map(e => e.toIR(indent + TAB + TAB))).join(`,\n${indent + TAB + TAB}`))
+				.concat([new IR(`\n${indent + TAB})\n${indent}}`)])
+			);
+		}
+	}
+}
+
+/**
+ * ...(...) expression
+ * @package
+ */
+class CallExpr extends ValueExpr {
+	#fnExpr;
+	#argExprs;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr} fnExpr 
+	 * @param {ValueExpr[]} argExprs 
+	 */
+	constructor(site, fnExpr, argExprs) {
+		super(site);
+		this.#fnExpr = fnExpr;
+		this.#argExprs = argExprs;
+	}
+
+	get fnExpr() {
+		return this.#fnExpr;
+	}
+
+	toString() {
+		return `${this.#fnExpr.toString()}(${this.#argExprs.map(a => a.toString()).join(", ")})`;
+	}
+
+	isLiteral() {
+		if (this.#fnExpr instanceof ValuePathExpr && this.#fnExpr.baseType.isBaseOf(this.site, this.type)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let fnVal = this.#fnExpr.eval(scope);
+
+		let argVals = this.#argExprs.map(argExpr => argExpr.eval(scope));
+
+		argVals = MultiInstance.flatten(argVals);
+
+		return fnVal.call(this.site, argVals);
+	}
+
+	use() {
+		this.#fnExpr.use();
+
+		for (let arg of this.#argExprs) {
+			arg.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		if (this.#argExprs.some(e => (!e.isLiteral()) && (e.value instanceof MultiInstance))) {
+			// count the number of final args
+			let n = 0;
+			this.#argExprs.forEach(e => {
+				if ((!e.isLiteral()) && (e.value instanceof MultiInstance)) {
+					n += e.value.values.length;
+				} else {
+					n += 1;
+				}
+			});
+
+			let names = [];
+
+			for (let i = 0; i < n; i++) {
+				names.push(`x${i}`);
+			}
+
+			let ir = new IR([
+				this.#fnExpr.toIR(),
+				new IR("("),
+				new IR(names.map(n => new IR(n))).join(", "),
+				new IR(")", this.site)
+			]);
+
+			let exprs = this.#argExprs.slice().reverse();
+
+			for (let e of exprs) {
+				if ((!e.isLiteral()) && (e.value instanceof MultiInstance)) {
+					let mNames = names.splice(names.length - e.value.values.length);
+
+					ir = new IR([
+						e.toIR(),
+						new IR("(("),
+						new IR(mNames.map(n => new IR(n))).join(", "),
+						new IR(") -> {"),
+						ir,
+						new IR("})")
+					]);
+				} else {
+					ir = new IR([
+						new IR("("),
+						new IR(assertDefined(names.pop())),
+						new IR(") -> {"),
+						ir,
+						new IR("}("),
+						e.toIR(),
+						new IR(")")
+					]);
+				}
+			}
+
+			return ir;
+		} else {
+			let args = this.#argExprs.map(a => a.toIR(indent));
+
+			return new IR([
+				this.#fnExpr.toIR(indent),
+				new IR("("),
+				(new IR(args)).join(", "),
+				new IR(")", this.site)
+			]);
+		}
+	}
+}
+
+/**
+ *  ... . ... expression
+ * @package
+ */
+class MemberExpr extends ValueExpr {
+	#objExpr;
+	#memberName;
+	#isRecursiveFunc;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr} objExpr 
+	 * @param {Word} memberName 
+	 */
+	constructor(site, objExpr, memberName) {
+		super(site);
+		this.#objExpr = objExpr;
+		this.#memberName = memberName;
+		this.#isRecursiveFunc = false;
+	}
+
+	toString() {
+		return `${this.#objExpr.toString()}.${this.#memberName.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let objVal = this.#objExpr.eval(scope);
+
+		let memberVal = objVal.assertValue(this.#objExpr.site).getInstanceMember(this.#memberName);
+
+		if (memberVal instanceof FuncInstance && memberVal.isRecursive(scope)) {
+			this.#isRecursiveFunc = true;
+		}
+
+		return memberVal;
+	}
+
+	use() {
+		this.#objExpr.use();
+
+		if (this.value instanceof FuncStatementInstance) {
+			this.value.statement.use();
+		} else if (this.value instanceof ConstStatementInstance) {
+			this.value.statement.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		// members can be functions so, field getters are also encoded as functions for consistency
+
+		let objPath = this.#objExpr.type.path;
+
+		// if we are getting the member of an enum member we should check if it a field or method, because for a method we have to use the parent type
+		if ((this.#objExpr.type instanceof EnumMemberStatementType) && (!this.#objExpr.type.statement.hasField(this.#memberName))) {
+			objPath = this.#objExpr.type.statement.parent.path;
+		}
+
+		// if the memberVal was a ParamFuncValue then the member name might need to be modified if the output type of some callbacks is a Bool
+		if (this.value instanceof ParamFuncValue && this.value.correctMemberName !== null) {
+			this.#memberName = new Word(this.#memberName.site, this.value.correctMemberName());
+		}
+
+		let ir = new IR(`${objPath}__${this.#memberName.toString()}`, this.site);
+
+		if (this.#isRecursiveFunc) {
+			ir = new IR([
+				ir,
+				new IR("("),
+				ir,
+				new IR(")"),
+			]);
+		}
+
+		return new IR([
+			ir, new IR("("),
+			this.#objExpr.toIR(indent),
+			new IR(")"),
+		]);
+	}
+}
+
+/**
+ * if-then-else expression 
+ * @package
+ */
+class IfElseExpr extends ValueExpr {
+	#conditions;
+	#branches;
+
+	/**
+	 * @param {Site} site 
+	 * @param {ValueExpr[]} conditions 
+	 * @param {ValueExpr[]} branches 
+	 */
+	constructor(site, conditions, branches) {
+		assert(branches.length == conditions.length + 1);
+		assert(branches.length > 1);
+
+		super(site);
+		this.#conditions = conditions;
+		this.#branches = branches;
+	}
+
+	toString() {
+		let s = "";
+		for (let i = 0; i < this.#conditions.length; i++) {
+			s += `if (${this.#conditions[i].toString()}) {${this.#branches[i].toString()}} else `;
+		}
+
+		s += `{${this.#branches[this.#conditions.length].toString()}}`;
+
+		return s;
+	}
+
+	/**
+	 * @param {Site} site
+	 * @param {?Type} prevType
+	 * @param {Type} newType
+	 */
+	static reduceBranchType(site, prevType, newType) {
+		if (prevType === null || prevType instanceof ErrorType) {
+			return newType;
+		} else if (newType instanceof ErrorType) {
+			return prevType;
+		} else if (!prevType.isBaseOf(site, newType)) {
+			if (newType.isBaseOf(site, prevType)) {
+				return newType;
+			} else {
+				// check if enumparent is base of newType and of prevType
+				if (newType instanceof EnumMemberStatementType) {
+					let parentType = new EnumStatementType(newType.statement.parent);
+
+					if (parentType.isBaseOf(site, prevType) && parentType.isBaseOf(site, newType)) {
+						return parentType;
+					}
+				} else if (newType instanceof BuiltinEnumMember) {
+					let parentType = newType.parentType;
+
+					if (parentType.isBaseOf(site, prevType) && parentType.isBaseOf(site, newType)) {
+						return parentType;
+					}
+				}
+
+				throw site.typeError("inconsistent types");
+			}
+		} else {
+			return prevType;
+		}
+	}
+
+	/**
+	 * @param {Site} site
+	 * @param {?Type[]} prevTypes
+	 * @param {Type[]} newTypes
+	 */
+	static reduceBranchMultiType(site, prevTypes, newTypes) {
+		if (prevTypes === null) {
+			return newTypes
+		} else if (prevTypes.length !== newTypes.length) {
+			throw site.typeError("inconsistent number of multi-value types");
+		} else {
+			return prevTypes.map((pt, i) => IfElseExpr.reduceBranchType(site, pt, newTypes[i]));
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		for (let c of this.#conditions) {
+			let cVal = c.eval(scope);
+			if (!cVal.isInstanceOf(c.site, BoolType)) {
+				throw c.typeError("expected bool");
+			}
+		}
+
+		/**
+		 * Supports multiple return values
+		 * @type {?Type[]}
+		 */
+		let branchMultiType = null;
+
+		for (let b of this.#branches) {
+			let branchVal = b.eval(scope);
+
+			branchMultiType = IfElseExpr.reduceBranchMultiType(
+				b.site, 
+				branchMultiType, 
+				(branchVal instanceof MultiInstance) ? 
+					branchVal.values.map(v => v.getType(b.site)) : 
+					[branchVal.getType(b.site)]
+			);
+		}
+
+		if (branchMultiType === null) {
+			throw new Error("unexpected");
+		} else  {
+			return Instance.new(branchMultiType);
+		}
+	}
+
+	use() {
+		for (let c of this.#conditions) {
+			c.use();
+		}
+
+		for (let b of this.#branches) {
+			b.use();
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let n = this.#conditions.length;
+
+		// each branch actually returns a function to allow deferred evaluation
+		let res = new IR([
+			new IR("() -> {"),
+			this.#branches[n].toIR(indent),
+			new IR("}")
+		]);
+
+		// TODO: nice indentation
+		for (let i = n - 1; i >= 0; i--) {
+			res = new IR([
+				new IR("__core__ifThenElse("),
+				this.#conditions[i].toIR(indent),
+				new IR(", () -> {"),
+				this.#branches[i].toIR(indent),
+				new IR("}, () -> {"),
+				res,
+				new IR("()})"),
+			]);
+		}
+
+		return new IR([res, new IR("()", this.site)]);
+	}
+}
+
+/**
+ * Switch case for a switch expression
+ * @package
+ */
+class SwitchCase extends Token {
+	#varName;
+	#memberName;
+	#bodyExpr;
+
+	/** @type {?number} */
+	#constrIndex;
+
+	/**
+	 * @param {Site} site 
+	 * @param {?Word} varName - optional
+	 * @param {Word} memberName - not optional
+	 * @param {ValueExpr} bodyExpr 
+	 */
+	constructor(site, varName, memberName, bodyExpr) {
+		super(site);
+		this.#varName = varName;
+		this.#memberName = memberName;
+		this.#bodyExpr = bodyExpr;
+		this.#constrIndex = null;
+	}
+
+	/**
+	 * @type {ValueExpr}
+	 */
+	get body() {
+		return this.#bodyExpr;
+	}
+
+	/**
+	 * Used by parser to check if typeExpr reference the same base enum
+	 * @type {Word} - word representation of type
+	 */
+	get memberName() {
+		return this.#memberName;
+	}
+
+	isDataMember() {
+		switch (this.#memberName.value) {
+			case "Int":
+			case "[]Data":
+			case "ByteArray":
+			case "Map[Data]Data":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	get constrIndex() {
+		if (this.#constrIndex === null) {
+			throw new Error("constrIndex not yet set");
+		} else {
+			return this.#constrIndex;
+		}
+	}
+
+	toString() {
+		return `${this.#varName !== null ? this.#varName.toString() + ": " : ""}${this.#memberName.toString()} => ${this.#bodyExpr.toString()}`;
+	}
+
+	/**
+	 * Evaluates the switch type and body value of a case.
+	 * Evaluated switch type is only used if #varName !== null
+	 * @param {Scope} scope 
+	 * @param {Type} enumType
+	 * @returns {Instance}
+	 */
+	evalEnumMember(scope, enumType) {
+		let caseType = enumType.getTypeMember(this.#memberName).assertType(this.#memberName.site);
+
+		this.#constrIndex = caseType.getConstrIndex(this.#memberName.site);
+
+		assert(this.#constrIndex >= 0);
+
+		if (this.#varName !== null) {
+			let caseScope = new Scope(scope);
+
+			caseScope.set(this.#varName, Instance.new(caseType));
+
+			let bodyVal = this.#bodyExpr.eval(caseScope);
+
+			caseScope.assertAllUsed();
+
+			return bodyVal;
+		} else {
+			return this.#bodyExpr.eval(scope);
+		}
+	}
+
+	/**
+	 * Evaluates the switch type and body value of a case.
+	 * Evaluated switch type is only used if #varName !== null
+	 * @param {Scope} scope
+	 * @returns {Instance}
+	 */
+	evalDataMember(scope) {
+		/** @type {Type} */
+		let memberType;
+
+		switch (this.#memberName.value) {
+			case "Int":
+				memberType = new IntType();
+				break;
+			case "ByteArray":
+				memberType = new ByteArrayType();
+				break;
+			case "[]Data":
+				memberType = new ListType(new RawDataType());
+				break;
+			case "Map[Data]Data":
+				memberType = new MapType(new RawDataType(), new RawDataType());
+				break;
+			default:
+				let maybeMemberType = scope.get(this.#memberName);
+				if (maybeMemberType instanceof Type) {
+					memberType = maybeMemberType;
+
+					if (!(memberType instanceof EnumStatementType)) {
+						throw this.#memberName.typeError("expected an enum type");
+					}
+				} else {
+					throw this.#memberName.typeError("expected a type");
+				}
+		}
+
+		if (this.#varName !== null) {
+			let caseScope = new Scope(scope);
+
+			caseScope.set(this.#varName, Instance.new(memberType));
+
+			let bodyVal = this.#bodyExpr.eval(caseScope);
+
+			caseScope.assertAllUsed();
+
+			return bodyVal;
+		} else {
+			return this.#bodyExpr.eval(scope);
+		}
+	}
+
+	use() {
+		this.#bodyExpr.use();
+	}
+
+	/**
+	 * Accept an arg because will be called with the result of the controlexpr
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return new IR([
+			new IR(`(${this.#varName !== null ? this.#varName.toString() : "_"}) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
+			this.#bodyExpr.toIR(indent + TAB),
+			new IR(`\n${indent}}`),
+		]);
+	}
+}
+
+/**
+ * @package
+ */
+class UnconstrDataSwitchCase extends SwitchCase {
+	#intVarName;
+	#lstVarName;
+
+	/**
+	 * @param {Site} site 
+	 * @param {?Word} intVarName 
+	 * @param {?Word} lstVarName 
+	 * @param {ValueExpr} bodyExpr 
+	 */
+	constructor(site, intVarName, lstVarName, bodyExpr) {
+		super(site, null, new Word(site, "(Int, []Data)"), bodyExpr);
+
+		this.#intVarName = intVarName;
+		this.#lstVarName = lstVarName;
+	}
+
+	isDataMember() {
+		return true;
+	}
+
+	toString() {
+		return `(${this.#intVarName === null ? "" : this.#intVarName.value + ": "}Int, ${this.#lstVarName === null ? "" : this.#lstVarName.value + ": "} []Data) => ${this.body.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @param {Type} enumType
+	 * @returns {Instance}
+	 */
+	evalEnumMember(scope, enumType) {
+		throw new Error("not available");
+	}
+
+	/**
+	 * Evaluates the switch type and body value of a case.
+	 * Evaluated switch type is only used if #varName !== null
+	 * @param {Scope} scope
+	 * @returns {Instance}
+	 */
+	 evalDataMember(scope) {
+		if (this.#intVarName !== null || this.#lstVarName !== null) {
+			let caseScope = new Scope(scope);
+
+			if (this.#intVarName !== null) {
+				caseScope.set(this.#intVarName, Instance.new(new IntType()));
+			}
+
+			if (this.#lstVarName !== null) {
+				caseScope.set(this.#lstVarName, Instance.new(new ListType(new RawDataType())));
+			}
+
+			let bodyVal = this.body.eval(caseScope);
+
+			caseScope.assertAllUsed();
+
+			return bodyVal;
+		} else {
+			return this.body.eval(scope);
+		}
+	}
+
+	/**
+	 * Accepts two args
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	 toIR(indent = "") {
+		return new IR([
+			new IR(`(data) -> {\n${indent}${TAB}`),
+			new IR(`(pair) -> {\n${indent}${TAB}${TAB}`),
+			new IR(`(${this.#intVarName !== null ? this.#intVarName.toString() : "_"}, ${this.#lstVarName !== null ? this.#lstVarName.toString() : "_"}) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}${TAB}${TAB}`),
+			this.body.toIR(indent + TAB + TAB + TAB),
+			new IR(`\n${indent}${TAB}${TAB}}(__core__iData(__core__fstPair(pair)), __core__listData(__core__sndPair(pair)))`),
+			new IR(`\n${indent}${TAB}}(__core__unConstrData(data))`),
+			new IR(`\n${indent}}`)
+		]);
+	}
+}
+
+/**
+ * Default switch case
+ * @package
+ */
+class SwitchDefault extends Token {
+	#bodyExpr;
+
+	/**
+	 * @param {Site} site
+	 * @param {ValueExpr} bodyExpr
+	 */
+	constructor(site, bodyExpr) {
+		super(site);
+		this.#bodyExpr = bodyExpr;
+	}
+
+	toString() {
+		return `else => ${this.#bodyExpr.toString()}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	eval(scope) {
+		return this.#bodyExpr.eval(scope);
+	}
+
+	use() {
+		this.#bodyExpr.use();
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		return new IR([
+			new IR(`(_) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}`),
+			this.#bodyExpr.toIR(indent + TAB),
+			new IR(`\n${indent}}`)
+		]);
+	}
+}
+
+/**
+ * Parent class of EnumSwitchExpr and DataSwitchExpr
+ */
+class SwitchExpr extends ValueExpr {
+	#controlExpr;
+	#cases;
+	#defaultCase;
+
+	/** 
+	 * @param {Site} site
+	 * @param {ValueExpr} controlExpr - input value of the switch
+	 * @param {SwitchCase[]} cases
+	 * @param {?SwitchDefault} defaultCase
+	*/
+	constructor(site, controlExpr, cases, defaultCase = null) {
+		super(site);
+		this.#controlExpr = controlExpr;
+		this.#cases = cases;
+		this.#defaultCase = defaultCase;
+	}
+
+	get controlExpr() {
+		return this.#controlExpr;
+	}
+
+	get cases() {
+		return this.#cases;
+	}
+
+	get defaultCase() {
+		return this.#defaultCase;
+	}
+
+	toString() {
+		return `${this.#controlExpr.toString()}.switch{${this.#cases.map(c => c.toString()).join(", ")}${this.#defaultCase === null ? "" : ", " + this.#defaultCase.toString()}}`;
+	}
+
+	use() {
+		this.#controlExpr.use();
+
+		for (let c of this.#cases) {
+			c.use();
+		}
+
+		if (this.#defaultCase !== null) {
+			this.#defaultCase.use();
+		}
+	}
+}
+
+/**
+ * Switch expression for Enum, with SwitchCases and SwitchDefault as children
+ * @package
+ */
+class EnumSwitchExpr extends SwitchExpr {
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let controlVal = this.controlExpr.eval(scope);
+		let enumType = controlVal.getType(this.controlExpr.site);
+		let nEnumMembers = enumType.nEnumMembers(this.controlExpr.site);
+
+		// check that we have enough cases to cover the enum members
+		if (this.defaultCase === null && nEnumMembers > this.cases.length) {
+			throw this.typeError(`insufficient coverage of '${enumType.toString()}' in switch expression`);
+		}
+
+		/** @type {?Type[]} */
+		let branchMultiType = null;
+
+		for (let c of this.cases) {
+			let branchVal = c.evalEnumMember(scope, enumType);
+	
+			branchMultiType = IfElseExpr.reduceBranchMultiType(
+				c.site, 
+				branchMultiType, 
+				(branchVal instanceof MultiInstance) ? 
+					branchVal.values.map(v => v.getType(c.site)) :
+					[branchVal.getType(c.site)]
+			);
+		}
+
+		if (this.defaultCase !== null) {
+			let defaultVal = this.defaultCase.eval(scope);
+
+			branchMultiType = IfElseExpr.reduceBranchMultiType(
+				this.defaultCase.site,
+				branchMultiType, 
+				(defaultVal instanceof MultiInstance) ?
+					defaultVal.values.map(v => v.getType(assertDefined(this.defaultCase).site)) :
+					[defaultVal.getType(this.defaultCase.site)]
+			);
+		}
+
+		if (branchMultiType === null) {
+			throw new Error("unexpected");
+		} else {
+			return Instance.new(branchMultiType);
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		let cases = this.cases.slice();
+
+		/** @type {SwitchCase | SwitchDefault} */
+		let last;
+		if (this.defaultCase !== null) {
+			last = this.defaultCase;
+		} else {
+			last = assertDefined(cases.pop());
+		}
+
+		let n = cases.length;
+
+		let res = last.toIR(indent + TAB + TAB + TAB);
+
+		for (let i = n - 1; i >= 0; i--) {
+			res = new IR([
+				new IR(`__core__ifThenElse(__core__equalsInteger(i, ${cases[i].constrIndex.toString()}), () -> {`),
+				cases[i].toIR(indent + TAB + TAB + TAB),
+				new IR(`}, () -> {`),
+				res,
+				new IR(`})()`)
+			]);
+		}
+
+		return new IR([
+			new IR(`(e) `), new IR("->", this.site), new IR(` {\n${indent}${TAB}(\n${indent}${TAB}${TAB}(i) -> {\n${indent}${TAB}${TAB}${TAB}`),
+			res,
+			new IR(`\n${indent}${TAB}${TAB}}(__core__fstPair(__core__unConstrData(e)))\n${indent}${TAB})(e)\n${indent}}(`),
+			this.controlExpr.toIR(indent),
+			new IR(")"),
+		]);
+	}
+}
+
+/**
+ * Switch expression for Data
+ * @package
+ */
+class DataSwitchExpr extends SwitchExpr {
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let controlVal = this.controlExpr.eval(scope);
+		let dataType = controlVal.getType(this.controlExpr.site);
+
+		let controlSite = this.controlExpr.site;
+		if (!dataType.isBaseOf(controlSite, new RawDataType())) {
+			throw this.controlExpr.typeError(`expected Data type, got ${controlVal.getType(controlSite).toString()}`);
+		}
+
+		// check that we have enough cases to cover the enum members
+		if (this.defaultCase === null && this.cases.length < 5) {
+			throw this.typeError(`insufficient coverage of 'Data' in switch expression`);
+		}
+
+		/** @type {?Type[]} */
+		let branchMultiType = null;
+
+		for (let c of this.cases) {
+			let branchVal = c.evalDataMember(scope);
+
+			branchMultiType = IfElseExpr.reduceBranchMultiType(
+				c.site, 
+				branchMultiType, 
+				(branchVal instanceof MultiInstance) ?
+					branchVal.values.map(v => v.getType(c.site)) :
+					[branchVal.getType(c.site)]
+			);
+		}
+
+		if (this.defaultCase !== null) {
+			let defaultVal = this.defaultCase.eval(scope);
+
+			branchMultiType = IfElseExpr.reduceBranchMultiType(
+				this.defaultCase.site, 
+				branchMultiType, 
+				(defaultVal instanceof MultiInstance) ?
+					defaultVal.values.map(v => v.getType(assertDefined(this.defaultCase).site)) :
+					[defaultVal.getType(this.defaultCase.site)]
+			);
+		}
+
+		if (branchMultiType === null) {
+			throw new Error("unexpected");
+		} else {
+			return Instance.new(branchMultiType);
+		}
+	}
+
+	/**
+	 * @param {string} indent 
+	 * @returns {IR}
+	 */
+	toIR(indent = "") {
+		/** @type {[?IR, ?IR, ?IR, ?IR, ?IR]} */
+		let cases = [null, null, null, null, null]; // constr, map, list, int, byteArray
+
+		for (let c of this.cases) {
+			let ir = c.toIR(indent + TAB + TAB);
+
+			switch (c.memberName.value) {
+				case "ByteArray":
+					cases[4] = ir;
+					break;
+				case "Int":
+					cases[3] = ir;
+					break;
+				case "[]Data":
+					cases[2] = ir;
+					break;
+				case "Map[Data]Data":
+					cases[1] = ir;
+					break;
+				case "(Int, []Data)":
+					cases[0] = ir;
+					break;
+				default:
+					if (cases[0] !== null) {
+						throw new Error("should've been caught before");
+					}
+
+					cases[0] = ir;
+			}
+		}
+
+		if (this.defaultCase !== null) {
+			for (let i = 0; i < 5; i++) {
+				if (cases[i] === null) {
+					cases[i] = new IR(`${indent}${TAB}def`);
+				}
+			}
+		}
+
+		let res = new IR([
+			new IR(`${indent}__core__chooseData(e, `, this.site),
+			new IR(cases.map(c => assertDefined(c))).join(", "),
+			new IR(`${indent})`)
+		]);
+
+		if (this.defaultCase !== null) {
+			res = new IR([
+				new IR(`${indent}(def) -> {\n`),
+				res,
+				new IR(`\n${indent}}(`),
+				this.defaultCase.toIR(indent),
+				new IR(`)`)
+			]);
+		}
+
+		res = new IR([
+			new IR(`${indent}(e) -> {\n`),
+			res,
+			new IR("(e)"),
+			new IR(`${indent}}(`),
+			this.controlExpr.toIR(indent),
+			new IR(")")
+		]);
+
+		return res;
+	}
+}
+
+
+////////////////////////////////
+// Section 16: Literal functions
+////////////////////////////////
+
+/**
+ * @package
+ * @param {Site} site
+ * @param {Type} type - expected type
+ * @param {any} value - result of JSON.parse(string)
+ * @param {string} path - context for debugging
+ * @returns {ValueExpr}
+ */
+function buildLiteralExprFromJson(site, type, value, path) {
+	if (value === null) {
+		throw site.typeError(`expected non-null value for parameter '${path}'`);
+	} else if (type instanceof BoolType) {
+		if (typeof value == "boolean") {
+			return new PrimitiveLiteralExpr(new BoolLiteral(site, value));
+		} else {
+			throw site.typeError(`expected boolean for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof StringType) {
+		if (typeof value == "string") {
+			return new PrimitiveLiteralExpr(new StringLiteral(site, value));
+		} else {
+			throw site.typeError(`expected string for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof IntType) {
+		if (typeof value == "number") {
+			if (value%1 == 0.0) {
+				return new PrimitiveLiteralExpr(new IntLiteral(site, BigInt(value)));
+			} else {
+				throw site.typeError(`expected round number for parameter '${path}', got '${value}'`);
+			}
+		} else {
+			throw site.typeError(`expected number for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof ByteArrayType || type instanceof HashType) {
+		if (value instanceof Array) {
+			/**
+			 * @type {number[]}
+			 */
+			const bytes = [];
+
+			for (let item of value) {
+				if (typeof item == "number" && item%1 == 0.0 && item >= 0 && item < 256) {
+					bytes.push(item);
+				} else {
+					throw site.typeError(`expected uint8[] for parameter '${path}', got '${value}'`);
+				}
+			}
+
+			/** @type {ValueExpr} */
+			let litExpr = new PrimitiveLiteralExpr(new ByteArrayLiteral(site, bytes));
+
+			if (type instanceof HashType) {
+				litExpr = new CallExpr(site, new ValuePathExpr(new TypeRefExpr(new Word(site, type.toString()), type), new Word(site, "new")), [litExpr]);
+			}
+
+			return litExpr;
+		} else {
+			throw site.typeError(`expected array for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof ListType) {
+		if (value instanceof Array) {
+			/**
+			 * @type {ValueExpr[]}
+			 */
+			const items = [];
+
+			for (let item of value) {
+				items.push(buildLiteralExprFromJson(site, type.itemType, item, path + "[]"));
+			}
+
+			return new ListLiteralExpr(site, new TypeExpr(site, type.itemType), items);
+		} else {
+			throw site.typeError(`expected array for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof MapType) {
+		/**
+		 * @type {[ValueExpr, ValueExpr][]}
+		 */
+		const pairs = [];
+
+		if (value instanceof Object && type.keyType instanceof StringType) {
+			for (let key in value) {
+				pairs.push([new PrimitiveLiteralExpr(new StringLiteral(site, key)), buildLiteralExprFromJson(site, type.valueType, value[key], path + "." + key)]);
+			}
+		} else if (value instanceof Array) {
+			for (let item of value) {
+				if (item instanceof Array && item.length == 2) {
+					pairs.push([
+						buildLiteralExprFromJson(site, type.keyType, item[0], path + "[0]"),
+						buildLiteralExprFromJson(site, type.valueType, item[1], path + "[1]"),
+					]);
+				} else {
+					throw site.typeError(`expected array of pairs for parameter '${path}', got '${value}'`);
+				}
+			}
+		} else {
+			throw site.typeError(`expected array or object for parameter '${path}', got '${value}'`);
+		}
+
+		return new MapLiteralExpr(
+			site, 
+			new TypeExpr(site, type.keyType), 
+			new TypeExpr(site, type.valueType),
+			pairs
+		);
+	} else if (type instanceof StructStatementType || type instanceof EnumMemberStatementType) {
+		if (value instanceof Object) {
+			const nFields = type.statement.nFields(site);
+
+			/**
+			 * @type {StructLiteralField[]}
+			 */
+			const fields = new Array(nFields);
+
+			const nActual = Object.entries(value).length;
+
+			if (nFields != nActual) {
+				throw site.typeError(`expected object with ${nFields.toString} fields for parameter '${path}', got '${value}' with ${nActual.toString()} fields`);
+			}
+
+			for (let i = 0; i < nFields; i++) {
+				const key = type.statement.getFieldName(i);
+
+				const subValue = value[key];
+
+				if (subValue === undefined) {
+					throw site.typeError(`expected object with key '${key}' for parameter '${path}', got '${value}`);
+				}
+
+				const fieldType = type.statement.getFieldType(site, i);
+
+				const valueExpr = buildLiteralExprFromJson(site, fieldType, subValue, path + "." + key);
+
+				fields[i] = new StructLiteralField(nFields == 1 ? null : new Word(site, key), valueExpr);
+			}
+
+			return new StructLiteralExpr(new TypeExpr(site, type), fields);
+		} else {
+			throw site.typeError(`expected object for parameter '${path}', got '${value}'`);
+		}
+	} else {
+		throw site.typeError(`unhandled parameter type '${type.toString()}', for parameter ${path}`);
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site
+ * @param {Type} type - expected type
+ * @param {UplcValue} value 
+ * @param {string} path - context for debugging
+ * @returns {ValueExpr}
+ */
+function buildLiteralExprFromValue(site, type, value, path) {
+	if (type instanceof BoolType) {
+		if (value instanceof UplcBool) {
+			return new PrimitiveLiteralExpr(new BoolLiteral(site, value.bool));
+		} else {
+			throw site.typeError(`expected UplcBool for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof StringType) {
+		if (value instanceof UplcDataValue && value.data instanceof ByteArrayData) {
+			return new PrimitiveLiteralExpr(new StringLiteral(site, bytesToText(value.data.bytes)));
+		} else {
+			throw site.typeError(`expected ByteArrayData for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof IntType) {
+		if (value instanceof UplcDataValue && value.data instanceof IntData) {
+			return new PrimitiveLiteralExpr(new IntLiteral(site, value.data.value));
+		} else {
+			throw site.typeError(`expected IntData for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof ByteArrayType) {
+		if (value instanceof UplcDataValue && value.data instanceof ByteArrayData) {
+			return new PrimitiveLiteralExpr(new ByteArrayLiteral(site, value.data.bytes));
+		} else {
+			throw site.typeError(`expected ByteArrayData for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof ListType) {
+		if (value instanceof UplcDataValue && value.data instanceof ListData) {
+			/**
+			 * @type {ValueExpr[]}
+			 */
+			const items = [];
+
+			for (let data of value.data.list) {
+				items.push(buildLiteralExprFromValue(site, type.itemType, new UplcDataValue(site, data), path + "[]"));
+			}
+
+			return new ListLiteralExpr(site, new TypeExpr(site, type.itemType), items);
+		} else {
+			throw site.typeError(`expected ListData for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof MapType) {
+		if (value instanceof UplcDataValue && value.data instanceof MapData) {
+			/**
+			 * @type {[ValueExpr, ValueExpr][]}
+			 */
+			const pairs = [];
+
+			for (let dataPair of value.data.map) {
+				const keyExpr = buildLiteralExprFromValue(site, type.keyType, new UplcDataValue(site, dataPair[0]), path + "{key}");
+				const valueExpr = buildLiteralExprFromValue(site, type.valueType, new UplcDataValue(site, dataPair[1]), path + "{value}");
+
+				pairs.push([keyExpr, valueExpr]);
+			}
+
+			return new MapLiteralExpr(
+				site, 
+				new TypeExpr(site, type.keyType), 
+				new TypeExpr(site, type.valueType),
+				pairs
+			);
+		} else {
+			throw site.typeError(`expected ListData for parameter '${path}', got '${value}'`);
+		}
+	} else if (type instanceof StructStatementType || type instanceof EnumMemberStatementType) {
+		if (value instanceof UplcDataValue && value.data instanceof ConstrData) {
+			const nFields = type.statement.nFields(site);
+			/**
+			 * @type {StructLiteralField[]}
+			 */
+			const fields = new Array(nFields);
+
+			if (nFields != value.data.fields.length) {
+				throw site.typeError(`expected ConstrData with ${nFields.toString} fields for parameter '${path}', got '${value}' with ${value.data.fields.length.toString()} fields`);
+			}
+
+			for (let i = 0; i < nFields; i++) {
+				const f = value.data.fields[i];
+
+				const fieldType = type.statement.getFieldType(site, i);
+
+				const valueExpr = buildLiteralExprFromValue(site, fieldType, new UplcDataValue(site, f), path + "." + i.toString());
+
+				fields[i] = new StructLiteralField(nFields == 1 ? null : new Word(site, type.statement.getFieldName(i)), valueExpr);
+			}
+
+			return new StructLiteralExpr(new TypeExpr(site, type), fields);
+		} else {
+			throw site.typeError(`expected ConstrData for parameter '${path}', got '${value}'`);
+		}
+	} else {
+		throw site.typeError(`unhandled parameter type '${type.toString()}', for parameter ${path}`);
+	}
+}
+
+
+////////////////////////////////////
+// Section 17: Helios AST statements
+////////////////////////////////////
+
+/**
+ * Base class for all statements
+ * Doesn't return a value upon calling eval(scope)
+ * @package
+ */
+class Statement extends Token {
+	#name;
+	#used;
+	#basePath; // set by the parent Module
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 */
+	constructor(site, name) {
+		super(site);
+		this.#name = name;
+		this.#used = false;
+		this.#basePath = "__user";
+	}
+
+	/**
+	 * @param {string} basePath 
+	 */
+	setBasePath(basePath) {
+		this.#basePath = basePath;
+	}
+
+	get path() {
+		return `${this.#basePath}__${this.name.toString()}`;
+	}
+
+	/**
+	 * @type {Word}
+	 */
+	get name() {
+		return this.#name;
+	}
+
+	/**
+	 * @type {boolean}
+	 */
+	get used() {
+		return this.#used;
+	}
+
+	/**
+	 * @param {ModuleScope} scope 
+	 */
+	eval(scope) {
+		throw new Error("not yet implemented");
+	}
+
+	use() {
+		this.#used = true;
+	}
+
+	/**
+	 * @param {Uint8Array} mask
+	 */
+	hideUnused(mask) {
+		if (!this.#used) {
+			if (this.site.endSite === null) {
+				mask.fill(0, this.site.pos);
+			} else {
+				mask.fill(0, this.site.pos, this.site.endSite.pos);
+			}
+		}
+	}
+
+	/**
+	 * Returns IR of statement.
+	 * No need to specify indent here, because all statements are top-level
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		throw new Error("not yet implemented");
+	}
+}
+
+/**
+ * Each field is given a separate ImportStatement
+ * @package
+ */
+class ImportStatement extends Statement {
+	#origName;
+	#moduleName;
+
+	/** 
+	 * @type {?Statement} 
+	 */
+	#origStatement;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name
+	 * @param {Word} origName
+	 * @param {Word} moduleName
+	 */
+	constructor(site, name, origName, moduleName) {
+		super(site, name);
+		this.#origName = origName;
+		this.#moduleName = moduleName;
+		this.#origStatement = null;
+	}
+
+	/**
+	 * @type {Word}
+	 */
+	get moduleName() {
+		return this.#moduleName;
+	}
+
+	/**
+	 * @type {Statement}
+	 */
+	get origStatement() {
+		if (this.#origStatement == null) {
+			throw new Error("should be set");
+		} else {
+			return this.#origStatement;
+		}
+	}
+
+	/**
+	 * @param {ModuleScope} scope
+	 * @returns {EvalEntity}
+	 */
+	evalInternal(scope) {
+		let importedScope = scope.get(this.#moduleName);
+
+		if (importedScope instanceof Scope) {
+			let importedEntity = importedScope.get(this.#origName);
+
+			if (importedEntity instanceof Scope) {
+				throw this.#origName.typeError(`can't import a module from a module`);
+			} else {
+				return importedEntity;
+			}
+		} else {
+			throw this.#moduleName.typeError(`${this.name.toString()} isn't a module`);
+		}
+	}
+
+	/**
+	 * @param {ModuleScope} scope 
+	 */
+	eval(scope) {
+		let v = this.evalInternal(scope);
+
+		if (v instanceof FuncStatementInstance || v instanceof ConstStatementInstance || v instanceof StatementType) {
+			this.#origStatement = assertClass(v.statement, Statement);
+		} else {
+			throw new Error("unexpected import entity");
+		}
+
+		scope.set(this.name, v);
+	}
+
+	use() {
+		super.use();
+
+		if (this.#origStatement === null) {
+			throw new Error("should be set");
+		} else {
+			this.#origStatement.use();
+		}
+	}
+
+	/**
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		// import statements only have a scoping function and don't do anything to the IR
+	}
+}
+
+/**
+ * Const value statement
+ * @package
+ */
+class ConstStatement extends Statement {
+	/**
+	 * @type {?TypeExpr}
+	 */
+	#typeExpr;
+
+	/**
+	 * @type {ValueExpr}
+	 */
+	#valueExpr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 * @param {?TypeExpr} typeExpr - can be null in case of type inference
+	 * @param {ValueExpr} valueExpr 
+	 */
+	constructor(site, name, typeExpr, valueExpr) {
+		super(site, name);
+		this.#typeExpr = typeExpr;
+		this.#valueExpr = valueExpr;
+	}
+
+	get type() {
+		if (this.#typeExpr === null) {
+			return this.#valueExpr.type;
+		} else {
+			return this.#typeExpr.type;
+		}
+	}
+
+	/**
+	 * @param {string | UplcValue} value 
+	 */
+	changeValue(value) {
+		let type = this.type;
+		let site = this.#valueExpr.site;
+
+		if (typeof value == "string") {
+			this.#valueExpr = buildLiteralExprFromJson(site, type, JSON.parse(value), this.name.value);
+		} else {
+			this.#valueExpr = buildLiteralExprFromValue(site, type, value, this.name.value);
+		}
+	}
+
+	/**
+	 * Use this to change a value of something that is already typechecked.
+	 * @param {UplcData} data
+	 */
+	changeValueSafe(data) {
+		const type = this.type;
+		const site = this.#valueExpr.site;
+
+		if ((new BoolType()).isBaseOf(site, type)) {
+			this.#valueExpr = new PrimitiveLiteralExpr(new BoolLiteral(site, data.index == 1));
+		} else {
+			this.#valueExpr = new LiteralDataExpr(site, type, data);
+		}
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return `const ${this.name.toString()}${this.#typeExpr === null ? "" : ": " + this.#typeExpr.toString()} = ${this.#valueExpr.toString()};`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		let value = this.#valueExpr.eval(scope);
+
+		/** @type {Type} */
+		let type;
+
+		if (this.#typeExpr === null) {
+			if (!this.#valueExpr.isLiteral()) {
+				throw this.typeError("can't infer type");
+			}
+
+			type = this.#valueExpr.type;
+		} else {
+			type = this.#typeExpr.eval(scope);
+
+			if (!value.isInstanceOf(this.#valueExpr.site, type)) {
+				throw this.#valueExpr.typeError("wrong type");
+			}
+		}
+
+		return new ConstStatementInstance(type, this);
+	}
+
+	/**
+	 * Evaluates rhs and adds to scope
+	 * @param {TopScope} scope 
+	 */
+	eval(scope) {
+		scope.set(this.name, this.evalInternal(scope));
+	}
+
+	use() {
+		if (!this.used) {
+			super.use();
+
+			this.#valueExpr.use();
+
+			if (this.#typeExpr !== null) {
+				this.#typeExpr.use();
+			}
+		}
+	}
+
+	/**
+	 * @returns {IR}
+	 */
+	toIRInternal() {
+		return this.#valueExpr.toIR();
+	}
+
+	/**
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		map.set(this.path, this.toIRInternal());
+	}
+}
+
+/**
+ * Single field in struct or enum member
+ * @package
+ */
+class DataField extends NameTypePair {
+	/**
+	 * @param {Word} name 
+	 * @param {TypeExpr} typeExpr 
+	 */
+	constructor(name, typeExpr) {
+		super(name, typeExpr);
+	}
+}
+
+/**
+ * Base class for struct and enum member
+ * @package
+ */
+class DataDefinition extends Statement {
+	#fields;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 * @param {DataField[]} fields 
+	 */
+	constructor(site, name, fields) {
+		super(site, name);
+		this.#fields = fields;
+	}
+
+	get fields() {
+		return this.#fields.slice();
+	}
+
+	/**
+	 * Returns index of a field.
+	 * Returns -1 if not found.
+	 * @param {Word} name 
+	 * @returns {number}
+	 */
+	findField(name) {
+		let found = -1;
+		let i = 0;
+		for (let f of this.#fields) {
+			if (f.name.toString() == name.toString()) {
+				found = i;
+				break;
+			}
+			i++;
+		}
+
+		return found;
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {boolean}
+	 */
+	hasField(name) {
+		return this.findField(name) != -1;
+	}
+
+	toString() {
+		return `${this.name.toString()} {${this.#fields.map(f => f.toString()).join(", ")}}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 * @returns {Type}
+	 */
+	evalInternal(scope) {
+		for (let f of this.#fields) {
+			let fieldType = f.evalType(scope);
+
+			if (fieldType instanceof FuncType) {
+				throw f.site.typeError("field can't be function type");
+			}
+		}
+
+		// the following assertion is needed for vscode typechecking
+		if (this instanceof StructStatement) {
+            return new StructStatementType(this);
+        } else if (this instanceof EnumMember) {
+			return new EnumMemberStatementType(this);
+		} else {
+			throw new Error("unhandled implementations");
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	nFields(site) {
+		return this.#fields.length;
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @param {number} i 
+	 * @returns {Type}
+	 */
+	getFieldType(site, i) {
+		return this.#fields[i].type;
+	}
+
+	/**
+	 * @param {number} i
+	 * @returns {string}
+	 */
+	getFieldName(i) {
+		return this.#fields[i].name.toString();
+	}
+	
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	nEnumMembers(site) {
+		throw site.typeError(`'${this.name.value}' isn't an enum type`);
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name) {
+		if (this.hasField(name)) {
+			throw name.referenceError(`'${this.name.toString()}::${name.toString()}' undefined (did you mean '${this.name.toString()}.${name.toString()}'?)`);
+		} else {
+			throw name.referenceError(`'${this.name.toString()}::${name.toString()}' undefined`);
+		}
+	}
+
+	/**
+	 * Gets insance member value.
+	 * If dryRun == true usage is triggered
+	 * @param {Word} name 
+	 * @param {boolean} dryRun 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name, dryRun = false) {
+		let i = this.findField(name);
+
+		if (i == -1) {
+			throw name.referenceError(`'${this.name.toString()}.${name.toString()}' undefined`);
+		} else {
+			return Instance.new(this.#fields[i].type);
+		}
+	}
+
+	use() {
+		if (!this.used) {
+			super.use();
+			
+			for (let f of this.#fields) {
+				f.use();
+			}
+		}
+	}
+
+	/**
+	 * @param {IRDefinitions} map
+	 * @param {boolean} isConstr
+	 */
+	toIR(map, isConstr = true) {
+		const getterBaseName = isConstr ? "__helios__common__field" : "__helios__common__tuple_field";
+
+		// add a getter for each field
+		for (let i = 0; i < this.#fields.length; i++) {
+			let f = this.#fields[i];
+			let key = `${this.path}__${f.name.toString()}`;
+			let isBool = f.type instanceof BoolType;
+
+			/**
+			 * @type {IR}
+			 */
+			let getter;
+
+			if (i < 20) {
+				getter = new IR(`${getterBaseName}_${i}`, f.site);
+
+				if (isBool) {
+					getter = new IR([
+						new IR("(self) "), new IR("->", f.site), new IR(" {"),
+						new IR(`__helios__common__unBoolData(${getterBaseName}_${i}(self))`),
+						new IR("}"),
+					]);
+				} else {
+					getter = new IR(`${getterBaseName}_${i}`, f.site);
+				}
+			} else {
+				let inner = isConstr ? new IR("__core__sndPair(__core__unConstrData(self))") : new IR("__core__unListData(self)");
+
+				for (let j = 0; j < i; j++) {
+					inner = new IR([new IR("__core__tailList("), inner, new IR(")")]);
+				}
+
+				inner = new IR([
+					new IR("__core__headList("),
+					inner,
+					new IR(")"),
+				]);
+
+				if (isBool) {
+					inner = new IR([new IR("__helios__common__unBoolData("), inner, new IR(")")]);
+				}
+
+				getter = new IR([
+					new IR("(self) "), new IR("->", f.site), new IR(" {"),
+					inner,
+					new IR("}"),
+				]);
+			}
+
+			map.set(key, getter)
+		}
+	}
+}
+
+/**
+ * Struct statement
+ * @package
+ */
+class StructStatement extends DataDefinition {
+	#impl;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 * @param {DataField[]} fields 
+	 * @param {ImplDefinition} impl
+	 */
+	constructor(site, name, fields, impl) {
+		super(site, name, fields);
+
+		this.#impl = impl;
+	}
+
+	get type() {
+		return new StructStatementType(this);
+	}
+
+	toString() {
+		return "struct " + super.toString();
+	}
+
+	/**
+	 * Returns -1, which means -> don't use ConstrData, but use []Data directly
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	getConstrIndex(site) {
+		return -1;
+	}
+
+	/**
+	 * Evaluates own type and adds to scope
+	 * @param {TopScope} scope 
+	 */
+	eval(scope) {
+		if (scope.isStrict() && this.fields.length == 0) {
+			throw this.syntaxError("expected at least 1 struct field");
+		}
+
+		scope.set(this.name, this.evalInternal(scope));
+
+		// check the types of the member methods
+		this.#impl.eval(scope);
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @param {boolean} dryRun 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name, dryRun = false) {
+		if (this.hasField(name)) {
+			return super.getInstanceMember(name, dryRun);
+		} else {
+			return this.#impl.getInstanceMember(name, dryRun);
+		}
+	}
+
+	/**
+	 * @param {Word} name
+	 * @param {boolean} dryRun
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name, dryRun = false) {
+		// only the impl can contain potentially contain type members
+		return this.#impl.getTypeMember(name, dryRun);
+	}
+
+	/**
+	 * @param {Uint8Array} mask
+	 */
+	hideUnused(mask) {
+		super.hideUnused(mask);
+
+		this.#impl.hideUnused(mask);
+	}
+
+	/**
+	 * @param {IRDefinitions} map
+	 */
+	toIR(map) {
+		if (this.fields.length == 1) {
+			let f = this.fields[0];
+			let key = `${this.path}__${f.name.toString()}`;
+			let isBool = f.type instanceof BoolType;
+
+			if (isBool) {
+				map.set(key, new IR("__helios__common__unBoolData", f.site));
+			} else {
+				map.set(key, new IR("__helios__common__identity", f.site));
+			}
+		} else {
+			super.toIR(map, false);
+		}
+
+		this.#impl.toIR(map);
+	}
+}
+
+/**
+ * Function statement
+ * (basically just a named FuncLiteralExpr)
+ * @package
+ */
+class FuncStatement extends Statement {
+	#funcExpr;
+	#recursive;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 * @param {FuncLiteralExpr} funcExpr 
+	 */
+	constructor(site, name, funcExpr) {
+		super(site, name);
+		this.#funcExpr = funcExpr;
+		this.#recursive = false;
+	}
+
+	/**
+	 * @type {Type[]}
+	 */
+	get argTypes() {
+		return this.#funcExpr.argTypes;
+	}
+
+	/**
+	 * @type {string[]}
+	 */
+	get argTypeNames() {
+		return this.#funcExpr.argTypeNames;
+	}
+
+	/**
+	 * @type {Type[]}
+	 */
+	get retTypes() {
+		return this.#funcExpr.retTypes;
+	}
+
+	toString() {
+		return `func ${this.name.toString()}${this.#funcExpr.toString()}`;
+	}
+
+	/**
+	 * Evaluates a function and returns a func value
+	 * @param {Scope} scope 
+	 * @returns {Instance}
+	 */
+	evalInternal(scope) {
+		return this.#funcExpr.evalInternal(scope);
+	}
+
+	/**
+	 * Evaluates type of a funtion.
+	 * Separate from evalInternal so we can use this function recursively inside evalInternal
+	 * @param {Scope} scope 
+	 * @returns {FuncType}
+	 */
+	evalType(scope) {
+		return this.#funcExpr.evalType(scope);
+	}
+
+	use() {
+		if (!this.used) {
+			super.use();
+
+			this.#funcExpr.use();
+		}
+	}
+
+	isRecursive() {
+		return this.#recursive;
+	}
+
+	/**
+	 * Called in FuncStatementScope as soon as recursion is detected
+	 */
+	setRecursive() {
+		this.#recursive = true;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 */
+	eval(scope) {
+		// add to scope before evaluating, to allow recursive calls
+
+		let fnType = this.evalType(scope);
+
+		let fnVal = new FuncStatementInstance(fnType, this);
+
+		scope.set(this.name, fnVal);
+
+		void this.#funcExpr.evalInternal(new FuncStatementScope(scope, this));
+	}
+
+	/**
+	 * Returns IR of function.
+	 * @param {string} fullName - fullName has been prefixed with a type path for impl members
+	 * @returns {IR}
+	 */
+	toIRInternal(fullName = this.path) {
+		if (this.#recursive) {
+			return this.#funcExpr.toIRRecursive(fullName, TAB);
+		} else {
+			return this.#funcExpr.toIR(TAB);
+		}
+	}
+
+	/**
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		map.set(this.path, this.toIRInternal());
+	}
+
+	/**
+	 * @param {Statement} s 
+	 * @returns {boolean}
+	 */
+	static isMethod(s) {
+		if (s instanceof FuncStatement) {
+			return s.#funcExpr.isMethod();
+		} else {
+			return false;
+		}
+	}
+}
+
+/**
+ * EnumMember defintion is similar to a struct definition
+ * @package
+ */
+class EnumMember extends DataDefinition {
+	/** @type {?EnumStatement} */
+	#parent;
+
+	/** @type {?number} */
+	#constrIndex;
+
+	/**
+	 * @param {Word} name
+	 * @param {DataField[]} fields
+	 */
+	constructor(name, fields) {
+		super(name.site, name, fields);
+		this.#parent = null; // registered later
+		this.#constrIndex = null;
+	}
+
+	/** 
+	 * @param {EnumStatement} parent
+	 * @param {number} i
+	*/
+	registerParent(parent, i) {
+		this.#parent = parent;
+		this.#constrIndex = i;
+	}
+	
+	/**
+	 * @type {EnumStatement}
+	 */
+	get parent() {
+		if (this.#parent === null) {
+			throw new Error("parent not yet registered");
+		} else {
+			return this.#parent;
+		}
+	}
+
+	get type() {
+		return new EnumMemberStatementType(this);
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	getConstrIndex(site) {
+		if (this.#constrIndex === null) {
+			throw new Error("constrIndex not set");
+		} else {
+			return this.#constrIndex;
+		}
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 */
+	eval(scope) {
+		if (this.#parent === null) {
+			throw new Error("parent should've been registered");
+		}
+
+		void super.evalInternal(scope); // the internally created type isn't be added to the scope. (the parent enum type takes care of that)
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @param {boolean} dryRun 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name, dryRun = false) {
+		if (this.hasField(name)) {
+			return super.getInstanceMember(name, dryRun);
+		} else {
+			if (this.#parent === null) {
+				throw new Error("parent should've been registered");
+			} else {
+				return this.#parent.getInstanceMember(name, dryRun);
+			}
+		}
+	}
+
+	get path() {
+		return `${this.parent.path}__${this.name.toString()}`;
+	}
+}
+
+/**
+ * Enum statement, containing at least one member
+ * @package
+ */
+class EnumStatement extends Statement {
+	#members;
+	#impl;
+
+	/**
+	 * @param {Site} site 
+	 * @param {Word} name 
+	 * @param {EnumMember[]} members 
+	 * @param {ImplDefinition} impl
+	 */
+	constructor(site, name, members, impl) {
+		super(site, name);
+		this.#members = members;
+		this.#impl = impl;
+		
+		for (let i = 0; i < this.#members.length; i++) {
+			this.#members[i].registerParent(this, i);
+		}
+	}
+
+	get type() {
+		return new EnumStatementType(this);
+	}
+
+	/**
+	 * Returns index of enum member.
+	 * Returns -1 if not found
+	 * @param {Word} name 
+	 * @returns {number}
+	 */
+	// returns an index
+	findEnumMember(name) {
+		let found = -1;
+		let i = 0;
+		for (let member of this.#members) {
+			if (member.name.toString() == name.toString()) {
+				found = i;
+				break;
+			}
+			i++;
+		}
+
+		return found;
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @param {number} i
+	 * @returns {EnumMember}
+	 */
+	getEnumMember(site, i) {
+		return assertDefined(this.#members[i]);
+	}
+
+	/**
+	 * @param {Word} name
+	 * @returns {boolean}
+	 */
+	hasEnumMember(name) {
+		return this.findEnumMember(name) != -1;
+	}
+
+	toString() {
+		return `enum ${this.name.toString()} {${this.#members.map(m => m.toString()).join(", ")}}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 */
+	eval(scope) {
+		this.#members.forEach(m => {
+			m.eval(scope);
+		});
+
+		scope.set(this.name, this.type);
+
+		this.#impl.eval(scope);
+	}
+
+	use() {
+		if (!this.used) {
+			super.use();
+
+			for (let m of this.#members) {
+				m.use();
+			}
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	nFields(site) {
+		throw site.typeError("enum doesn't have fields");
+	}
+
+	/**
+	 * @param {Site} site
+	 * @param {number} i
+	 * @returns {Type}
+	 */
+	getFieldType(site, i) {
+		throw site.typeError("enum doesn't have fields");
+	}
+
+	/**
+	 * @param {number} i 
+	 * @returns {string}
+	 */
+	getFieldName(i) {
+		throw Site.dummy().typeError("enum doesn't have fields");
+	}
+	
+    /**
+     * @param {Word} name 
+     * @returns {boolean}
+     */
+    hasField(name) {
+        throw name.site.typeError("enum doesn't have fields");
+    }
+
+	/** 
+	 * @param {Word} name 
+	 * @param {boolean} dryRun 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name, dryRun = false) {
+		if (this.hasEnumMember(name)) {
+			throw name.referenceError(`'${name.toString()}' is an enum of '${this.toString}' (did you mean '${this.toString()}::${name.toString()}'?)`);
+		} else {
+			return this.#impl.getInstanceMember(name, dryRun);
+		}
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @param {boolean} dryRun
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name, dryRun = false) {
+		let i = this.findEnumMember(name);
+		if (i == -1) {
+			return this.#impl.getTypeMember(name, dryRun);
+		} else {
+			return this.#members[i].type;
+		}
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	getConstrIndex(site) {
+		throw site.typeError("can't construct an enum directly (cast to a concrete type first)");
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @returns {number}
+	 */
+	nEnumMembers(site) {
+		return this.#members.length;
+	}
+
+	/**
+	 * @param {Uint8Array} mask
+	 */
+	hideUnused(mask) {
+		super.hideUnused(mask);
+
+		this.#impl.hideUnused(mask);
+	}
+
+	/**
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		for (let member of this.#members) {
+			member.toIR(map);
+		}
+
+		this.#impl.toIR(map);
+	}
+}
+
+/**
+ * Impl statements, which add functions and constants to registry of user types (Struct, Enum Member and Enums)
+ * @package
+ */
+class ImplDefinition {
+	#selfTypeExpr;
+	#statements;
+
+	/** @type {Instance[]} - filled during eval to allow same recursive behaviour as for top-level statements */
+	#statementValues;
+
+	/** @type {Set<string>} */
+	#usedStatements;
+
+	/**
+	 * @param {TypeRefExpr} selfTypeExpr;
+	 * @param {(FuncStatement | ConstStatement)[]} statements 
+	 */
+	constructor(selfTypeExpr, statements) {
+		this.#selfTypeExpr = selfTypeExpr;
+		this.#statements = statements;
+		this.#statementValues = [];
+		this.#usedStatements = new Set(); // used for code-generation, but not for cleanSource filtering
+	}
+
+	toString() {
+		return `${this.#statements.map(s => s.toString()).join("\n")}`;
+	}
+
+	/**
+	 * @param {Scope} scope 
+	 */
+	eval(scope) {
+		let selfType = this.#selfTypeExpr.eval(scope);
+
+		if (!(selfType instanceof StatementType)) {
+			throw this.#selfTypeExpr.referenceError("not a user-type");
+		} else {
+			for (let s of this.#statements) {
+				if (s instanceof FuncStatement) {
+					// override eval() of FuncStatement because we don't want the function to add itself to the scope directly.
+					let v = new FuncStatementInstance(s.evalType(scope), s);
+
+					this.#statementValues.push(v); // add func type to #statementValues in order to allow recursive calls (acts as a special scope)
+
+					// eval internal doesn't add anything to scope
+					void s.evalInternal(new FuncStatementScope(scope, s));
+				} else {
+					// eval internal doesn't add anything to scope
+					this.#statementValues.push(s.evalInternal(scope));
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param {Word} name
+	 * @param {boolean} dryRun
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name, dryRun = false) {
+		switch (name.value) {
+			case "serialize":
+				this.#usedStatements.add(name.toString());
+				return Instance.new(new FuncType([], new ByteArrayType()));
+			case "__eq":
+			case "__neq":
+				this.#usedStatements.add(name.toString());
+				return Instance.new(new FuncType([this.#selfTypeExpr.type], new BoolType()));
+			default:
+				// loop the contained statements to find one with name 'name'
+				for (let i = 0; i < this.#statementValues.length; i++) {
+					let s = this.#statements[i];
+
+					if (name.toString() == s.name.toString()) {
+						if (FuncStatement.isMethod(s)) {
+							if (!dryRun) {
+								this.#usedStatements.add(name.toString());
+							}
+
+							return this.#statementValues[i];
+						} else {
+							throw name.referenceError(`'${this.#selfTypeExpr.toString()}.${name.toString()}' isn't a method (did you mean '${this.#selfTypeExpr.toString()}::${name.toString()}'?)`);
+						}
+					}
+				}
+
+				throw name.referenceError(`'${this.#selfTypeExpr.toString()}.${name.toString()}' undefined`);
+		}
+	}
+	
+	/**
+	 * @param {Word} name 
+	 * @param {boolean} dryRun 
+	 * @returns {EvalEntity}
+	 */
+	getTypeMember(name, dryRun = false) {
+		switch (name.value) {
+			case "from_data":
+				this.#usedStatements.add(name.toString());
+				return Instance.new(new FuncType([new RawDataType()], this.#selfTypeExpr.type));
+			default:
+				for (let i = 0; i < this.#statementValues.length; i++) {
+					let s = this.#statements[i];
+
+					if (name.toString() == s.name.toString()) {
+						if (FuncStatement.isMethod(s)) {
+							throw name.referenceError(`'${this.#selfTypeExpr.toString()}::${name.value}' is a method (did you mean '${this.#selfTypeExpr.toString()}.${name.toString()}'?)`)
+						} else {
+							if (!dryRun) {
+								this.#usedStatements.add(name.toString());
+							}
+
+							return this.#statementValues[i];
+						}
+					}
+				}
+
+				throw name.referenceError(`'${this.#selfTypeExpr.toString()}::${name.toString()}' undefined`);
+		}
+	}
+
+	/**
+	 * @param {Uint8Array} mask
+	 */
+	hideUnused(mask) {
+		for (let s of this.#statements) {
+			if (!s.used) {
+				let site = s.site;
+
+				if (site.endSite === null) {
+					mask.fill(0, site.pos);
+				} else {
+					mask.fill(0, site.pos, site.endSite.pos);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Returns IR of all impl members
+	 * @param {IRDefinitions} map 
+	 */
+	toIR(map) {
+		let path = this.#selfTypeExpr.path;
+		let site = this.#selfTypeExpr.site;
+
+		if (this.#usedStatements.has("__eq")) {
+			map.set(`${path}____eq`, new IR("__helios__common____eq", site));
+		}
+
+		if (this.#usedStatements.has("__neq")) {
+			map.set(`${path}____neq`, new IR("__helios__common____neq", site));
+		}
+
+		if (this.#usedStatements.has("serialize")) {
+			map.set(`${path}__serialize`, new IR("__helios__common__serialize", site));
+		}
+
+		if (this.#usedStatements.has("from_data")) {
+			map.set(`${path}__from_data`, new IR("__helios__common__identity", site));
+		}
+
+		for (let s of this.#statements) {
+			let key = `${path}__${s.name.toString()}`
+			if (s instanceof FuncStatement) {
+				map.set(key, s.toIRInternal(key));
+			} else {
+				map.set(key, s.toIRInternal());
+			}
+		}
+	}
+}
+
+
+//////////////////////////////////
+// Section 18: Helios AST building
+//////////////////////////////////
+
+/**
+ * @package
+ * @param {Token[]} ts
+ * @returns {Statement[]}
+ */
+function buildProgramStatements(ts) {
+	/**
+	 * @type {Statement[]}
+	 */
+	let statements = [];
+
+	while (ts.length != 0) {
+		const t = assertDefined(ts.shift()).assertWord();
+		const kw = t.value;
+
+		if (kw == "const") {
+			statements.push(buildConstStatement(t.site, ts));
+		} else if (kw == "struct") {
+			statements.push(buildStructStatement(t.site, ts));
+		} else if (kw == "func") {
+			statements.push(buildFuncStatement(t.site, ts));
+		} else if (kw == "enum") {
+			statements.push(buildEnumStatement(t.site, ts));
+		} else if (kw == "import") {
+			statements = statements.concat(buildImportStatements(t.site, ts));
+		} else {
+			throw t.syntaxError(`invalid top-level keyword '${kw}'`);
+		}
+	}
+
+	return statements;
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {[number, Word]} - [purpose, name] (ScriptPurpose is an integer)
+ * @package
+ */
+function buildScriptPurpose(ts) {
+	// need at least 2 tokens for the script purpose
+	if (ts.length < 2) {
+		throw ts[0].syntaxError("invalid script purpose syntax");
+	}
+
+	const purposeWord = assertDefined(ts.shift()).assertWord();
+
+	let purpose;
+	if (purposeWord.isWord("spending")) {
+		purpose = ScriptPurpose.Spending;
+	} else if (purposeWord.isWord("minting")) {
+		purpose = ScriptPurpose.Minting;
+	} else if (purposeWord.isWord("staking")) {
+		purpose = ScriptPurpose.Staking;
+	} else if (purposeWord.isWord("testing")) { // 'test' is not reserved as a keyword though
+		purpose = ScriptPurpose.Testing;
+	} else if (purposeWord.isWord("module")) {
+		purpose = ScriptPurpose.Module;
+	} else if (purposeWord.isKeyword()) {
+		throw purposeWord.syntaxError(`script purpose missing`);
+	} else {
+		throw purposeWord.syntaxError(`unrecognized script purpose '${purposeWord.value}' (expected 'testing', 'spending', 'staking', 'minting' or 'module')`);
+	}
+
+	const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	return [purpose, name];
+}
+
+/**
+ * Parses Helios quickly to extract the script purpose header.
+ * Returns null if header is missing or incorrectly formed (instead of throwing an error)
+ * @param {string} rawSrc 
+ * @returns {?[string, string]} - [purpose, name]
+ */
+export function extractScriptPurposeAndName(rawSrc) {
+	try {
+		let src = new Source(rawSrc);
+
+		let tokenizer = new Tokenizer(src);
+
+		let gen = tokenizer.streamTokens();
+
+		// Don't parse the whole script, just 'eat' 2 tokens: `<purpose> <name>`
+		let ts = [];
+		for (let i = 0; i < 2; i++) {
+			let yielded = gen.next();
+			if (yielded.done) {
+				return null;
+			}
+
+			ts.push(yielded.value);
+		}
+
+		let [purposeId, nameWord] = buildScriptPurpose(ts);
+
+		return [getPurposeName(purposeId), nameWord.value];
+	} catch (e) {
+		if (!(e instanceof UserError)) {
+			throw e;
+		} else {
+			return null;
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {ConstStatement}
+ */
+function buildConstStatement(site, ts) {
+	const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	let typeExpr = null;
+	if (ts[0].isSymbol(":")) {
+		ts.shift();
+
+		const equalsPos = SymbolToken.find(ts, "=");
+
+		if (equalsPos == -1) {
+			throw site.syntaxError("invalid syntax");
+		}
+
+		typeExpr = buildTypeExpr(ts.splice(0, equalsPos));
+	}
+
+	const maybeEquals = ts.shift();
+	if (maybeEquals === undefined) {
+		throw site.syntaxError("expected '=' after 'consts'");
+	} else {
+		void maybeEquals.assertSymbol("=");
+
+		const nextStatementPos = Word.find(ts, ["const", "func", "struct", "enum", "import"]);
+
+		const tsValue = nextStatementPos == -1 ? ts.splice(0) : ts.splice(0, nextStatementPos);
+
+		const valueExpr = buildValueExpr(tsValue);
+
+		if (ts.length > 0) {
+			site.setEndSite(ts[0].site);
+		}
+
+		return new ConstStatement(site, name, typeExpr, valueExpr);
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts
+ * @returns {[Token[], Token[]]}
+ */
+function splitDataImpl(ts) {
+	const implPos = Word.find(ts, ["const", "func"]);
+
+	if (implPos == -1) {
+		return [ts, []];
+	} else {
+		return [ts.slice(0, implPos), ts.slice(implPos)];
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {StructStatement}
+ */
+function buildStructStatement(site, ts) {
+	const maybeName = ts.shift();
+
+	if (maybeName === undefined) {
+		throw site.syntaxError("expected name after 'struct'");
+	} else {
+		const name = maybeName.assertWord().assertNotKeyword();
+
+		const maybeBraces = ts.shift();
+		if (maybeBraces === undefined) {
+			throw name.syntaxError(`expected '{...}' after 'struct ${name.toString()}'`);
+		} else {
+			const braces = maybeBraces.assertGroup("{", 1);
+
+			const [tsFields, tsImpl] = splitDataImpl(braces.fields[0]);
+
+			const fields = buildDataFields(tsFields);
+
+			const impl = buildImplDefinition(tsImpl, new TypeRefExpr(name), fields.map(f => f.name), braces.site.endSite);
+
+			if (ts.length > 0) {
+				site.setEndSite(ts[0].site);
+			}
+
+			return new StructStatement(site, name, fields, impl);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {DataField[]}
+ */
+function buildDataFields(ts) {
+	/** @type {DataField[]} */
+	const fields = []
+
+	/**
+	 * @param {Word} fieldName
+	 */
+	function assertUnique(fieldName) {
+		if (fields.findIndex(f => f.name.toString() == fieldName.toString()) != -1) {
+			throw fieldName.typeError(`duplicate field \'${fieldName.toString()}\'`);
+		}
+	}
+
+	while (ts.length > 0) {
+		const colonPos = SymbolToken.find(ts, ":");
+
+		if (colonPos == -1) {
+			throw ts[0].syntaxError("expected ':' in data field");
+		}
+
+		const tsBef = ts.slice(0, colonPos);
+		const tsAft = ts.slice(colonPos+1);
+		const maybeFieldName = tsBef.shift();
+		if (maybeFieldName === undefined) {
+			throw ts[colonPos].syntaxError("expected word before ':'");
+		} else {
+			const fieldName = maybeFieldName.assertWord().assertNotKeyword();
+
+			assertUnique(fieldName);
+
+			if (tsAft.length == 0) {
+				throw ts[colonPos].syntaxError("expected type expression after ':'");
+			}
+
+			const nextColonPos = SymbolToken.find(tsAft, ":");
+
+			if (nextColonPos != -1) {
+				if (nextColonPos == 0) {
+					throw tsAft[nextColonPos].syntaxError("expected word before ':'");
+				}
+
+				void tsAft[nextColonPos-1].assertWord();
+
+				ts = tsAft.splice(nextColonPos-1);
+			} else {
+				ts = [];
+			}
+
+			const typeExpr = buildTypeExpr(tsAft);
+
+			fields.push(new DataField(fieldName, typeExpr));
+		}
+	}
+
+	return fields;
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @param {?TypeExpr} methodOf - methodOf !== null then first arg can be named 'self'
+ * @returns {FuncStatement}
+ */
+function buildFuncStatement(site, ts, methodOf = null) {
+	const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	const fnExpr = buildFuncLiteralExpr(ts, methodOf, false);
+
+	if (ts.length > 0) {
+		site.setEndSite(ts[0].site);
+	}
+
+	return new FuncStatement(site, name, fnExpr);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @param {?TypeExpr} methodOf - methodOf !== null then first arg can be named 'self'
+ * @param {boolean} allowInferredRetType
+ * @returns {FuncLiteralExpr}
+ */
+function buildFuncLiteralExpr(ts, methodOf = null, allowInferredRetType = false) {
+	const parens = assertDefined(ts.shift()).assertGroup("(");
+	const site = parens.site;
+	const args = buildFuncArgs(parens, methodOf);
+
+	const arrow = assertDefined(ts.shift()).assertSymbol("->");
+
+	const bodyPos = Group.find(ts, "{");
+
+	if (bodyPos == -1) {
+		throw site.syntaxError("no function body");
+	} else if (bodyPos == 0 && !allowInferredRetType) {
+		throw site.syntaxError("no return type specified");
+	}
+
+	const retTypeExprs = buildFuncRetTypeExprs(arrow.site, ts.splice(0, bodyPos), allowInferredRetType);
+	const bodyExpr = buildValueExpr(assertDefined(ts.shift()).assertGroup("{", 1).fields[0]);
+
+	return new FuncLiteralExpr(site, args, retTypeExprs, bodyExpr);
+}
+
+/**
+ * @package
+ * @param {Group} parens 
+ * @param {?TypeExpr} methodOf - methodOf !== nul then first arg can be named 'self'
+ * @returns {FuncArg[]}
+ */
+function buildFuncArgs(parens, methodOf = null) {
+	/** @type {FuncArg[]} */
+	const args = [];
+
+	let someNoneUnderscore = parens.fields.length == 0;
+
+	for (let i = 0; i < parens.fields.length; i++) {
+		const f = parens.fields[i];
+		const ts = f.slice();
+
+		const name = assertDefined(ts.shift()).assertWord();
+
+		if (name.toString() == "self") {
+			someNoneUnderscore = true;
+
+			if (i != 0 || methodOf === null) {
+				throw name.syntaxError("'self' is reserved");
+			} else {
+				if (ts.length > 0) {
+					if (ts[0].isSymbol(":")) {
+						throw ts[0].syntaxError("unexpected type expression after 'self'");
+					} else {
+						throw ts[0].syntaxError("unexpected token");
+					}
+				} else {
+					args.push(new FuncArg(name, methodOf));
+				}
+			}
+		} else if (name.toString() == "_") {
+			if (ts.length > 0) {
+				if (ts[0].isSymbol(":")) {
+					throw ts[0].syntaxError("unexpected type expression after '_'");
+				} else {
+					throw ts[0].syntaxError("unexpected token");
+				}
+			} else {
+				args.push(new FuncArg(name, methodOf));
+			}
+		} else {
+			someNoneUnderscore = true;
+
+			name.assertNotKeyword();
+
+			for (let prev of args) {
+				if (prev.name.toString() == name.toString()) {
+					throw name.syntaxError(`duplicate argument '${name.toString()}'`);
+				}
+			}
+
+			const maybeColon = ts.shift();
+			if (maybeColon === undefined) {
+				throw name.syntaxError(`expected ':' after '${name.toString()}'`);
+			} else {
+				const colon = maybeColon.assertSymbol(":");
+
+				if (ts.length == 0) {
+					throw colon.syntaxError("expected type expression after ':'");
+				}
+
+				const typeExpr = buildTypeExpr(ts);
+
+				args.push(new FuncArg(name, typeExpr));
+			}
+		}
+	}
+
+	if (!someNoneUnderscore) {
+		throw parens.syntaxError("expected at least one non-underscore function argument");
+	}
+
+	return args;
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {EnumStatement}
+ */
+function buildEnumStatement(site, ts) {
+	const maybeName = ts.shift();
+
+	if (maybeName === undefined) {
+		throw site.syntaxError("expected word after 'enum'");
+	} else {
+		const name = maybeName.assertWord().assertNotKeyword();
+
+		const maybeBraces = ts.shift();
+		if (maybeBraces === undefined) {
+			throw name.syntaxError(`expected '{...}' after 'enum ${name.toString()}'`);
+		} else {
+			const braces = maybeBraces.assertGroup("{", 1);
+
+			const [tsMembers, tsImpl] = splitDataImpl(braces.fields[0]);
+
+			if (tsMembers.length == 0) {
+				throw braces.syntaxError("expected at least one enum member");
+			}
+
+			/** @type {EnumMember[]} */
+			const members = [];
+
+			while (tsMembers.length > 0) {
+				members.push(buildEnumMember(tsMembers));
+			}
+
+			const impl = buildImplDefinition(tsImpl, new TypeRefExpr(name), members.map(m => m.name), braces.site.endSite);
+
+			if (ts.length > 0) {
+				site.setEndSite(ts[0].site);
+			}
+
+			return new EnumStatement(site, name, members, impl);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {ImportStatement[]}
+ */
+function buildImportStatements(site, ts) {
+	const maybeBraces = ts.shift();
+
+	if (maybeBraces === undefined) {
+		throw site.syntaxError("expected '{...}' after 'import'");
+	} else {
+		const braces = maybeBraces.assertGroup("{");
+
+		const maybeFrom = ts.shift();
+
+		if (maybeFrom === undefined) {
+			throw maybeBraces.syntaxError("expected 'from' after 'import {...}'");
+		} else {
+			const maybeModuleName = ts.shift();
+
+			if (maybeModuleName === undefined) {
+				throw maybeFrom.syntaxError("expected module name after 'import {...} from'");
+			} else {
+				maybeFrom.assertWord("from");
+				const moduleName = maybeModuleName.assertWord().assertNotKeyword();
+
+				if (braces.fields.length === 0) {
+					throw braces.syntaxError("expected at least 1 import field");
+				}
+
+				return braces.fields.map(fts => {
+					const ts = fts.slice();
+					const maybeOrigName = ts.shift();
+
+					if (maybeOrigName === undefined) {
+						throw braces.syntaxError("empty import field");
+					} else {
+						const origName = maybeOrigName.assertWord();
+						if (ts.length === 0) {
+							return new ImportStatement(site, origName, origName, moduleName);
+						} else {
+							const maybeAs = ts.shift();
+
+							if (maybeAs === undefined) {
+								throw maybeOrigName.syntaxError(`expected 'as' or nothing after '${origName.value}'`);
+							} else {
+								maybeAs.assertWord("as");
+
+								const maybeNewName = ts.shift();
+
+								if (maybeNewName === undefined) {
+									throw maybeAs.syntaxError("expected word after 'as'");
+								} else {
+									const newName = maybeNewName.assertWord();
+
+									const rem = ts.shift();
+									if (rem !== undefined) {
+										throw rem.syntaxError("unexpected");
+									} else {
+										return new ImportStatement(site, newName, origName, moduleName);
+									}
+								}
+							}
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {EnumMember}
+ */
+function buildEnumMember(ts) {
+	const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	if (ts.length == 0 || ts[0].isWord()) {
+		return new EnumMember(name, []);
+	} else {
+		const braces = assertDefined(ts.shift()).assertGroup("{", 1);
+
+		const fields = buildDataFields(braces.fields[0]);
+
+		return new EnumMember(name, fields);
+	}
+}
+
+/** 
+ * @package
+ * @param {Token[]} ts 
+ * @param {TypeRefExpr} selfTypeExpr - reference to parent type
+ * @param {Word[]} fieldNames - to check if impl statements have a unique name
+ * @param {?Site} endSite
+ * @returns {ImplDefinition}
+ */
+function buildImplDefinition(ts, selfTypeExpr, fieldNames, endSite) {
+	/**
+	 * @param {Word} name 
+	 */
+	function assertNonAuto(name) {
+		if (name.toString() == "serialize" || name.toString() == "__eq" || name.toString() == "__neq" || name.toString() == "from_data") {
+			throw name.syntaxError(`'${name.toString()}' is a reserved member`);
+		}
+	}
+
+	for (let fieldName of fieldNames) {
+		assertNonAuto(fieldName);
+	}
+
+	const statements = buildImplMembers(ts, selfTypeExpr);
+
+	/** 
+	 * @param {number} i 
+	 */
+	function assertUnique(i) {
+		let s = statements[i];
+
+		assertNonAuto(s.name);
+
+		for (let fieldName of fieldNames) {
+			if (fieldName.toString() == s.name.toString()) {
+				throw s.name.syntaxError(`'${s.name.toString()}' is duplicate`);
+			}
+		}
+
+		for (let j = i+1; j < statements.length; j++) {
+			if (statements[j].name.toString() == s.name.toString()) {
+				throw statements[j].name.syntaxError(`'${s.name.toString()}' is duplicate`);
+			}
+		}
+	}
+
+	const n = statements.length;
+
+	for (let i = 0; i < n; i++) {
+		assertUnique(i);
+	}
+
+	if (n > 0 && endSite !== null) {
+		statements[n-1].site.setEndSite(endSite);
+	}
+
+	return new ImplDefinition(selfTypeExpr, statements);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @param {TypeExpr} methodOf
+ * @returns {(ConstStatement | FuncStatement)[]}
+ */
+function buildImplMembers(ts, methodOf) {
+	/** @type {(ConstStatement | FuncStatement)[]} */
+	const statements = [];
+
+	while (ts.length != 0) {
+		const t = assertDefined(ts.shift()).assertWord();
+		const kw = t.value;
+
+		let s;
+
+		if (kw == "const") {
+			s = buildConstStatement(t.site, ts);
+		} else if (kw == "func") {
+			s = buildFuncStatement(t.site, ts, methodOf);
+		} else {
+			throw t.syntaxError("invalid impl syntax");
+		}
+
+		statements.push(s);
+	}
+
+	return statements
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {TypeExpr}
+ */
+function buildTypeExpr(ts) {
+	assert(ts.length > 0);
+
+	if (ts[0].isGroup("[")) {
+		return buildListTypeExpr(ts);
+	} else if (ts[0].isWord("Map")) {
+		return buildMapTypeExpr(ts);
+	} else if (ts[0].isWord("Option")) {
+		return buildOptionTypeExpr(ts);
+	} else if (ts.length > 1 && ts[0].isGroup("(") && ts[1].isSymbol("->")) {
+		return buildFuncTypeExpr(ts);
+	} else if (ts.length > 1 && ts[0].isWord() && ts[1].isSymbol("::")) {
+		return buildTypePathExpr(ts);
+	} else if (ts[0].isWord()) {
+		return buildTypeRefExpr(ts);
+	} else {
+		throw ts[0].syntaxError("invalid type syntax")
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {ListTypeExpr}
+ */
+function buildListTypeExpr(ts) {
+	const brackets = assertDefined(ts.shift()).assertGroup("[", 0);
+
+	const itemTypeExpr = buildTypeExpr(ts);
+
+	return new ListTypeExpr(brackets.site, itemTypeExpr);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {MapTypeExpr}
+ */
+function buildMapTypeExpr(ts) {
+	const kw = assertDefined(ts.shift()).assertWord("Map");
+
+	const maybeKeyTypeExpr = ts.shift();
+
+	if (maybeKeyTypeExpr === undefined) {
+		throw kw.syntaxError("missing Map key-type");
+	} else {
+		const keyTypeTs = maybeKeyTypeExpr.assertGroup("[", 1).fields[0];
+		if (keyTypeTs.length == 0) {
+			throw kw.syntaxError("missing Map key-type (brackets can't be empty)");
+		} else {
+			const keyTypeExpr = buildTypeExpr(keyTypeTs);
+
+			if (ts.length == 0) {
+				throw kw.syntaxError("missing Map value-type");
+			} else {
+				const valueTypeExpr = buildTypeExpr(ts);
+
+				return new MapTypeExpr(kw.site, keyTypeExpr, valueTypeExpr);
+			}
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {TypeExpr}
+ */
+function buildOptionTypeExpr(ts) {
+	const kw = assertDefined(ts.shift()).assertWord("Option");
+
+	const someTypeExpr = buildTypeExpr(assertDefined(ts.shift()).assertGroup("[", 1).fields[0]);
+
+	const typeExpr = new OptionTypeExpr(kw.site, someTypeExpr);
+	if (ts.length > 0) {
+		if (ts[0].isSymbol("::") && ts[1].isWord(["Some", "None"])) {
+			if (ts.length > 2) {
+				throw ts[2].syntaxError("unexpected token");
+			}
+
+			return new TypePathExpr(ts[0].site, typeExpr, ts[1].assertWord());
+		} else {
+			throw ts[0].syntaxError("invalid option type syntax");
+		}
+	} else {
+		return typeExpr;
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {FuncTypeExpr}
+ */
+function buildFuncTypeExpr(ts) {
+	const parens = assertDefined(ts.shift()).assertGroup("(");
+
+	const argTypes = parens.fields.map(f => buildTypeExpr(f.slice()));
+
+	const arrow = assertDefined(ts.shift()).assertSymbol("->");
+
+	const retTypes = buildFuncRetTypeExprs(arrow.site, ts, false);
+
+	return new FuncTypeExpr(parens.site, argTypes, retTypes.map(t => assertDefined(t)));
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @param {boolean} allowInferredRetType
+ * @returns {(?TypeExpr)[]}
+ */
+function buildFuncRetTypeExprs(site, ts, allowInferredRetType = false) {
+	if (ts.length === 0) {
+		if (allowInferredRetType) {
+			return [null];
+		} else {
+			throw site.syntaxError("expected type expression after '->'");
+		}
+	} else {
+		if (ts[0].isGroup("(")) {
+			const group = assertDefined(ts.shift()).assertGroup("(");
+
+			if (group.fields.length == 0) {
+				return [new VoidTypeExpr(group.site)];
+			} else if (group.fields.length == 1) {
+				throw group.syntaxError("expected 0 or 2 or more types in multi return type");
+			} else {
+				return group.fields.map(fts => {
+					fts = fts.slice();
+
+					return buildTypeExpr(fts);
+				});
+			}
+		} else {
+			return [buildTypeExpr(ts)];
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {TypePathExpr}
+ */
+function buildTypePathExpr(ts) {
+	const baseName = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	const symbol = assertDefined(ts.shift()).assertSymbol("::");
+
+	const memberName = assertDefined(ts.shift()).assertWord();
+
+	if (ts.length > 0) {
+		throw ts[0].syntaxError("invalid type syntax");
+	}
+
+	return new TypePathExpr(symbol.site, new TypeRefExpr(baseName), memberName);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {TypeRefExpr}
+ */
+function buildTypeRefExpr(ts) {
+	const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+	if (ts.length > 0) {
+		throw ts[0].syntaxError("invalid type syntax");
+	}
+
+	return new TypeRefExpr(name);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @param {number} prec 
+ * @returns {ValueExpr}
+ */
+function buildValueExpr(ts, prec = 0) {
+	assert(ts.length > 0);
+
+	// lower index in exprBuilders is lower precedence
+	/** @type {((ts: Token[], prev: number) => ValueExpr)[]} */
+	const exprBuilders = [
+		/**
+		 * 0: lowest precedence is assignment
+		 * @param {Token[]} ts_ 
+		 * @param {number} prec_ 
+		 * @returns 
+		 */
+		function (ts_, prec_) {
+			return buildMaybeAssignOrPrintExpr(ts_, prec_);
+		},
+		makeBinaryExprBuilder('||'), // 1: logical or operator
+		makeBinaryExprBuilder('&&'), // 2: logical and operator
+		makeBinaryExprBuilder(['==', '!=']), // 3: eq or neq
+		makeBinaryExprBuilder(['<', '<=', '>', '>=']), // 4: comparison
+		makeBinaryExprBuilder(['+', '-']), // 5: addition subtraction
+		makeBinaryExprBuilder(['*', '/', '%']), // 6: multiplication division remainder
+		makeUnaryExprBuilder(['!', '+', '-']), // 7: logical not, negate
+		/**
+		 * 8: variables or literal values chained with: (enum)member access, indexing and calling
+		 * @param {Token[]} ts_ 
+		 * @param {number} prec_ 
+		 * @returns 
+		 */
+		function (ts_, prec_) {
+			return buildChainedValueExpr(ts_, prec_);
+		}
+	];
+
+	return exprBuilders[prec](ts, prec);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts
+ * @param {number} prec
+ * @returns {ValueExpr}
+ */
+function buildMaybeAssignOrPrintExpr(ts, prec) {
+	let semicolonPos = SymbolToken.find(ts, ";");
+	const equalsPos = SymbolToken.find(ts, "=");
+	const printPos = Word.find(ts, "print");
+
+	if (semicolonPos == -1) {
+		if (equalsPos != -1) {
+			throw ts[equalsPos].syntaxError("invalid assignment syntax, expected ';' after '...=...'");
+		} else {
+			return buildValueExpr(ts, prec + 1);
+		}
+	} else {
+		if ((equalsPos == -1 || equalsPos > semicolonPos) && (printPos == -1 || printPos > semicolonPos)) {
+			const upstreamExpr = buildValueExpr(ts.splice(0, semicolonPos), prec+1);
+			const site = assertDefined(ts.shift()).site;
+
+			if (ts.length == 0) {
+				throw site.syntaxError("expected expression after ';'");
+			} else {
+				const downstreamExpr = buildValueExpr(ts, prec);
+
+				return new ChainExpr(site, upstreamExpr, downstreamExpr);
+			}
+		} else if (equalsPos != -1 && equalsPos < semicolonPos) {
+			if (printPos != -1) {
+				if (printPos <= semicolonPos) {
+					throw ts[printPos].syntaxError("expected ';' after 'print(...)'");
+				}
+			}
+
+			const equalsSite = ts[equalsPos].assertSymbol("=").site;
+
+			const lts = ts.splice(0, equalsPos);
+
+			const lhs = buildAssignLhs(equalsSite, lts);
+			
+			assertDefined(ts.shift()).assertSymbol("=");
+
+			semicolonPos = SymbolToken.find(ts, ";");
+			assert(semicolonPos != -1);
+
+			let upstreamTs = ts.splice(0, semicolonPos);
+			if (upstreamTs.length == 0) {
+				throw equalsSite.syntaxError("expected expression between '=' and ';'");
+			}
+
+			const upstreamExpr = buildValueExpr(upstreamTs, prec + 1);
+
+			const semicolonSite = assertDefined(ts.shift()).assertSymbol(";").site;
+
+			if (ts.length == 0) {
+				throw semicolonSite.syntaxError("expected expression after ';'");
+			}
+
+			const downstreamExpr = buildValueExpr(ts, prec);
+
+			return new AssignExpr(equalsSite, lhs, upstreamExpr, downstreamExpr);
+		} else if (printPos != -1 && printPos < semicolonPos) {
+			if (equalsPos != -1) {
+				if (equalsPos <= semicolonPos) {
+					throw ts[equalsPos].syntaxError("expected ';' after '...=...'");
+				}
+			}
+
+			const printSite = assertDefined(ts.shift()).assertWord("print").site;
+
+			const maybeParens = ts.shift();
+
+			if (maybeParens === undefined) {
+				throw ts[printPos].syntaxError("expected '(...)' after 'print'");
+			} else {
+				const parens = maybeParens.assertGroup("(", 1);
+
+				const msgExpr = buildValueExpr(parens.fields[0]);
+
+				const semicolonSite = assertDefined(ts.shift()).assertSymbol(";").site;
+
+				if (ts.length == 0) {
+					throw semicolonSite.syntaxError("expected expression after ';'");
+				}
+
+				const downstreamExpr = buildValueExpr(ts, prec);
+
+				return new PrintExpr(printSite, msgExpr, downstreamExpr);
+			}
+		} else {
+			throw new Error("unhandled");
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {NameTypePair[]}
+ */
+function buildAssignLhs(site, ts) {
+	const maybeName = ts.shift();
+	if (maybeName === undefined) {
+		throw site.syntaxError("expected a name before '='");
+	} else {
+		/**
+		 * @type {NameTypePair[]}
+		 */
+		const pairs = [];
+
+		if (maybeName.isWord()) {
+			const name = maybeName.assertWord().assertNotKeyword();
+
+			if (ts.length > 0) {
+				const colon = assertDefined(ts.shift()).assertSymbol(":");
+
+				if (ts.length == 0) {
+					throw colon.syntaxError("expected type expression after ':'");
+				} else {
+					const typeExpr = buildTypeExpr(ts);
+
+					pairs.push(new NameTypePair(name, typeExpr));
+				}
+			} else {
+				pairs.push(new NameTypePair(name, null));
+			}
+		} else if (maybeName.isGroup("(")) {
+			const group = maybeName.assertGroup("(");
+
+			if (group.fields.length < 2) {
+				throw group.syntaxError("expected at least 2 lhs' for multi-assign");
+			}
+
+			let someNoneUnderscore = false;
+			for (let fts of group.fields) {
+				if (fts.length == 0) {
+					throw group.syntaxError("unexpected empty field for multi-assign");
+				}
+
+				fts = fts.slice();
+
+				const name = assertDefined(fts.shift()).assertWord();
+
+				if (name.value === "_") {
+					if (fts.length !== 0) {
+						throw fts[0].syntaxError("unexpected token after '_' in multi-assign");
+					}
+
+					pairs.push(new NameTypePair(name, null));
+				} else {
+					someNoneUnderscore = true;
+
+					name.assertNotKeyword();
+
+					const maybeColon = fts.shift();
+					
+					if (maybeColon === undefined) {
+						throw name.syntaxError(`expected ':' after '${name.toString()}'`);
+					}
+					
+					const colon = maybeColon.assertSymbol(":");
+
+					if (fts.length === 0) {
+						throw colon.syntaxError("expected type expression after ':'");
+					}
+
+					const typeExpr = buildTypeExpr(fts);
+
+					// check that name is unique
+					pairs.forEach(p => {
+						if (p.name.value === name.value) {
+							throw name.syntaxError(`duplicate name '${name.value}' in lhs of multi-assign`);
+						}
+					});
+
+					pairs.push(new NameTypePair(name, typeExpr));
+				}
+			}
+
+			if (!someNoneUnderscore) {
+				throw group.syntaxError("expected at least one non-underscore in lhs of multi-assign");
+			}
+		} else {
+			throw maybeName.syntaxError("unexpected syntax for lhs of =");
+		}
+
+		return pairs;
+	}
+}
+
+/**
+ * @package
+ * @param {string | string[]} symbol 
+ * @returns {(ts: Token[], prec: number) => ValueExpr}
+ */
+function makeBinaryExprBuilder(symbol) {
+	// default behaviour is left-to-right associative
+	return function (ts, prec) {
+		const iOp = SymbolToken.findLast(ts, symbol);
+
+		if (iOp == ts.length - 1) {
+			// post-unary operator, which is invalid
+			throw ts[iOp].syntaxError(`invalid syntax, '${ts[iOp].toString()}' can't be used as a post-unary operator`);
+		} else if (iOp > 0) { // iOp == 0 means maybe a (pre)unary op, which is handled by a higher precedence
+			const a = buildValueExpr(ts.slice(0, iOp), prec);
+			const b = buildValueExpr(ts.slice(iOp + 1), prec + 1);
+
+			return new BinaryExpr(ts[iOp].assertSymbol(), a, b);
+		} else {
+			return buildValueExpr(ts, prec + 1);
+		}
+	};
+}
+
+/**
+ * @package
+ * @param {string | string[]} symbol 
+ * @returns {(ts: Token[], prec: number) => ValueExpr}
+ */
+function makeUnaryExprBuilder(symbol) {
+	// default behaviour is right-to-left associative
+	return function (ts, prec) {
+		if (ts[0].isSymbol(symbol)) {
+			const rhs = buildValueExpr(ts.slice(1), prec);
+
+			return new UnaryExpr(ts[0].assertSymbol(), rhs);
+		} else {
+			return buildValueExpr(ts, prec + 1);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @param {number} prec 
+ * @returns {ValueExpr}
+ */
+function buildChainedValueExpr(ts, prec) {
+	/** @type {ValueExpr} */
+	let expr = buildChainStartValueExpr(ts);
+
+	// now we can parse the rest of the chaining
+	while (ts.length > 0) {
+		const t = assertDefined(ts.shift());
+
+		if (t.isGroup("(")) {
+			expr = new CallExpr(t.site, expr, buildCallArgs(t.assertGroup()));
+		} else if (t.isGroup("[")) {
+			throw t.syntaxError("invalid expression '[...]'");
+		} else if (t.isSymbol(".") && ts.length > 0 && ts[0].isWord("switch")) {
+			expr = buildSwitchExpr(expr, ts);
+		} else if (t.isSymbol(".")) {
+			const name = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+
+			expr = new MemberExpr(t.site, expr, name);
+		} else if (t.isGroup("{")) {
+			throw t.syntaxError("invalid syntax");
+		} else if (t.isSymbol("::")) {
+			throw t.syntaxError("invalid syntax");
+		} else {
+			throw t.syntaxError(`invalid syntax '${t.toString()}'`);
+		}
+	}
+
+	return expr;
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {ValueExpr}
+ */
+function buildChainStartValueExpr(ts) {
+	if (ts.length > 1 && ts[0].isGroup("(") && ts[1].isSymbol("->")) {
+		return buildFuncLiteralExpr(ts, null, true);
+	} else if (ts[0].isWord("if")) {
+		return buildIfElseExpr(ts);
+	} else if (ts[0].isWord("switch")) {
+		throw ts[0].syntaxError("expected '... .switch' instead of 'switch'");
+	} else if (ts[0].isLiteral()) {
+		return new PrimitiveLiteralExpr(assertDefined(ts.shift())); // can simply be reused
+	} else if (ts[0].isGroup("(")) {
+		return buildParensExpr(ts);
+	} else if (Group.find(ts, "{") != -1) {
+		if (ts[0].isGroup("[")) {
+			return buildListLiteralExpr(ts);
+		} else if (ts[0].isWord("Map") && ts[1].isGroup("[")) {
+			return buildMapLiteralExpr(ts); 
+		} else {
+			// could be switch or literal struct construction
+			const iBraces = Group.find(ts, "{");
+			const iSwitch = Word.find(ts, "switch");
+			const iPeriod = SymbolToken.find(ts, ".");
+
+			if (iSwitch != -1 && iPeriod != -1 && iSwitch < iBraces && iPeriod < iBraces && iSwitch > iPeriod) {
+				return buildValueExpr(ts.splice(0, iPeriod));
+			} else {
+				return buildStructLiteralExpr(ts);
+			}
+		}
+	} else if (SymbolToken.find(ts, "::") != -1) {
+		return buildValuePathExpr(ts);
+	} else if (ts[0].isWord()) {
+		if (ts[0].isWord("const") || ts[0].isWord("struct") || ts[0].isWord("enum") || ts[0].isWord("func") || ts[0].isWord("import")) {
+			throw ts[0].syntaxError(`invalid use of '${ts[0].assertWord().value}', can only be used as top-level statement`);
+		} else {
+			const name = assertDefined(ts.shift()).assertWord();
+
+			// only place where a word can be "self"
+			return new ValueRefExpr(name.value == "self" ? name : name.assertNotKeyword());
+		}
+	} else {
+		throw ts[0].syntaxError("invalid syntax");
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts
+ * @returns {ValueExpr}
+ */
+function buildParensExpr(ts) {
+	const group = assertDefined(ts.shift()).assertGroup("(");
+	const site = group.site;
+
+	if (group.fields.length === 0) {
+		throw group.syntaxError("expected at least one expr in parens");
+	} else {
+		return new ParensExpr(site, group.fields.map(fts => buildValueExpr(fts)));
+	}
+}
+
+/**
+ * @package
+ * @param {Group} parens 
+ * @returns {ValueExpr[]}
+ */
+function buildCallArgs(parens) {
+	return parens.fields.map(fts => buildValueExpr(fts));
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {IfElseExpr}
+ */
+function buildIfElseExpr(ts) {
+	const site = assertDefined(ts.shift()).assertWord("if").site;
+
+	/** @type {ValueExpr[]} */
+	const conditions = [];
+
+	/** @type {ValueExpr[]} */
+	const branches = [];
+	while (true) {
+		const parens = assertDefined(ts.shift()).assertGroup("(");
+		const braces = assertDefined(ts.shift()).assertGroup("{");
+
+		if (parens.fields.length != 1) {
+			throw parens.syntaxError("expected single if-else condition");
+		}
+
+		if (braces.fields.length == 0) {
+			throw braces.syntaxError("branch body can't be empty");
+		} else if (braces.fields.length != 1) {
+			throw braces.syntaxError("expected single if-else branch expession");
+		}
+
+		conditions.push(buildValueExpr(parens.fields[0]));
+		branches.push(buildValueExpr(braces.fields[0]));
+
+		const maybeElse = ts.shift();
+
+		if (maybeElse === undefined ) {
+			// add a void else branch
+			branches.push(new VoidExpr(braces.site));
+			break;
+		} else {
+			maybeElse.assertWord("else");
+
+			const next = assertDefined(ts.shift());
+			if (next.isGroup("{")) {
+				// last group
+				const braces = next.assertGroup();
+				if (braces.fields.length != 1) {
+					throw braces.syntaxError("expected single expession for if-else branch");
+				}
+				branches.push(buildValueExpr(braces.fields[0]));
+				break;
+			} else if (next.isWord("if")) {
+				continue;
+			} else {
+				throw next.syntaxError("unexpected token");
+			}
+		}
+	}
+
+	return new IfElseExpr(site, conditions, branches);
+}
+
+/**
+ * @package
+ * @param {ValueExpr} controlExpr
+ * @param {Token[]} ts 
+ * @returns {ValueExpr} - EnumSwitchExpr or DataSwitchExpr
+ */
+function buildSwitchExpr(controlExpr, ts) {
+	const site = assertDefined(ts.shift()).assertWord("switch").site;
+
+	const braces = assertDefined(ts.shift()).assertGroup("{");
+
+	/** @type {SwitchCase[]} */
+	const cases = [];
+
+	/** @type {?SwitchDefault} */
+	let def = null;
+
+	for (let tsInner of braces.fields) {
+		if (tsInner[0].isWord("else")) {
+			if (def !== null) {
+				throw def.syntaxError("duplicate 'else' in switch");
+			}
+
+			def = buildSwitchDefault(tsInner);
+		} else {
+			if (def !== null) {
+				throw def.syntaxError("switch 'else' must come last");
+			}
+
+			cases.push(buildSwitchCase(tsInner));
+		}
+	}
+
+	// check the uniqueness of each case here
+	/** @type {Set<string>} */
+	const set = new Set()
+	for (let c of cases) {
+		let t = c.memberName.toString();
+		if (set.has(t)) {
+			throw c.memberName.syntaxError(`duplicate switch case '${t}')`);
+		}
+
+		set.add(t);
+	}
+
+	if (cases.length < 1) {
+		throw site.syntaxError("expected at least one switch case");
+	}
+
+	if (cases.some(c => c.isDataMember())) {
+		if (cases.length + (def === null ? 0 : 1) > 5) {
+			throw site.syntaxError(`too many cases for data switch, expected 5 or less, got ${cases.length.toString()}`);
+		} else {
+			let count = 0;
+			cases.forEach(c => {if (!c.isDataMember()){count++}});
+
+			if (count > 1) {
+				throw site.syntaxError(`expected at most 1 enum case in data switch, got ${count}`);
+			} else {
+				if (count === 1 && cases.some(c => c instanceof UnconstrDataSwitchCase)) {
+					throw site.syntaxError(`can't have both enum and (Int, []Data) in data switch`);
+				} else {
+					return new DataSwitchExpr(site, controlExpr, cases, def);
+				}
+			}
+		}
+	} else {
+		return new EnumSwitchExpr(site, controlExpr, cases, def);
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site
+ * @param {Token[]} ts
+ * @param {boolean} isAfterColon
+ * @returns {Word} 
+ */
+function buildSwitchCaseName(site, ts, isAfterColon) {
+	const first = ts.shift();
+
+	if (first === undefined) {
+		if (isAfterColon) {
+			throw site.syntaxError("invalid switch case syntax, expected member name after ':'");
+		} else {
+			throw site.syntaxError("invalid switch case syntax");
+		}
+	}
+		
+	if (first.isWord("Map")) {
+		const second = ts.shift();
+
+		if (second === undefined) {
+			throw site.syntaxError("expected token after 'Map'");
+		}
+
+		const keyTs = second.assertGroup("[]", 1).fields[0];
+
+		const key = keyTs.shift();
+
+		if (key === undefined) {
+			throw second.syntaxError("expected 'Map[Data]Data'");
+		}
+
+		key.assertWord("Data");
+
+		if (keyTs.length > 0) {
+			throw keyTs[0].syntaxError("unexpected token after 'Data'");
+		}
+
+		const third = ts.shift();
+
+		if (third === undefined) {
+			throw site.syntaxError("expected token after 'Map[Data]")
+		}
+
+		third.assertWord("Data");
+
+		if (ts.length > 0) {
+			throw ts[0].syntaxError("unexpected token after 'Map[Data]Data'");
+		}
+
+		return new Word(first.site, "Map[Data]Data");
+	} else if (first.isWord()) {
+		if (ts.length > 0) {
+			throw ts[0].syntaxError("unexpected token");
+		}
+
+		return first.assertWord().assertNotKeyword();
+	} else if (first.isGroup("[")) {
+		// list 
+		first.assertGroup("[", 0);
+
+		const second = ts.shift();
+
+		if (second === undefined) {
+			throw site.syntaxError("expected token after '[]'");
+		} else if (ts.length > 0) {
+			throw ts[0].syntaxError("unexpected token");
+		}
+
+		second.assertWord("Data");
+
+		return new Word(first.site, "[]Data");
+	} else {
+		throw first.syntaxError("invalid switch case name syntax");
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {SwitchCase}
+ */
+function buildSwitchCase(ts) {
+	const arrowPos = SymbolToken.find(ts, "=>");
+
+	if (arrowPos == -1) {
+		throw ts[0].syntaxError("expected '=>' in switch case");
+	} else if (arrowPos == 0) {
+		throw ts[0].syntaxError("expected '<word>' or '<word>: <word>' to the left of '=>'");
+	}
+
+	const tsLeft = ts.splice(0, arrowPos);
+
+	if (tsLeft.length === 1 && tsLeft[0].isGroup("(")) {
+		return buildMultiArgSwitchCase(tsLeft, ts);
+	} else {
+		return buildSingleArgSwitchCase(tsLeft, ts);
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {[?Word, Word]} - varName is optional
+ */
+function buildSwitchCaseNameType(ts) {
+	const colonPos = SymbolToken.find(ts, ":");
+
+	/** @type {?Word} */
+	let varName = null;
+
+	/** @type {?Word} */
+	let memberName = null;
+
+	if (colonPos != -1) {
+		varName = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+		
+		const maybeColon = ts.shift();
+		if (maybeColon === undefined) {
+			throw varName.syntaxError("invalid switch case syntax, expected '(<name>: <enum-member>)', got '(<name>)'");
+		} else {
+			void maybeColon.assertSymbol(":");
+
+			memberName = buildSwitchCaseName(maybeColon.site, ts, true);
+		}
+	} else {
+		memberName = buildSwitchCaseName(ts[0].site, ts, false);
+	}
+
+	if (ts.length !== 0) {
+		throw new Error("unexpected");
+	}
+
+	if (memberName === null) {
+		throw new Error("unexpected");
+	} else {
+		return [varName, memberName];
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} tsLeft
+ * @param {Token[]} ts
+ * @returns {SwitchCase}
+ */
+function buildMultiArgSwitchCase(tsLeft, ts) {
+	const parens = assertDefined(tsLeft.shift()).assertGroup("(");
+
+	const pairs = parens.fields.map(fts => buildSwitchCaseNameType(fts));
+
+	assert(tsLeft.length === 0);
+
+	if (pairs.length !== 2) {
+		throw parens.syntaxError(`expected (Int, []Data) case, got (${pairs.map(p => p[1].value).join(", ")}`);
+	} else if (pairs[0][1].value != "Int" || pairs[1][1].value != "[]Data") {
+		throw parens.syntaxError(`expected (Int, []Data) case, got (${pairs[0][1].value}, ${pairs[1][1].value})`);
+	} else {
+		const maybeArrow = ts.shift();
+
+		if (maybeArrow === undefined) {
+			throw parens.syntaxError("expected '=>'");
+		} else {
+			const arrow = maybeArrow.assertSymbol("=>");
+
+			const bodyExpr = buildSwitchCaseBody(arrow.site, ts);
+
+			return new UnconstrDataSwitchCase(arrow.site, pairs[0][0], pairs[1][0], bodyExpr);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} tsLeft 
+ * @param {Token[]} ts 
+ * @returns {SwitchCase}
+ */
+function buildSingleArgSwitchCase(tsLeft, ts) {
+	/** @type {[?Word, Word]} */
+	const [varName, memberName] = buildSwitchCaseNameType(tsLeft);
+	
+	const maybeArrow = ts.shift();
+
+	if (maybeArrow === undefined) {
+		throw memberName.syntaxError("expected '=>'");
+	} else {
+		const arrow = maybeArrow.assertSymbol("=>");
+
+		const bodyExpr = buildSwitchCaseBody(arrow.site, ts);
+
+		return new SwitchCase(arrow.site, varName, memberName, bodyExpr);
+	}
+}
+
+/**
+ * @package
+ * @param {Site} site 
+ * @param {Token[]} ts 
+ * @returns {ValueExpr}
+ */
+function buildSwitchCaseBody(site, ts) {
+	/** @type {?ValueExpr} */
+	let bodyExpr = null;
+
+	if (ts.length == 0) {
+		throw site.syntaxError("expected expression after '=>'");
+	} else if (ts[0].isGroup("{")) {
+		if (ts.length > 1) {
+			throw ts[1].syntaxError("unexpected token");
+		}
+
+		const tsBody = ts[0].assertGroup("{", 1).fields[0];
+		bodyExpr = buildValueExpr(tsBody);
+	} else {
+		bodyExpr = buildValueExpr(ts);
+	}
+
+	if (bodyExpr === null) {
+		throw site.syntaxError("empty switch case body");
+	} else {
+		return bodyExpr;
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {SwitchDefault}
+ */
+function buildSwitchDefault(ts) {
+	const site = assertDefined(ts.shift()).assertWord("else").site;
+
+	const maybeArrow = ts.shift();
+	if (maybeArrow === undefined) {
+		throw site.syntaxError("expected '=>' after 'else'");
+	} else {
+		const arrow = maybeArrow.assertSymbol("=>");
+
+		/** @type {?ValueExpr} */
+		let bodyExpr = null;
+		if (ts.length == 0) {
+			throw arrow.syntaxError("expected expression after '=>'");
+		} else if (ts[0].isGroup("{")) {
+			if (ts.length > 1) {
+				throw ts[1].syntaxError("unexpected token");
+			} else {
+				bodyExpr = buildValueExpr(ts[0].assertGroup("{", 1).fields[0]);
+			}
+		} else {
+			bodyExpr = buildValueExpr(ts);
+		}
+
+		if (bodyExpr === null) {
+			throw arrow.syntaxError("empty else body");
+		} else {
+			return new SwitchDefault(arrow.site, bodyExpr);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {ListLiteralExpr}
+ */
+function buildListLiteralExpr(ts) {
+	const site = assertDefined(ts.shift()).assertGroup("[", 0).site;
+
+	const bracesPos = Group.find(ts, "{");
+
+	if (bracesPos == -1) {
+		throw site.syntaxError("invalid list literal expression syntax");
+	}
+
+	const itemTypeExpr = buildTypeExpr(ts.splice(0, bracesPos));
+
+	const braces = assertDefined(ts.shift()).assertGroup("{");
+
+	const itemExprs = braces.fields.map(fts => buildValueExpr(fts));
+
+	return new ListLiteralExpr(site, itemTypeExpr, itemExprs);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts
+ * @returns {MapLiteralExpr}
+ */
+function buildMapLiteralExpr(ts) {
+	const site = assertDefined(ts.shift()).assertWord("Map").site;
+
+	const bracket = assertDefined(ts.shift()).assertGroup("[", 1);
+
+	const keyTypeExpr = buildTypeExpr(bracket.fields[0]);
+
+	const bracesPos = Group.find(ts, "{");
+
+	if (bracesPos == -1) {
+		throw site.syntaxError("invalid map literal expression syntax");
+	}
+
+	const valueTypeExpr = buildTypeExpr(ts.splice(0, bracesPos));
+
+	const braces = assertDefined(ts.shift()).assertGroup("{");
+
+	/**
+	 * @type {[ValueExpr, ValueExpr][]}
+	 */
+	const pairs = braces.fields.map(fts => {
+		const colonPos = SymbolToken.find(fts, ":");
+
+		if (colonPos == -1) {
+			if (fts.length == 0) {
+				throw braces.syntaxError("unexpected empty field");
+			} else {
+				throw fts[0].syntaxError("expected ':' in map literal field");
+			}
+		} else if (colonPos == 0) {
+			throw fts[colonPos].syntaxError("expected expression before ':' in map literal field");
+		} else if (colonPos == fts.length - 1) {
+			throw fts[colonPos].syntaxError("expected expression after ':' in map literal field");
+		}
+
+		const keyExpr = buildValueExpr(fts.slice(0, colonPos));
+
+		const valueExpr = buildValueExpr(fts.slice(colonPos+1));
+
+		/**
+		 * @type {[ValueExpr, ValueExpr]}
+		 */
+		return [keyExpr, valueExpr];
+	});
+
+	return new MapLiteralExpr(site, keyTypeExpr, valueTypeExpr, pairs);
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {StructLiteralExpr}
+ */
+function buildStructLiteralExpr(ts) {
+	const bracesPos = Group.find(ts, "{");
+
+	assert(bracesPos != -1);
+
+	const typeExpr = buildTypeExpr(ts.splice(0, bracesPos));
+
+	const braces = assertDefined(ts.shift()).assertGroup("{");
+
+	const nFields = braces.fields.length;
+
+	const fields = braces.fields.map(fts => buildStructLiteralField(braces.site, fts, nFields > 1));
+
+	return new StructLiteralExpr(typeExpr, fields);
+}
+
+/**
+ * @package
+ * @param {Site} bracesSite
+ * @param {Token[]} ts 
+ * @param {boolean} isNamed
+ * @returns {StructLiteralField}
+ */
+function buildStructLiteralField(bracesSite, ts, isNamed) {
+	if (isNamed) {
+		const maybeName = ts.shift();
+		if (maybeName === undefined) {
+			throw bracesSite.syntaxError("empty struct literal field");
+		} else {
+			const name = maybeName.assertWord();
+
+			const maybeColon = ts.shift();
+			if (maybeColon === undefined) {
+				throw bracesSite.syntaxError("expected ':'");
+			} else {
+				const colon = maybeColon.assertSymbol(":");
+
+				if (ts.length == 0) {
+					throw colon.syntaxError("expected expression after ':'");
+				} else {
+					const valueExpr = buildValueExpr(ts);
+
+					return new StructLiteralField(name.assertNotKeyword(), valueExpr);
+				}
+			}
+		}
+	} else {
+		if (ts.length > 1 && ts[0].isWord() && ts[1].isSymbol(":")) {
+			throw ts[0].syntaxError(`unexpected key '${ts[0].toString()}' (struct literals with only 1 field don't use keys)`);
+		} else {
+			const valueExpr = buildValueExpr(ts);
+
+			return new StructLiteralField(null, valueExpr);
+		}
+	}
+}
+
+/**
+ * @package
+ * @param {Token[]} ts 
+ * @returns {ValueExpr}
+ */
+function buildValuePathExpr(ts) {
+	const dcolonPos = SymbolToken.findLast(ts, "::");
+
+	assert(dcolonPos != -1);
+
+	const typeExpr = buildTypeExpr(ts.splice(0, dcolonPos));
+
+	assertDefined(ts.shift()).assertSymbol("::");
+
+	const memberName = assertDefined(ts.shift()).assertWord().assertNotKeyword();
+	
+	return new ValuePathExpr(typeExpr, memberName);
+}
+
+
+/////////////////////////////
+// Section 19: IR definitions
+/////////////////////////////
 
 /**
  * For collecting test coverage statistics
@@ -21549,6 +24776,39 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__common__hash_datum_data", 
 	`(data) -> {
 		__core__bData(__core__blake2b_256(__core__serialiseData(data)))
+	}`));
+
+
+	// Global builtin functions
+	add(new RawFunc("__helios__print", 
+	`(msg) -> {
+		__core__trace(__helios__common__unStringData(msg), ())
+	}`));
+	add(new RawFunc("__helios__error",
+	`(msg) -> {
+		__core__trace(
+			__helios__common__unStringData(msg), 
+			() -> {
+				__core__error("error thrown by user-code")
+			}
+		)()
+	}`));
+	add(new RawFunc("__helios__assert",
+	`(cond, msg) -> {
+		__core__ifThenElse(
+			cond,
+			() -> {
+				()
+			},
+			() -> {
+				__core__trace(
+					__helios__common__unStringData(msg),
+					() -> {
+						__core__error("assert failed")
+					}
+				)()
+			}
+		)()
 	}`));
 
 
@@ -23549,6 +26809,10 @@ function makeRawFunctions() {
 		__core__constrData(0, __helios__common__list_1(bytes)) 
 	}`));
 	add(new RawFunc("__helios__txid__CURRENT", "__helios__txid__new(__core__bData(#0000000000000000000000000000000000000000000000000000000000000000))"));
+	add(new RawFunc("__helios__txid__show",
+	`(self) -> {
+		__helios__bytearray__show(__helios__txid__bytes(self))
+	}`));
 
 
 	// TxInput builtins
@@ -23660,6 +26924,22 @@ function makeRawFunctions() {
 	`(data) -> {
 		__core__constrData(2, __helios__common__list_1(data))
 	}`));
+	add(new RawFunc("__helios__outputdatum__get_inline_data",
+	`(self) -> {
+		(pair) -> {
+			(index, fields) -> {
+				__core__ifThenElse(
+					__core__equalsInteger(index, 2),
+					() -> {
+						__core__headList(fields)
+					},
+					() -> {
+						__core__error("not an inline datum")
+					}
+				)()
+			}(__core__fstPair(pair), __core__sndPair(pair))
+		}(__core__unConstrData(self))
+	}`));
 
 
 	// OutputDatum::None
@@ -23744,6 +27024,10 @@ function makeRawFunctions() {
 	`(cred, staking_cred) -> {
 		__core__constrData(0, __helios__common__list_2(cred, staking_cred))
 	}`));
+	add(new RawFunc("__helios__address__new_empty",
+	`() -> {
+		__core__constrData(0, __helios__common__list_2(__helios__credential__new_pubkey(__core__bData(#)), __helios__option__none__new()))
+	}`))
 	add(new RawFunc("__helios__address__credential", "__helios__common__field_0"));
 	add(new RawFunc("__helios__address__staking_credential", "__helios__common__field_1"));
 	add(new RawFunc("__helios__address__is_staked",
@@ -24095,7 +27379,12 @@ function makeRawFunctions() {
 		)()
 	}`));
 	add(new RawFunc("__helios__value__from_map", "__helios__common__identity"));
-	add(new RawFunc("__helios__value__to_map", "__helios__common__identity"));
+	add(new RawFunc("__helios__value__to_map", 
+	`(self) -> {
+		() -> {
+			self
+		}
+	}`));
 	add(new RawFunc("__helios__value__get_map_keys",
 	`(map) -> {
 		(recurse) -> {
@@ -24557,6 +27846,7 @@ function makeRawFunctions() {
 /**
  * @param {IR} ir 
  * @returns {IR}
+ * @package
  */
 function wrapWithRawFunctions(ir) {
 	let db = makeRawFunctions();
@@ -24596,13 +27886,15 @@ function wrapWithRawFunctions(ir) {
 }
 
 
-//////////////////////////////////
-// Section 15: IR AST objects
-//////////////////////////////////
+
+/////////////////////////////
+// Section 20: IR AST objects
+/////////////////////////////
 
 /**
  * Scope for IR names.
  * Works like a stack of named values from which a Debruijn index can be derived
+ * @package
  */
 class IRScope {
 	#parent;
@@ -24628,7 +27920,7 @@ class IRScope {
 		if (this.#variable !== null && (name instanceof Word && this.#variable.toString() == name.toString()) || (name instanceof IRVariable && this.#variable == name)) {
 			return [index, this.#variable];
 		} else if (this.#parent === null) {
-			throw name.referenceError(`variable ${name.toString()} not found`);
+			throw assertClass(name, Word).referenceError(`variable ${name.toString()} not found`);
 		} else {
 			return this.#parent.getInternal(name, index + 1);
 		}
@@ -24676,6 +27968,7 @@ class IRScope {
 
 /**
  * Map of variables to IRExpr
+ * @package
  */
 class IRExprStack {
 	#throwRTErrors;
@@ -24881,6 +28174,7 @@ class IRCallStack {
 
 /**
  * IR class that represents function arguments
+ * @package
  */
 class IRVariable extends Token {
 	#name;
@@ -24911,6 +28205,7 @@ class IRVariable extends Token {
 
 /**
  * Base class of all Intermediate Representation expressions
+ * @package
  */
 class IRExpr extends Token {
 	/**
@@ -25033,8 +28328,9 @@ class IRExpr extends Token {
 
 /**
  * Intermediate Representation variable reference expression
+ * @package
  */
- class IRNameExpr extends IRExpr {
+class IRNameExpr extends IRExpr {
 	#name;
 
 	/**
@@ -25080,11 +28376,21 @@ class IRExpr extends Token {
 	}
 
 	/**
+	 * @package
+	 * @returns {boolean}
+	 */
+	isCore() {
+		const name = this.name;
+
+		return name.startsWith("__core");
+	}
+
+	/**
 	 * @param {IRVariable} ref 
 	 * @returns {boolean}
 	 */
 	isVariable(ref) {
-		if (this.#name.value.startsWith("__core")) {
+		if (this.isCore()) {
 			return false;
 		} else {
 			return this.variable === ref;
@@ -25104,11 +28410,11 @@ class IRExpr extends Token {
 	}
 
 	/**
-	 * @param {IRScope} scope 
+	 * @param {IRScope} scope
 	 */
 	resolveNames(scope) {
 		if (!this.name.startsWith("__core")) {
-			if (this.#variable == null) {
+			if (this.#variable == null || this.name.startsWith("__PARAM")) {
 				[this.#index, this.#variable] = scope.get(this.#name);
 			} else {
 				[this.#index, this.#variable] = scope.get(this.#variable);
@@ -25129,7 +28435,7 @@ class IRExpr extends Token {
 	 * @returns {IRExpr}
 	 */
 	inline(stack) {
-		if (this.name.startsWith("__core")) {
+		if (this.isCore()) {
 			return this;
 		} else if (this.#variable === null) {
 			throw new Error("variable should be set");
@@ -25147,7 +28453,7 @@ class IRExpr extends Token {
 	 * @returns {?IRValue}
 	 */
 	eval(stack) {
-		if (this.name.startsWith("__core")) {
+		if (this.isCore()) {
 			return new IRFuncValue((args) => {
 				return IRCoreCallExpr.evalValues(this.site, stack.throwRTErrors, this.#name.value.slice("__core__".length), args);
 			});
@@ -25193,7 +28499,7 @@ class IRExpr extends Token {
 	 * @returns {IRExpr}
 	 */
 	simplify(stack) {
-		if (this.name.startsWith("__core")) {
+		if (this.isCore()) {
 			return this;
 		} else if (this.#variable === null) {
 			throw new Error("variable should be set");
@@ -25236,8 +28542,9 @@ class IRExpr extends Token {
 
 /**
  * IR wrapper for UplcValues, representing literals
+ * @package
  */
- class IRLiteral extends IRExpr {
+class IRLiteral extends IRExpr {
 	/**
 	 * @type {UplcValue}
 	 */
@@ -25355,6 +28662,7 @@ class IRExpr extends Token {
 
 /**
  * IR function expression with some args, that act as the header, and a body expression
+ * @package
  */
 class IRFuncExpr extends IRExpr {
 	#args;
@@ -25504,7 +28812,7 @@ class IRFuncExpr extends IRExpr {
 	simplify(stack) {
 		// a IRFuncExpr that wraps a Call with the same arguments, in the same order, can simply return that function
 		if (this.#body instanceof IRCallExpr && this.#body.argExprs.length == this.#args.length && this.#body.argExprs.every((a, i) => {
-			return (a instanceof IRNameExpr) && (!a.name.startsWith("__core")) && (this.#args[i] === a.variable);
+			return (a instanceof IRNameExpr) && (!a.isCore()) && (this.#args[i] === a.variable);
 		})) {
 			if (this.#body instanceof IRCoreCallExpr) {
 				return new IRNameExpr(new Word(this.site, `__core__${this.#body.builtinName}`));
@@ -25538,6 +28846,7 @@ class IRFuncExpr extends IRExpr {
 
 /**
  * Base class of IRUserCallExpr and IRCoreCallExpr
+ * @package
  */
 class IRCallExpr extends IRExpr {
 	#argExprs;
@@ -25704,8 +29013,9 @@ class IRCallExpr extends IRExpr {
 
 /**
  * IR function call of non-core function
+ * @package
  */
- class IRUserCallExpr extends IRCallExpr {
+class IRUserCallExpr extends IRCallExpr {
 	#fnExpr;
 
 	/**
@@ -26350,6 +29660,7 @@ class IRCallExpr extends IRExpr {
 
 /**
  * IR function call of core functions
+ * @package
  */
 class IRCoreCallExpr extends IRCallExpr {
 	#name;
@@ -26838,6 +30149,7 @@ class IRCoreCallExpr extends IRCallExpr {
 
 /**
  * Intermediate Representation error call (with optional literal error message)
+ * @package
  */
 class IRErrorCallExpr extends IRExpr {
 	#msg;
@@ -26938,124 +30250,16 @@ class IRErrorCallExpr extends IRExpr {
 	}
 }
 
-/**
- * Wrapper for IRFuncExpr, IRCallExpr or IRLiteral
- */
-class IRProgram {
-	#expr;
-	#purpose;
 
-	/**
-	 * @param {IRFuncExpr | IRCallExpr | IRLiteral} expr
-	 * @param {?number} purpose
-	 */
-	constructor(expr, purpose) {
-		this.#expr = expr;
-		this.#purpose = purpose;
-	}
-
-	/**
-	 * @param {IR} ir 
-	 * @param {?number} purpose
-	 * @param {boolean} simplify
-	 * @param {boolean} throwSimplifyRTErrors - if true -> throw RuntimErrors caught during evaluation steps
-	 * @returns {IRProgram}
-	 */
-	static new(ir, purpose, simplify = false, throwSimplifyRTErrors = false) {
-		let [irSrc, codeMap] = ir.generateSource();
-
-		let irTokens = tokenizeIR(irSrc, codeMap);
-
-		let expr = buildIRExpr(irTokens);
-		
-		/**
-		 * @type {IRProgram}
-		 */
-		if (expr instanceof IRFuncExpr || expr instanceof IRCallExpr || expr instanceof IRLiteral) {
-			if (expr instanceof IRFuncExpr || expr instanceof IRUserCallExpr || expr instanceof IRCoreCallExpr) {
-				expr.resolveNames(new IRScope(null, null));
-			}
-
-			let program = new IRProgram(expr, purpose);
-
-			if (simplify) {
-				program.simplify(throwSimplifyRTErrors);
-			}
-
-			return program;
-		} else {
-			throw new Error("expected IRFuncExpr or IRUserCallExpr or IRLiteral as result of IRProgram.new");
-		}
-	}
-
-	get site() {
-		return this.#expr.site;
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get data() {
-		if (this.#expr instanceof IRLiteral) {
-			let v = this.#expr.value;
-
-			return v.data;
-		} else {
-			console.log(this.#expr.toString());
-			throw new Error("expected data literal");
-		}
-	}
-
-	toString() {
-		return this.#expr.toString();
-	}
-
-	/**
-	 * @param {boolean} throwSimplifyRTErrors
-	 */
-	simplify(throwSimplifyRTErrors = false) {
-		let dirty = true;
-	
-		while(dirty && (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr)) {
-			dirty = false;
-			let newExpr = this.#expr.simplify(new IRExprStack(throwSimplifyRTErrors));
-	
-			if (newExpr instanceof IRFuncExpr || newExpr instanceof IRUserCallExpr || newExpr instanceof IRCoreCallExpr || newExpr instanceof IRLiteral) {
-				dirty = newExpr.toString() != this.#expr.toString();
-				this.#expr = newExpr;
-			}
-		}
-	
-		if (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr) {
-			// recalculate the Debruijn indices
-			this.#expr.resolveNames(new IRScope(null, null));
-		}
-	}
-
-	/**
-	 * @returns {UplcProgram}
-	 */
-	toUplc() {
-		return new UplcProgram(this.#expr.toUplc(), this.#purpose);
-	}
-
-	/**
-	 * @returns {number}
-	 */
-	calcSize() {
-		return this.toUplc().calcSize();
-	}
-}
-
-
-//////////////////////////////////////////
-// Section 16: IR AST build functions
-//////////////////////////////////////////
+/////////////////////////////////////
+// Section 21: IR AST build functions
+/////////////////////////////////////
 
 /**
  * Build an Intermediate Representation expression
  * @param {Token[]} ts 
  * @returns {IRExpr}
+ * @package
  */
 function buildIRExpr(ts) {
 	/** @type {?IRExpr} */
@@ -27116,7 +30320,18 @@ function buildIRExpr(ts) {
 				expr = new IRLiteral(new UplcInt(t.site, t.value));
 			} else if (t instanceof ByteArrayLiteral) {
 				assert(expr === null);
-				expr = new IRLiteral(new UplcByteArray(t.site, t.bytes));
+				if (t.bytes.length == 0 && ts[0] != undefined && ts[0] instanceof ByteArrayLiteral) {
+					// literal data is ##<...>
+					const next = assertDefined(ts.shift());
+
+					if (next instanceof ByteArrayLiteral) {
+						expr = new IRLiteral(new UplcDataValue(next.site, UplcData.fromCbor(next.bytes)));
+					} else {
+						throw new Error("unexpected");
+					}
+				} else {
+					expr = new IRLiteral(new UplcByteArray(t.site, t.bytes));
+				}
 			} else if (t instanceof StringLiteral) {
 				assert(expr === null);
 				expr = new IRLiteral(new UplcString(t.site, t.value));
@@ -27194,394 +30409,1383 @@ function buildIRFuncExpr(ts) {
 }
 
 
-//////////////////////////////////////////
-// Section 17: Plutus-core deserialization
-//////////////////////////////////////////
+/////////////////////////
+// Section 22: IR Program
+/////////////////////////
+
 
 /**
- * Plutus-core deserializer creates a Plutus-core form an array of bytes
+ * Wrapper for IRFuncExpr, IRCallExpr or IRLiteral
+ * @package
  */
-class UplcDeserializer extends BitReader {
-	
+class IRProgram {
+	#expr;
+	#purpose;
+
 	/**
-	 * @param {number[]} bytes 
+	 * @param {IRFuncExpr | IRCallExpr | IRLiteral} expr
+	 * @param {?number} purpose
 	 */
-	constructor(bytes) {
-		super(bytes);
+	constructor(expr, purpose) {
+		this.#expr = expr;
+		this.#purpose = purpose;
 	}
 
 	/**
-	 * @param {string} category 
-	 * @returns {number}
+	 * @package
+	 * @param {IR} ir 
+	 * @param {?number} purpose
+	 * @param {boolean} simplify
+	 * @param {boolean} throwSimplifyRTErrors - if true -> throw RuntimErrors caught during evaluation steps
+	 * @param {IRScope} scope
+	 * @returns {IRProgram}
 	 */
-	tagWidth(category) {
-		assert(category in UPLC_TAG_WIDTHS, `unknown tag category ${category.toString()}`);
+	static new(ir, purpose, simplify = false, throwSimplifyRTErrors = false, scope = new IRScope(null, null)) {
+		let [irSrc, codeMap] = ir.generateSource();
 
-		return UPLC_TAG_WIDTHS[category];
-	}
+		let irTokens = tokenizeIR(irSrc, codeMap);
 
-	/**
-	 * Returns the name of a known builtin
-	 * Returns the integer id if id is out of range (thus if the builtin is unknown)
-	 * @param {number} id
-	 * @returns {string | number}
-	 */
-	builtinName(id) {
-		let all = UPLC_BUILTINS;
-
-		if (id >= 0 && id < all.length) {
-			return all[id].name;
-		} else {
-			console.error(`Warning: builtin id ${id.toString()} out of range`);
-
-			return id;
-		}
-	}
-
-	/**
-	 * Reads a Plutus-core list with a specified size per element
-	 * Calls itself recursively until the end of the list is reached
-	 * @param {number} elemSize 
-	 * @returns {number[]}
-	 */
-	readLinkedList(elemSize) {
-		// Cons and Nil constructors come from Lisp/Haskell
-		//  cons 'a' creates a linked list node,
-		//  nil      creates an empty linked list
-		let nilOrCons = this.readBits(1);
-
-		if (nilOrCons == 0) {
-			return [];
-		} else {
-			return [this.readBits(elemSize)].concat(this.readLinkedList(elemSize));
-		}
-	}
-
-	/**
-	 * Reads a single UplcTerm
-	 * @returns {UplcTerm}
-	 */
-	readTerm() {
-		let tag = this.readBits(this.tagWidth("term"));
-
-		switch (tag) {
-			case 0:
-				return this.readVariable();
-			case 1:
-				return this.readDelay();
-			case 2:
-				return this.readLambda();
-			case 3:
-				return this.readCall(); // aka function application
-			case 4:
-				return this.readConstant();
-			case 5:
-				return this.readForce();
-			case 6:
-				return new UplcError(Site.dummy());
-			case 7:
-				return this.readBuiltin();
-			default:
-				throw new Error("term tag " + tag.toString() + " unhandled");
-		}
-	}
-
-	/**
-	 * Reads a single unbounded integer
-	 * @param {boolean} signed 
-	 * @returns {UplcInt}
-	 */
-	readInteger(signed = false) {
-		let bytes = [];
-
-		let b = this.readByte();
-		bytes.push(b);
-
-		while (!UplcInt.rawByteIsLast(b)) {
-			b = this.readByte();
-			bytes.push(b);
-		}
-
-		// strip the leading bit
-		let res = new UplcInt(Site.dummy(), UplcInt.bytesToBigInt(bytes.map(b => UplcInt.parseRawByte(b))), false); // raw int is unsigned
-
-		if (signed) {
-			res = res.toSigned(); // unzigzag is performed here
-		}
-
-		return res;
-	}
-
-	/**
-	 * Reads bytearray or string characters
-	 * @returns {number[]}
-	 */
-	readBytes() {
-		this.moveToByteBoundary(true);
-
-		let bytes = [];
-
-		let nChunk = this.readByte();
-
-		while (nChunk > 0) {
-			for (let i = 0; i < nChunk; i++) {
-				bytes.push(this.readByte());
+		let expr = buildIRExpr(irTokens);
+		
+		/**
+		 * @type {IRProgram}
+		 */
+		if (expr instanceof IRFuncExpr || expr instanceof IRCallExpr || expr instanceof IRLiteral) {
+			if (expr instanceof IRFuncExpr || expr instanceof IRUserCallExpr || expr instanceof IRCoreCallExpr) {
+				expr.resolveNames(scope);
 			}
 
-			nChunk = this.readByte();
+			let program = new IRProgram(expr, purpose);
+
+			if (simplify) {
+				program.simplify(throwSimplifyRTErrors, scope);
+			}
+
+			return program;
+		} else {
+			throw new Error("expected IRFuncExpr or IRUserCallExpr or IRLiteral as result of IRProgram.new");
+		}
+	}
+
+	/**
+	 * @package
+	 * @type {IRFuncExpr | IRCallExpr | IRLiteral}
+	 */
+	get expr() {
+		return this.#expr;
+	}
+
+	/**
+	 * @package
+	 * @type {?number}
+	 */
+	get purpose() {
+		return this.#purpose;
+	}
+
+	/**
+	 * @package
+	 * @type {Site}
+	 */
+	get site() {
+		return this.#expr.site;
+	}
+
+	/**
+	 * @type {UplcData}
+	 */
+	get data() {
+		if (this.#expr instanceof IRLiteral) {
+			let v = this.#expr.value;
+
+			return v.data;
+		} else {
+			console.log(this.#expr.toString());
+			throw new Error("expected data literal");
+		}
+	}
+
+	toString() {
+		return this.#expr.toString();
+	}
+
+	/**
+	 * @param {boolean} throwSimplifyRTErrors
+	 * @param {IRScope} scope
+	 */
+	simplify(throwSimplifyRTErrors = false, scope = new IRScope(null, null)) {
+		let dirty = true;
+	
+		while(dirty && (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr)) {
+			dirty = false;
+			let newExpr = this.#expr.simplify(new IRExprStack(throwSimplifyRTErrors));
+	
+			if (newExpr instanceof IRFuncExpr || newExpr instanceof IRUserCallExpr || newExpr instanceof IRCoreCallExpr || newExpr instanceof IRLiteral) {
+				dirty = newExpr.toString() != this.#expr.toString();
+				this.#expr = newExpr;
+			}
+		}
+	
+		if (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr) {
+			// recalculate the Debruijn indices
+			this.#expr.resolveNames(scope);
+		}
+	}
+
+	/**
+	 * @returns {UplcProgram}
+	 */
+	toUplc() {
+		return new UplcProgram(this.#expr.toUplc(), this.#purpose);
+	}
+
+	/**
+	 * @returns {number}
+	 */
+	calcSize() {
+		return this.toUplc().calcSize();
+	}
+}
+
+export class IRParametricProgram {
+	#irProgram;
+	#parameters;
+
+	/**
+	 * @param {IRProgram} irProgram
+	 * @param {string[]} parameters
+	 */
+	constructor(irProgram, parameters) {
+		this.#irProgram = irProgram;
+		this.#parameters = parameters;
+	}
+
+	/**
+	 * @package
+	 * @param {IR} ir 
+	 * @param {?number} purpose
+	 * @param {string[]} parameters
+	 * @param {boolean} simplify
+	 * @returns {IRParametricProgram}
+	 */
+	static new(ir, purpose, parameters, simplify = false) {
+		let scope = new IRScope(null, null);
+
+		parameters.forEach((p, i) => {
+			const internalName = `__PARAM_${i}`;
+
+			scope = new IRScope(scope, new IRVariable(new Word(Site.dummy(), internalName)));
+		});
+
+		const irProgram = IRProgram.new(ir, purpose, simplify, false, scope);
+
+		return new IRParametricProgram(irProgram, parameters);
+	}
+
+	/**
+	 * @returns {UplcProgram}
+	 */
+	toUplc() {
+		let exprUplc = this.#irProgram.expr.toUplc();
+
+		this.#parameters.forEach(p => {
+			exprUplc = new UplcLambda(Site.dummy(), exprUplc, p);
+		});
+
+		return new UplcProgram(exprUplc, this.#irProgram.purpose);
+	}
+}
+
+
+/////////////////////////////
+// Section 23: Helios program
+/////////////////////////////
+
+/**
+ * A Module is a collection of statements
+ */
+class Module {
+	#name;
+	#statements;
+
+	/**
+	 * @param {Word} name 
+	 * @param {Statement[]} statements
+	 */
+	constructor(name, statements) {
+		this.#name = name;
+		this.#statements = statements;
+
+		this.#statements.forEach(s => s.setBasePath(`__module__${this.#name.toString()}`));
+	}
+
+	/**
+	 * @param {string} rawSrc
+	 * @param {?number} fileIndex - a unique optional index passed in from outside that makes it possible to associate a UserError with a specific file
+	 * @returns {Module}
+	 */
+	static new(rawSrc, fileIndex = null) {
+		let src = new Source(rawSrc, fileIndex);
+
+		let ts = tokenize(src);
+
+		if (ts.length == 0) {
+			throw UserError.syntaxError(src, 0, "empty script");
 		}
 
-		return bytes;
-	}
+		let [purpose, name] = buildScriptPurpose(ts);
 
-	/**
-	 * Reads a literal bytearray
-	 * @returns {UplcByteArray}
-	 */
-	readByteArray() {
-		let bytes = this.readBytes();
-
-		return new UplcByteArray(Site.dummy(), bytes);
-	}
-
-	/**
-	 * Reads a literal string
-	 * @returns {UplcString}
-	 */
-	readString() {
-		let bytes = this.readBytes();
-
-		let s = bytesToText(bytes);
-
-		return new UplcString(Site.dummy(), s);
-	}
-
-	/**
-	 * Reads a data object
-	 * @returns {UplcData}
-	 */
-	readData() {
-		let bytes = this.readBytes();
-
-		return UplcData.fromCbor(bytes);
-	}
-
-	/**
-	 * @returns {UplcData[]}
-	 */
-	readDataList() {
-		/** @type {UplcData[]} */
-		let items = [];
-
-		while (this.readBits(1) == 1) {
-			items.push(this.readData());
+		if (purpose != ScriptPurpose.Module) {
+			throw name.syntaxError("expected 'module' script purpose");
+		} else if (name.value == "main") {
+			throw name.syntaxError("name of 'module' can't be 'main'");
 		}
 
-		return items;
+		let statements = buildProgramStatements(ts);
+
+		return new Module(name, statements);
 	}
 
 	/**
-	 * @returns {UplcMapItem[]}
+	 * @type {Word}
 	 */
-	readDataPairList() {
-		/** @type {UplcMapItem[]} */
-		let pairs = [];
+	get name() {
+		return this.#name;
+	}
 
-		while (this.readBits(1) == 1) {
-			pairs.push(new UplcMapItem(Site.dummy(), this.readData(), this.readData()));
+	/**
+	 * @type {Statement[]}
+	 */
+	get statements() {
+		return this.#statements.slice();
+	}
+
+	toString() {
+		return this.#statements.map(s => s.toString()).join("\n");
+	}
+
+	/**
+	 * @param {ModuleScope} scope 
+	 */
+	evalTypes(scope) {
+		for (let s of this.statements) {
+			s.eval(scope);
+		}
+	}
+
+	/**
+	 * Cleans the program by removing everything that is unecessary for the smart contract (easier to audit)
+	 * @returns {string}
+	 */
+	cleanSource() {
+		let raw = this.name.site.src.raw;
+		let n = raw.length;
+
+		let mask = new Uint8Array(n);
+
+		mask.fill(1); // hide the unused parts by setting to 0
+
+		for (let s of this.#statements) {
+			s.hideUnused(mask);
 		}
 
+		/** @type {string[]} */
+		let chars = [];
 
-		return pairs;
+		for (let i = 0; i < n; i++) {
+			let c = raw.charAt(i);
+
+			if (c == '\n' || c == ' ') {
+				chars.push(c);
+			} else if (mask[i] == 1) {
+				chars.push(c);
+			} else {
+				chars.push(' ');
+			}
+		}
+
+		let lines = chars.join("").split("\n").map(l => {
+			if (l.trim().length == 0) {
+				return "";
+			} else {
+				return l;
+			}
+		});
+
+		// remove more than one consecutive empty line
+
+		/**
+		 * @type {string[]}
+		 */
+		let parts = [];
+
+		for (let i = 0; i < lines.length; i++) {
+			if (!(i > 0 && lines[i-1].length == 0 && lines[i].length == 0)) {
+				parts.push(lines[i]);
+			}
+		}
+
+		return parts.join("\n");
 	}
 
 	/**
-	 * Reads a variable term
-	 * @returns {UplcVariable}
+	 * This module can depend on other modules
+	 * TODO: detect circular dependencies
+	 * @param {Module[]} modules 
+	 * @param {Module[]} stack
+	 * @returns {Module[]}
 	 */
-	readVariable() {
-		let index = this.readInteger()
+	filterDependencies(modules, stack = []) {
+		/**
+		 * @type {Module[]}
+		 */
+		let deps = [];
 
-		return new UplcVariable(Site.dummy(), index);
+		/** @type {Module[]} */
+		let newStack = [this];
+		newStack = newStack.concat(stack);
+
+		for (let s of this.#statements) {
+			if (s instanceof ImportStatement) {
+				let mn = s.moduleName.value;
+
+				if (mn == this.name.value) {
+					throw s.syntaxError("can't import self");
+				} else if (stack.some(d => d.name.value == mn)) {
+					throw s.syntaxError("circular import detected");
+				}
+
+				// if already in deps, then don't add (because it will have been added before along with all its dependencies)
+				if (!deps.some(d => d.name.value == mn)) {
+					let m = modules.find(m => m.name.value == mn);
+
+					if (m === undefined) {
+						throw s.referenceError(`module '${mn}' not found`);
+					} else {
+						// only add deps that weren't added before
+						let newDeps = m.filterDependencies(modules, newStack).concat([m]).filter(d => !deps.some(d_ => d_.name.value == d.name.value));
+
+						deps = deps.concat(newDeps);
+					}
+				}
+			}
+		}
+
+		return deps;
+	}
+}
+
+/**
+ * The entrypoint module
+ */
+class MainModule extends Module {
+	/**
+	 * @param {Word} name 
+	 * @param {Statement[]} statements 
+	 */
+	constructor(name, statements) {
+		super(name, statements);
 	}
 
 	/**
-	 * Reads a lambda expression term
-	 * @returns {UplcLambda}
+	 * @type {FuncStatement}
 	 */
-	readLambda() {
-		let rhs = this.readTerm();
+	get mainFunc() {
+		for (let s of this.statements) {
+			if (s.name.value == "main") {
+				if (!(s instanceof FuncStatement)) {	
+					throw s.typeError("'main' isn't a function statement");
+				} else {
+					return s;
+				}
+			}
+		}
 
-		return new UplcLambda(Site.dummy(), rhs);
+		throw new Error("'main' not found (is a module being used as an entrypoint?)");
+	}
+}
+
+/**
+ * @typedef {Object.<string, HeliosDataClass<HeliosData>>} UserTypes
+ */
+
+/**
+ * Helios root object
+ */
+ export class Program {
+	#purpose;
+	#modules;
+
+	/** @type {UserTypes} */
+	#types;
+
+	/**
+	 * Cache of const values
+	 * @type {Object.<string, HeliosData>}
+	 */
+	#parameters;
+	
+	/**
+	 * @param {number} purpose
+	 * @param {Module[]} modules
+	 */
+	constructor(purpose, modules) {
+		this.#purpose = purpose;
+		this.#modules = modules;
+		this.#types = {};
+		this.#parameters = {};
 	}
 
 	/**
-	 * Reads a function application term
-	 * @returns {UplcCall}
+	 * @param {string} rawSrc 
+	 * @returns {[purpose, Module[]]}
 	 */
-	readCall() {
-		let a = this.readTerm();
-		let b = this.readTerm();
+	static parseMain(rawSrc) {
+		let src = new Source(rawSrc, 0);
 
-		return new UplcCall(Site.dummy(), a, b);
+		let ts = tokenize(src);
+
+		if (ts.length == 0) {
+			throw UserError.syntaxError(src, 0, "empty script");
+		}
+
+		let [purpose, name] = buildScriptPurpose(ts);
+
+		if (name.value === "main") {
+			throw name.site.syntaxError("script can't be named 'main'");
+		}
+
+		let statements = buildProgramStatements(ts);
+
+		let mainIdx = statements.findIndex(s => s.name.value === "main");
+
+		if (mainIdx == -1) {
+			throw name.site.syntaxError("'main' not found");
+		}
+
+		/**
+		 * @type {Module[]}
+		 */
+		let modules = [new MainModule(name, statements.slice(0, mainIdx+1))];
+
+		if (mainIdx < statements.length - 1) {
+			modules.push(new Module(name, statements.slice(mainIdx+1)));
+		}
+
+		return [purpose, modules];
 	}
 
 	/**
-	 * Reads a single constant
-	 * @returns {UplcConst}
+	 * 
+	 * @param {string} mainName 
+	 * @param {string[]} moduleSrcs
+	 * @returns {Module[]}
 	 */
-	readConstant() {
-		let typeList = this.readLinkedList(this.tagWidth("constType"));
+	static parseImports(mainName, moduleSrcs = []) {
+		let imports = moduleSrcs.map((src, i) => Module.new(src, i+1));
 
-		let res = new UplcConst(this.readTypedValue(typeList));
+		/**
+		 * @type {Set<string>}
+		 */
+		let names = new Set();
+
+		names.add(mainName);
+
+		for (let m of imports) {
+			if (names.has(m.name.value)) {
+				throw m.name.syntaxError(`non-unique module name '${m.name.value}'`);
+			}
+
+			names.add(m.name.value);
+		}
+
+		return imports;
+	}
+
+	/**
+	 * Creates  a new program.
+	 * @param {string} mainSrc 
+	 * @param {string[]} moduleSrcs - optional sources of modules, which can be used for imports
+	 * @returns {Program}
+	 */
+	static new(mainSrc, moduleSrcs = []) {
+		let [purpose, modules] = Program.parseMain(mainSrc);
+
+		let site = modules[0].name.site;
+
+		let imports = Program.parseImports(modules[0].name.value, moduleSrcs);
+		
+		let mainImports = modules[0].filterDependencies(imports);
+
+		/** @type {Module[]} */
+		let postImports = [];
+
+		if (modules.length > 1) {
+			postImports = modules[modules.length - 1].filterDependencies(imports).filter(m => !mainImports.some(d => d.name.value == m.name.value));
+		}
+
+		// create the final order of all the modules (this is the order in which statements will be added to the IR)
+		modules = mainImports.concat([modules[0]]).concat(postImports).concat(modules.slice(1));
+	
+		/**
+		 * @type {Program}
+		 */
+		let program;
+
+		switch (purpose) {
+			case ScriptPurpose.Testing:
+				program = new TestingProgram(modules);
+				break;
+			case ScriptPurpose.Spending:
+				program = new SpendingProgram(modules);
+				break;
+			case ScriptPurpose.Minting:
+				program = new MintingProgram(modules);
+				break
+			case ScriptPurpose.Staking:
+				program = new StakingProgram(modules);
+				break
+			case ScriptPurpose.Module:
+				throw site.syntaxError("can't use module for main");
+			default:
+				throw new Error("unhandled script purpose");
+		}
+
+		const topScope = program.evalTypes();
+
+		program.fillTypes(topScope);
+
+		return program;
+	}
+
+	/** 
+	 * @type {Module[]} 
+	 */
+	get mainImportedModules() {
+		/** @type {Module[]} */
+		let ms = [];
+
+		for (let m of this.#modules) {
+			if (m instanceof MainModule) {
+				break;
+			} else {
+				ms.push(m);
+			}
+		}
+
+		return ms;
+	}
+
+	/**
+	 * @type {MainModule}
+	 */
+	get mainModule() {
+		for (let m of this.#modules) {
+			if (m instanceof MainModule) {
+				return m;
+			}
+		}
+
+		throw new Error("MainModule not found");
+	}
+
+	/**
+	 * @type {?Module}
+	 */
+	get postModule() {
+		let m = this.#modules[this.#modules.length - 1];
+
+		if (m instanceof MainModule) {
+			return null;
+		} else {
+			return m;
+		}
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get name() {
+		return this.mainModule.name.value;
+	}
+
+	/**
+	 * @type {FuncStatement}
+	 */
+	get mainFunc() {
+		return this.mainModule.mainFunc;
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get mainPath() {
+		return this.mainFunc.path;
+	}
+
+	/**
+	 * @type {Statement[]}
+	 */
+	get mainStatements() {
+		return this.mainModule.statements;
+	}
+
+	/**
+	 * Needed to list the paramTypes, and to call changeParam
+	 * @type {Statement[]}
+	 */
+	get mainAndPostStatements() {
+		let statements = this.mainModule.statements;
+
+		if (this.postModule != null) {
+			statements = statements.concat(this.postModule.statements);
+		}
+
+		return statements;
+	}
+
+	/**
+	 * @type {[Statement, boolean][]} - boolean value marks if statement is import or not
+	 */
+	get allStatements() {
+		/**
+		 * @type {[Statement, boolean][]}
+		 */
+		let statements = [];
+
+		for (let i = 0; i < this.#modules.length; i++) {
+			let m = this.#modules[i];
+
+			let isImport = !(m instanceof MainModule || (i == this.#modules.length - 1));
+
+			statements = statements.concat(m.statements.map(s => [s, isImport]));
+		}
+
+		return statements;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return this.#modules.map(m => m.toString()).join("\n");
+	}
+
+	/**
+	 * @returns {[string[], string]}
+	 */
+	cleanSource() {
+		return [this.mainImportedModules.map(m => m.cleanSource()), this.mainModule.cleanSource()];
+	}
+
+	/**
+	 * @param {GlobalScope} globalScope
+	 * @returns {TopScope}
+	 */
+	evalTypesInternal(globalScope) {
+		const topScope = new TopScope(globalScope);
+
+		// loop through the modules
+
+		for (let i = 0; i < this.#modules.length; i++) {
+			const m = this.#modules[i];
+
+			// reuse main ModuleScope for post module
+			const moduleScope = (m ===  this.postModule) ? topScope.getModuleScope(this.mainModule.name) : new ModuleScope(topScope);
+
+			m.evalTypes(moduleScope);
+
+			if (m instanceof MainModule) {
+				globalScope.allowMacros();
+				topScope.setStrict(false);
+			}
+
+			if (m !== this.postModule) {
+				topScope.set(m.name, moduleScope);
+			}
+		}
+
+		this.mainFunc.use();
+		
+		return topScope;
+	}
+
+	/**
+	 * @returns {TopScope}
+	 */
+	evalTypes() {
+		throw new Error("not yet implemeneted");
+	}
+
+	/**
+	 * @type {UserTypes}
+	 */
+	get types() {
+		return this.#types;
+	}
+
+	/**
+	 * Fill #types with convenient javascript equivalents of Int, ByteArray etc.
+	 * @param {TopScope} topScope
+	 */
+	fillTypes(topScope) {
+		const mainModuleScope = topScope.getModuleScope(this.mainModule.name);
+
+		mainModuleScope.loopTypes((name, type) => {
+			if (type instanceof StructStatementType || type instanceof EnumStatementType) {
+				if (name in this.#types) {
+					throw new Error(`unexpected duplicate type name ${name} in main program scope`);
+				}
+
+				this.#types[name] = type.userType;;
+			}
+		});
+	}
+
+	/**
+	 * @type {Object.<string, Type>}
+	 */
+	get paramTypes() {
+		/**
+		 * @type {Object.<string, Type>}
+		 */
+		let res = {};
+
+		for (let s of this.mainAndPostStatements) {
+			if (s instanceof ConstStatement) {
+				res[s.name.value] = s.type;
+			} else if (s instanceof ImportStatement && s.origStatement instanceof ConstStatement) {
+				res[s.name.value] = s.origStatement.type;
+			}
+		}
 
 		return res;
 	}
 
 	/**
-	 * Reads a single constant (recursive types not yet handled)
-	 * @param {number[]} typeList 
+	 * Change the literal value of a const statements  
+	 * @param {string} name 
+	 * @param {string | UplcValue} value 
+	 * @returns {Program} - returns 'this' so that changeParam calls can be chained
+	 */
+	changeParam(name, value) {
+		for (let s of this.mainAndPostStatements) {
+			if (s instanceof ConstStatement && s.name.value == name) {
+				s.changeValue(value);
+				return this;
+			} else if (s instanceof ImportStatement && s.name.value == name && s.origStatement instanceof ConstStatement) {
+				s.origStatement.changeValue(value);
+				return this;
+			}
+		}
+
+		throw this.mainFunc.referenceError(`param '${name}' not found`);
+	}
+
+	/**
+	 * Change the literal value of a const statements  
+	 * @package
+	 * @param {string} name 
+	 * @param {UplcData} data
+	 */
+	changeParamSafe(name, data) {
+		for (let s of this.mainAndPostStatements) {
+			if (s instanceof ConstStatement && s.name.value == name) {
+				s.changeValueSafe(data);
+				return this;
+			} else if (s instanceof ImportStatement && s.name.value == name && s.origStatement instanceof ConstStatement) {
+				s.origStatement.changeValueSafe(data);
+				return this;
+			}
+		}
+
+		throw this.mainFunc.referenceError(`param '${name}' not found`);
+	}
+
+	/**
+	 * Doesn't use wrapEntryPoint
+	 * @param {string} name 
 	 * @returns {UplcValue}
 	 */
-	readTypedValue(typeList) {
-		let type = assertDefined(typeList.shift());
+	evalParam(name) {
+		/**
+		 * @type {Map<string, IR>}
+		 */
+		let map = new Map();
 
-		assert(type == 7 || typeList.length == 0);
+		/** @type {?ConstStatement} */
+		let constStatement = null;
 
-		switch (type) {
-			case 0: // signed Integer
-				return this.readInteger(true);
-			case 1: // bytearray
-				return this.readByteArray();
-			case 2: // utf8-string
-				return this.readString();
-			case 3:
-				return new UplcUnit(Site.dummy()); // no reading needed
-			case 4: // Bool
-				return new UplcBool(Site.dummy(), this.readBits(1) == 1);
-			case 5:
-			case 6:
-				throw new Error("unexpected type tag without type application");
-			case 7:
-				if (eq(typeList, [5, 8])) {
-					return new UplcList(Site.dummy(), this.readDataList());
-				} else if (eq(typeList, [5, 7, 7, 6, 8, 8])) {
-					// map of (data, data)
-					return new UplcMap(Site.dummy(), this.readDataPairList());
-				} else if (eq(typeList, [7, 6, 8, 8])) {
-					// pair of (data, data)
-					return new UplcMapItem(Site.dummy(), this.readData(), this.readData());
-				} else if (eq(typeList, [7, 6, 0, 7, 5, 8])) {
-					// constr
-					return new UplcPair(Site.dummy(), this.readInteger(true), new UplcList(Site.dummy(), this.readDataList()));
-				} else {
-					console.log(typeList);
-					throw new Error("unhandled container type")
-				}
-			case 8:
-				return new UplcDataValue(Site.dummy(), this.readData());
-			default:
-				throw new Error(`unhandled constant type ${type.toString()}`);
+		for (let s of this.mainAndPostStatements) {
+			if (s instanceof ImportStatement && s.name.value == name && s.origStatement instanceof ConstStatement) {
+				constStatement = s.origStatement;
+				break;
+			}
 		}
-	}
 
-	/**
-	 * Reads a delay term
-	 * @returns {UplcDelay}
-	 */
-	readDelay() {
-		let expr = this.readTerm();
+		for (let [s, isImport] of this.allStatements) {
+			s.toIR(map);
+			if (s instanceof ConstStatement && ((s.name.value == name && !isImport) || s === constStatement)) {
+				constStatement = s;
+				break;
+			}
+		}
 
-		return new UplcDelay(Site.dummy(), expr);
-	}
-
-	/**
-	 * Reads a force term
-	 * @returns {UplcForce}
-	 */
-	readForce() {
-		let expr = this.readTerm();
-
-		return new UplcForce(Site.dummy(), expr);
-	}
-
-	/**
-	 * Reads a builtin function ref term
-	 * @returns {UplcBuiltin}
-	 */
-	readBuiltin() {
-		let id = this.readBits(this.tagWidth("builtin"));
-
-		let name = this.builtinName(id);
-
-		return new UplcBuiltin(Site.dummy(), name);
-	}
-
-	/**
-	 * Move to the next byteboundary
-	 * (and check that we are at the end)
-	 */
-	finalize() {
-		this.moveToByteBoundary(true);
-	}
-}
-
-/**
- * @param {number[]} bytes 
- * @returns {UplcProgram}
- */
-export function deserializeUplcBytes(bytes) {
-	let reader = new UplcDeserializer(bytes);
-
-	let version = [
-		reader.readInteger(),
-		reader.readInteger(),
-		reader.readInteger(),
-	];
-
-	let versionKey = version.map(v => v.toString()).join(".");
-
-	if (versionKey != UPLC_VERSION) {
-		console.error(`Warning: Plutus-core script doesn't match version of Helios (expected ${UPLC_VERSION}, got ${versionKey})`);
-	}
-
-	let expr = reader.readTerm();
-
-	reader.finalize();
-
-	return new UplcProgram(expr, null, version);
-}
-
-/**
- * Parses a plutus core program. Returns a UplcProgram object
- * @param {string} jsonString 
- * @returns {UplcProgram}
- */
-export function deserializeUplc(jsonString) {
-	let obj = JSON.parse(jsonString);
-
-	if (!("cborHex" in obj)) {
-		throw UserError.syntaxError(new Source(jsonString), 0, "cborHex field not in json")
-	}
-
-	let cborHex = obj.cborHex;
-	if (typeof cborHex !== "string") {
-		let src = new Source(jsonString);
-		let re = /cborHex/;
-		let cborHexMatch = jsonString.match(re);
-		if (cborHexMatch === null) {
-			throw UserError.syntaxError(src, 0, "'cborHex' key not found");
+		if (constStatement === null) {
+			throw new Error(`param '${name}' not found`);
 		} else {
-			throw UserError.syntaxError(src, jsonString.search(re), "cborHex not a string");
+			let path = constStatement.path;
+
+			let ir = assertDefined(map.get(path));
+
+			map.delete(path);
+
+			ir = wrapWithRawFunctions(IR.wrapWithDefinitions(ir, map));
+
+			let irProgram = IRProgram.new(ir, this.#purpose, true, true);
+
+			return new UplcDataValue(irProgram.site, irProgram.data);
+		}
+	}
+	
+	/**
+	 * Alternative way to get the parameters as HeliosData instances
+	 * @returns {Object.<string, HeliosData>}
+	 */
+	get parameters() {
+		const that = this;
+
+		// not expensive, so doesn't need to be evaluated on-demand
+		const types = this.paramTypes;
+
+		const handler = {
+			/**
+			 * Return from this.#parameters if available, or calculate
+			 * @param {Object.<string, HeliosData>} target 
+			 * @param {string} name
+			 * @returns 
+			 */
+			get(target, name) {
+				if (name in target) {
+					return target[name];
+				} else {
+					const type = assertDefined(types[name], `invalid param name '${name}'`);
+					
+					const uplcValue = that.evalParam(name);
+
+					const value = (uplcValue instanceof UplcBool) ? new Bool(uplcValue.bool) : type.userType.fromUplcData(uplcValue.data);
+						
+					target[name] = value;
+
+					return value;
+				}
+			},
+		};
+
+		return new Proxy(this.#parameters, handler);
+	}
+
+	/**
+	 * @param {Object.<string, HeliosData | any>} values
+	 */
+	set parameters(values) {
+		const types = this.paramTypes;
+
+		for (let name in values) {
+			const rawValue = values[name];
+
+			const UserType = assertDefined(types[name], `invalid param name '${name}'`).userType;
+
+			const value = rawValue instanceof UserType ? rawValue : new UserType(rawValue);
+
+			this.#parameters[name] = value;
+
+			this.changeParamSafe(name, value._toUplcData());
 		}
 	}
 
-	return UplcProgram.fromCbor(hexToBytes(cborHex));
+	/**
+	 * @package
+	 * @param {IR} ir
+	 * @param {string[]} parameters
+	 * @returns {IR}
+	 */
+	wrapEntryPoint(ir, parameters) {
+		// find the constStatements associated with the parameters
+		/**
+		 * @type {(ConstStatement | null)[]}
+		 */
+		const parameterStatements = new Array(parameters.length).fill(null);
+
+		if (parameters.length > 0) {
+			for (let statement of this.mainStatements) {
+				if (statement instanceof ConstStatement) {
+					const i = parameters.findIndex(p => statement.name.value == p);
+
+					if (i != -1) {
+						parameterStatements[i] = statement;
+					}
+				} else if (statement instanceof ImportStatement && statement.origStatement instanceof ConstStatement) {
+					const i = parameters.findIndex(p => statement.name.value == p);
+
+					if (i != -1) {
+						parameterStatements[i] = statement.origStatement;
+					}
+				}
+			}
+
+			parameters.forEach((p, i) => {
+				if (parameterStatements[i] == null) {
+					throw new Error(`parameter ${p} not found (hint: must come before main)`);
+				}
+			});
+		}		
+
+		/**
+		 * @type {Map<string, IR>}
+		 */
+		const map = new Map();
+
+		for (let [statement, _] of this.allStatements) {
+			if (parameters.length > 0 && statement instanceof ConstStatement) {
+				const i = parameterStatements.findIndex(cs => cs === statement);
+
+				if (i != -1) {
+					let ir = new IR(`__PARAM_${i}`);
+
+					if (statement.type instanceof BoolType) {
+						ir = new IR([
+							new IR("__helios__common__unBoolData("),
+							ir,
+							new IR(")")
+						]);
+					}
+
+					map.set(statement.path, ir); 
+
+					continue;
+				}
+			}
+
+			statement.toIR(map);
+
+			if (statement.name.value == "main") {
+				break;
+			}
+		}
+ 
+		// builtin functions are added when the IR program is built
+		// also replace all tabs with four spaces
+		return wrapWithRawFunctions(IR.wrapWithDefinitions(ir, map));
+	}
+
+	/**
+	 * @package
+	 * @param {string[]}  parameters
+	 * @returns {IR}
+	 */
+	toIR(parameters) {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	prettyIR(simplify = false) {
+		const ir = this.toIR([]);
+
+		const irProgram = IRProgram.new(ir, this.#purpose, simplify);
+
+		return new Source(irProgram.toString()).pretty();
+	}
+
+	/**
+	 * @param {boolean} simplify 
+	 * @returns {UplcProgram}
+	 */
+	compile(simplify = false) {
+		const ir = this.toIR([]);
+
+		const irProgram = IRProgram.new(ir, this.#purpose, simplify);
+		
+		//console.log(new Source(irProgram.toString()).pretty());
+		return irProgram.toUplc();
+	}
+
+	/**
+	 * Compile a special Uplc
+	 * @param {string[]} parameters
+	 * @param {boolean} simplify
+	 * @returns {UplcProgram}
+	 */
+	compileParametric(parameters, simplify = false) {
+		assert(parameters.length > 0, "expected at least 1 parameter (hint: use program.compile() instead)");
+
+		const ir = this.toIR(parameters);
+
+		const irProgram = IRParametricProgram.new(ir, this.#purpose, parameters, simplify);
+
+		// TODO: UplcParametricProgram
+		return irProgram.toUplc();
+	}
 }
 
-//////////////////////////
-// 18. Transaction objects
-//////////////////////////
+class RedeemerProgram extends Program {
+	/**
+	 * @param {number} purpose
+	 * @param {Module[]} modules 
+	 */
+	constructor(purpose, modules) {
+		super(purpose, modules);
+	}
+
+	/**
+	 * @package
+	 * @param {GlobalScope} scope
+	 * @returns {TopScope}
+	 */
+	evalTypesInternal(scope) {
+		const topScope = super.evalTypesInternal(scope);
+
+		// check the 'main' function
+
+		let main = this.mainFunc;
+		let argTypeNames = main.argTypeNames;
+		let retTypes = main.retTypes;
+		let haveRedeemer = false;
+		let haveScriptContext = false;
+
+		if (argTypeNames.length > 2) {
+			throw main.typeError("too many arguments for main");
+		}
+
+		for (let t of argTypeNames) {
+			if (t == "Redeemer") {
+				if (haveRedeemer) {
+					throw main.typeError(`duplicate 'Redeemer' argument`);
+				} else if (haveScriptContext) {
+					throw main.typeError(`'Redeemer' must come before 'ScriptContext'`);
+				} else {
+					haveRedeemer = true;
+				}
+			} else if (t == "ScriptContext") {
+				if (haveScriptContext) {
+					throw main.typeError(`duplicate 'ScriptContext' argument`);
+				} else {
+					haveScriptContext = true;
+				}
+			} else {
+				throw main.typeError(`illegal argument type, must be 'Redeemer' or 'ScriptContext', got '${t}'`);
+			}
+		}
+
+		if (retTypes.length !== 1) {
+			throw main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
+		} else if (!(retTypes[0] instanceof BoolType)) {
+			throw main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
+		}
+
+		return topScope;
+	}
+
+	/**
+	 * @package
+	 * @param {string[]} parameters
+	 * @returns {IR} 
+	 */
+	toIR(parameters = []) {
+		/** @type {IR[]} */
+		const outerArgs = [];
+
+		/** @type {IR[]} */
+		const innerArgs = [];
+
+		for (let t of this.mainFunc.argTypeNames) {
+			if (t == "Redeemer") {
+				innerArgs.push(new IR("redeemer"));
+				outerArgs.push(new IR("redeemer"));
+			} else if (t == "ScriptContext") {
+				innerArgs.push(new IR("ctx"));
+				if (outerArgs.length == 0) {
+					outerArgs.push(new IR("_"));
+				}
+				outerArgs.push(new IR("ctx"));
+			} else {
+				throw new Error("unexpected");
+			}
+		}
+
+		while(outerArgs.length < 2) {
+			outerArgs.push(new IR("_"));
+		}
+
+		const ir = new IR([
+			new IR(`${TAB}/*entry point*/\n${TAB}(`),
+			new IR(outerArgs).join(", "),
+			new IR(`) -> {\n${TAB}${TAB}`),
+			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
+			new IR(innerArgs).join(", "),
+			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
+			new IR(`\n${TAB}}`),
+		]);
+
+		return this.wrapEntryPoint(ir, parameters);
+	}
+}
+
+class DatumRedeemerProgram extends Program {
+	/**
+	 * @param {number} purpose
+	 * @param {Module[]} modules
+	 */
+	constructor(purpose, modules) {
+		super(purpose, modules);
+	}
+
+	/**
+	 * @package
+	 * @param {GlobalScope} scope 
+	 * @returns {TopScope}
+	 */
+	evalTypesInternal(scope) {
+		const topScope = super.evalTypesInternal(scope);
+
+		// check the 'main' function
+
+		const main = this.mainFunc;
+		const argTypeNames = main.argTypeNames;
+		const retTypes = main.retTypes;
+		let haveDatum = false;
+		let haveRedeemer = false;
+		let haveScriptContext = false;
+
+		if (argTypeNames.length > 3) {
+			throw main.typeError("too many arguments for main");
+		}
+
+		for (let t of argTypeNames) {
+			if (t == "Datum") {
+				if (haveDatum) {
+					throw main.typeError("duplicate 'Datum' argument");
+				} else if (haveRedeemer) {
+					throw main.typeError("'Datum' must come before 'Redeemer'");
+				} else if (haveScriptContext) {
+					throw main.typeError("'Datum' must come before 'ScriptContext'");
+				} else {
+					haveDatum = true;
+				}
+			} else if (t == "Redeemer") {
+				if (haveRedeemer) {
+					throw main.typeError("duplicate 'Redeemer' argument");
+				} else if (haveScriptContext) {
+					throw main.typeError("'Redeemer' must come before 'ScriptContext'");
+				} else {
+					haveRedeemer = true;
+				}
+			} else if (t == "ScriptContext") {
+				if (haveScriptContext) {
+					throw main.typeError("duplicate 'ScriptContext' argument");
+				} else {
+					haveScriptContext = true;
+				}
+			} else {
+				throw main.typeError(`illegal argument type, must be 'Datum', 'Redeemer' or 'ScriptContext', got '${t}'`);
+			}
+		}
+
+		if (retTypes.length !== 1) {
+			throw main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
+		} else if (!(retTypes[0] instanceof BoolType)) {
+			throw main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
+		}
+
+		return topScope;
+	}
+
+	/**
+	 * @package
+	 * @param {string[]} parameters
+	 * @returns {IR}
+	 */
+	toIR(parameters = []) {
+		/** @type {IR[]} */
+		const outerArgs = [];
+
+		/** @type {IR[]} */
+		const innerArgs = [];
+
+		for (let t of this.mainFunc.argTypeNames) {
+			if (t == "Datum") {
+				innerArgs.push(new IR("datum"));
+				outerArgs.push(new IR("datum"));
+			} else if (t == "Redeemer") {
+				innerArgs.push(new IR("redeemer"));
+				if (outerArgs.length == 0) {
+					outerArgs.push(new IR("_"));
+				}
+				outerArgs.push(new IR("redeemer"));
+			} else if (t == "ScriptContext") {
+				innerArgs.push(new IR("ctx"));
+				while (outerArgs.length < 2) {
+					outerArgs.push(new IR("_"));
+				}
+				outerArgs.push(new IR("ctx"));
+			} else {
+				throw new Error("unexpected");
+			}
+		}
+
+		while(outerArgs.length < 3) {
+			outerArgs.push(new IR("_"));
+		}
+
+		const ir = new IR([
+			new IR(`${TAB}/*entry point*/\n${TAB}(`),
+			new IR(outerArgs).join(", "),
+			new IR(`) -> {\n${TAB}${TAB}`),
+			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
+			new IR(innerArgs).join(", "),
+			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
+			new IR(`\n${TAB}}`),
+		]);
+
+		return this.wrapEntryPoint(ir, parameters);
+	}
+}
+
+class TestingProgram extends Program {
+	/**
+	 * @param {Module[]} modules 
+	 */
+	constructor(modules) {
+		super(ScriptPurpose.Testing, modules);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return `testing ${this.name}\n${super.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @returns {TopScope}
+	 */
+	evalTypes() {
+		const scope = GlobalScope.new(ScriptPurpose.Testing);
+
+		const topScope = this.evalTypesInternal(scope);
+
+		// main can have any arg types, and any return type 
+
+		if (this.mainFunc.retTypes.length > 1) {
+			throw this.mainFunc.typeError("program entry-point can only return one value");
+		}
+
+		return topScope;
+	}
+
+	/**
+	 * @package
+	 * @param {string[]} parameters
+	 * @returns {IR}
+	 */
+	toIR(parameters = []) {
+		let args = this.mainFunc.argTypes.map((_, i) => new IR(`arg${i}`));
+
+		let ir = new IR([
+			new IR(`${TAB}/*entry point*/\n${TAB}(`),
+			new IR(args).join(", "),
+			new IR(`) -> {\n${TAB}${TAB}`),
+			new IR([
+				new IR(`${this.mainPath}(`),
+				new IR(args).join(", "),
+				new IR(")"),
+			]),
+			new IR(`\n${TAB}}`),
+		]);
+
+		return this.wrapEntryPoint(ir, parameters);
+	}
+}
+
+class SpendingProgram extends DatumRedeemerProgram {
+	/**
+	 * @param {Module[]} modules
+	 */
+	constructor(modules) {
+		super(ScriptPurpose.Spending, modules);
+	}
+
+	toString() {
+		return `spending ${this.name}\n${super.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @returns {TopScope}
+	 */
+	evalTypes() {
+		const scope = GlobalScope.new(ScriptPurpose.Spending);
+
+		return this.evalTypesInternal(scope);	
+	}
+}
+
+class MintingProgram extends RedeemerProgram {
+	/**
+	 * @param {Module[]} modules 
+	 */
+	constructor(modules) {
+		super(ScriptPurpose.Minting, modules);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return `minting ${this.name}\n${super.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @returns {TopScope}
+	 */
+	evalTypes() {
+		const scope = GlobalScope.new(ScriptPurpose.Minting);
+
+		return this.evalTypesInternal(scope);	
+	}
+}
+
+class StakingProgram extends RedeemerProgram {
+	/**
+	 * @param {Module[]} modules 
+	 */
+	constructor(modules) {
+		super(ScriptPurpose.Staking, modules);
+	}
+
+	toString() {
+		return `staking ${this.name}\n${super.toString()}`;
+	}
+
+	/**
+	 * @package
+	 * @returns {TopScope}
+	 */
+	evalTypes() {
+		const scope = GlobalScope.new(ScriptPurpose.Staking);
+
+		return this.evalTypesInternal(scope);	
+	}
+}
+
+
+///////////////////////
+// Section 24: Tx types
+///////////////////////
 
 export class Tx extends CborData {
 	#body;
@@ -28218,6 +32422,14 @@ export class Tx extends CborData {
 
 		return this;
 	}
+
+	/**
+	 * @returns {TxId}
+	 */
+	id() {
+		assert(this.#valid, "can't get TxId of unfinalized Tx");
+		return new TxId(Crypto.blake2b(this.#body.toCbor(), 32));
+	}
 }
 
 /**
@@ -28316,6 +32528,9 @@ class TxBody extends CborData {
 		this.#fee = fee;
 	}
 
+	/**
+	 * @type {Assets}
+	 */
 	get minted() {
 		return this.#minted;
 	}
@@ -28522,8 +32737,9 @@ class TxBody extends CborData {
 			new ListData(this.#inputs.map(input => input.toData())),
 			new ListData(this.#refInputs.map(input => input.toData())),
 			new ListData(this.#outputs.map(output => output.toData())),
-			(new Value(this.#fee)).toData(),
-			this.#minted.toData(),
+			(new Value(this.#fee))._toUplcData(),
+			// NOTE: all other Value instances in ScriptContext contain some lovelace, but #minted can never contain any lovelace, yet cardano-node always prepends 0 lovelace to the #minted MapData
+			(new Value(0n, this.#minted))._toUplcData(true), 
 			new ListData(this.#certs.map(cert => cert.toData())),
 			new MapData(Array.from(this.#withdrawals.entries()).map(w => [w[0].toStakingData(), new IntData(w[1])])),
 			this.toValidTimeRangeData(networkParams),
@@ -29329,7 +33545,7 @@ export class UTxO extends TxInput {
 	 */
 	static fromCbor(bytes) {
 		/** @type {?TxInput} */
-		let txInput = null;
+		let maybeTxInput = null;
 
 		/** @type {?TxOutput} */
 		let origOutput = null;
@@ -29337,7 +33553,7 @@ export class UTxO extends TxInput {
 		CborData.decodeTuple(bytes, (i, fieldBytes) => {
 			switch(i) {
 				case 0:
-					txInput = TxInput.fromCbor(fieldBytes);
+					maybeTxInput = TxInput.fromCbor(fieldBytes);
 					break;
 				case 1:
 					origOutput = TxOutput.fromCbor(fieldBytes);
@@ -29347,7 +33563,10 @@ export class UTxO extends TxInput {
 			}
 		});
 
-		if (txInput !== null && origOutput !== null) {
+		if (maybeTxInput !== null && origOutput !== null) {
+            /** @type {TxInput} */
+            const txInput = maybeTxInput;
+            
 			return new TxInput(txInput.txId, txInput.utxoIdx, origOutput);
 		} else {
 			throw new Error("unexpected");
@@ -29617,8 +33836,8 @@ export class TxOutput extends CborData {
 		}
 
 		return new ConstrData(0, [
-			this.#address.toData(),
-			this.#value.toData(),
+			this.#address._toUplcData(),
+			this.#value._toUplcData(),
 			datum,
 			new ConstrData(1, []), // TODO: how to include the ref script
 		]);
@@ -29698,246 +33917,7 @@ class DCert extends CborData {
 }
 
 /**
- * See CIP19 for formatting of first byte
- */
-export class Address extends CborData {
-	/** @type {number[]} */
-	#bytes;
-
-	/**
-	 * @param {number[]} bytes
-	 */
-	constructor(bytes) {
-		super();
-		this.#bytes = bytes;
-	}
-
-	get bytes() {
-		return this.#bytes.slice();
-	}
-
-	toCbor() {
-		return CborData.encodeBytes(this.#bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {Address}
-	 */
-	static fromCbor(bytes) {
-		return new Address(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str
-	 * @returns {Address}
-	 */
-	static fromBech32(str) {
-		// ignore the prefix (encoded in the bytes anyway)
-		let [prefix, bytes] = Crypto.decodeBech32(str);
-
-		let result = new Address(bytes);
-
-		assert(prefix == (result.isForTestnet() ? "addr_test" : "addr"), "invalid Address prefix");
-
-		return result;
-	}
-
-	/**
-	 * Doesn't check validity
-	 * @param {string} hex
-	 * @returns {Address}
-	 */
-	static fromHex(hex) {
-		return new Address(hexToBytes(hex));
-	}
-
-	/**
-	 * Returns the raw Address bytes as a hex encoded string
-	 * @returns {string}
-	 */
-	toHex() {
-		return bytesToHex(this.#bytes);
-	}
-
-	/**
-	 * Simple payment address without a staking part
-	 * @param {boolean} isTestnet
-	 * @param {PubKeyHash} hash
-	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
-	 * @returns {Address}
-	 */
-	static fromPubKeyHash(isTestnet, hash, stakingHash = null) {
-		if (stakingHash !== null) {
-			if (stakingHash instanceof StakeKeyHash) {
-				return new Address(
-					[isTestnet ? 0x00 : 0x01].concat(hash.bytes).concat(stakingHash.bytes)
-				);
-			} else {
-				assert(stakingHash instanceof StakingValidatorHash);
-				return new Address(
-					[isTestnet ? 0x20 : 0x21].concat(hash.bytes).concat(stakingHash.bytes)
-				);
-			}
-		} else {
-			return new Address([isTestnet ? 0x60 : 0x61].concat(hash.bytes));
-		}
-	}
-
-	/**
-	 * Simple script address without a staking part
-	 * Only relevant for validator scripts
-	 * @param {boolean} isTestnet
-	 * @param {ValidatorHash} hash
-	 * @param {?(StakeKeyHash | StakingValidatorHash)} stakingHash
-	 * @returns {Address}
-	 */
-	static fromValidatorHash(isTestnet, hash, stakingHash = null) {
-		if (stakingHash !== null) {
-			if (stakingHash instanceof StakeKeyHash) {
-				return new Address(
-					[isTestnet ? 0x10 : 0x11].concat(hash.bytes).concat(stakingHash.bytes)
-				);
-			} else {
-				assert(stakingHash instanceof StakingValidatorHash);
-				return new Address(
-					[isTestnet ? 0x30 : 0x31].concat(hash.bytes).concat(stakingHash.bytes)
-				);
-			}
-		} else {
-			return new Address([isTestnet ? 0x70 : 0x71].concat(hash.bytes));
-		}
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toBech32() {
-		return Crypto.encodeBech32(
-			this.isForTestnet() ? "addr_test" : "addr",
-			this.#bytes
-		);
-	}
-
-	/**
-	 * @returns {Object}
-	 */
-	dump() {
-		return {
-			hex: bytesToHex(this.#bytes),
-			bech32: this.toBech32(),
-		};
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isForTestnet() {
-		let type = this.#bytes[0] & 0b00001111;
-
-		return type == 0;
-	}
-
-	/**
-	 * @returns {ConstrData}
-	 */
-	toCredentialData() {
-		let vh = this.validatorHash;
-
-		if (vh !== null) {
-			return new ConstrData(1, [new ByteArrayData(vh.bytes)]);
-		} else {
-			let pkh = this.pubKeyHash;
-
-			if (pkh === null) {
-				throw new Error("unexpected");
-			} else {
-				return new ConstrData(0, [new ByteArrayData(pkh.bytes)]);
-			}
-		}
-	}
-
-	/**
-	 * @returns {ConstrData}
-	 */
-	toStakingData() {
-		let sh = this.stakingHash;
-
-		if (sh == null) {
-			return new ConstrData(1, []); // none
-		} else {
-			// some
-			return new ConstrData(0, [
-				// staking credential
-				new ConstrData(0, [
-					// credential (TODO: also allow script and pointer)
-					new ConstrData(0, [new ByteArrayData(sh.bytes)]),
-				]),
-			]); // some
-		}
-	}
-
-	/**
-	 * @returns {ConstrData}
-	 */
-	toData() {
-		return new ConstrData(0, [this.toCredentialData(), this.toStakingData()]);
-	}
-
-	/**
-	 * @type {?PubKeyHash}
-	 */
-	get pubKeyHash() {
-		let type = this.#bytes[0] >> 4;
-
-		if (type % 2 == 0) {
-			return new PubKeyHash(this.#bytes.slice(1, 29));
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * @type {?ValidatorHash}
-	 */
-	get validatorHash() {
-		let type = this.#bytes[0] >> 4;
-
-		if (type % 2 == 1) {
-			return new ValidatorHash(this.#bytes.slice(1, 29));
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * @type {?Hash}
-	 */
-	get stakingHash() {
-		let type = this.#bytes[0] >> 4;
-
-		if (type < 4) {
-			let bytes = this.#bytes.slice(29);
-			assert(bytes.length == 28);
-			return new Hash(bytes);
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * Used to sort txbody withdrawals
-	 * @param {Address} a
-	 * @param {Address} b
-	 * @return {number}
-	 */
-	static compStakingHashes(a, b) {
-		return Hash.compare(a.stakingHash, b.stakingHash);
-	}
-}
-
-/**
- * Convenience address that is to query all assets controlled by a given StakeHash (can be scriptHash or regular stakeHash)
+ * Convenience address that is used to query all assets controlled by a given StakeHash (can be scriptHash or regular stakeHash)
  */
 export class StakeAddress extends Address {
 	/**
@@ -30003,848 +33983,6 @@ export class StakeAddress extends Address {
 			this.isForTestnet() ? "stake_test" : "stake",
 			this.bytes
 		);
-	}
-}
-
-/**
- * Collection of non-lovelace assets
- */
-export class Assets extends CborData {
-	/** @type {[MintingPolicyHash, [number[], bigint][]][]} */
-	#assets;
-
-	/**
-	 * @param {[MintingPolicyHash, [number[], bigint][]][]} assets 
-	 */
-	constructor(assets = []) {
-		super();
-		this.#assets = assets;
-	}
-
-	/**
-	 * @type {MintingPolicyHash[]}
-	 */
-	get mintingPolicies() {
-		return this.#assets.map(([mph, _]) => mph);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isZero() {
-		return this.#assets.length == 0;
-	}
-
-	/**
-	 * @param {MintingPolicyHash} mph
-	 * @param {number[]} tokenName 
-	 * @returns {boolean}
-	 */
-	has(mph, tokenName) {
-		let inner = this.#assets.find(asset => mph.eq(asset[0]));
-
-		if (inner !== undefined) {
-			return inner[1].findIndex(pair => eq(pair[0], tokenName)) != -1;
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * @param {MintingPolicyHash} mph
-	 * @param {number[]} tokenName 
-	 * @returns {bigint}
-	 */
-	get(mph, tokenName) {
-		let inner = this.#assets.find(asset => mph.eq(asset[0]));
-
-		if (inner !== undefined) {
-			let token = inner[1].find(pair => eq(pair[0], tokenName));
-
-			if (token !== undefined) {
-				return token[1];
-			} else {
-				return 0n;
-			}
-		} else {
-			return 0n;
-		}
-	}
-
-	/**
-	 * Mutates 'this'
-	 */
-	removeZeroes() {
-		for (let asset of this.#assets) {
-			asset[1] = asset[1].filter(token => token[1] != 0n);
-		}
-
-		this.#assets = this.#assets.filter(asset => asset[1].length != 0);
-	}
-
-	/**
-	 * Mutates 'this'
-	 * @param {MintingPolicyHash} mph
-	 * @param {number[]} tokenName 
-	 * @param {bigint} quantity
-	 */
-	addComponent(mph, tokenName, quantity) {
-		if (quantity == 0n) {
-			return;
-		}
-
-		let inner = this.#assets.find(asset => mph.eq(asset[0]));
-
-		if (inner === undefined) {
-			this.#assets.push([mph, [[tokenName, quantity]]]);
-		} else {
-			let token = inner[1].find(pair => eq(pair[0], tokenName));
-
-			if (token === undefined) {
-				inner[1].push([tokenName, quantity]);
-			} else {
-				token[1] += quantity;
-			}
-		}
-
-		this.removeZeroes();
-	}
-
-	/**
-	 * @param {Assets} other 
-	 * @param {(a: bigint, b: bigint) => bigint} op 
-	 * @returns {Assets}
-	 */
-	applyBinOp(other, op) {
-		let res = new Assets();
-
-		for (let [mph, tokens] of this.#assets) {
-			for (let [tokenName, quantity] of tokens) {
-				res.addComponent(mph, tokenName, op(quantity, 0n));
-			}
-		}
-
-		for (let [mph, tokens] of other.#assets) {
-			for (let [tokenName, quantity] of tokens) {
-				res.addComponent(mph, tokenName, op(0n, quantity));
-			}
-		}
-
-		return res;
-	}
-
-	/**
-	 * @param {Assets} other 
-	 * @returns {Assets}
-	 */
-	add(other) {
-		return this.applyBinOp(other, (a, b) => a + b);
-	}
-
-	/**
-	 * @param {Assets} other 
-	 * @returns {Assets}
-	 */
-	sub(other) {
-		return this.applyBinOp(other, (a, b) => a - b);
-	}
-
-	/**
-	 * Mutates 'this'
-	 * Throws error if mph is already contained in 'this'
-	 * @param {MintingPolicyHash} mph
-	 * @param {[number[], bigint][]} tokens
-	 */
-	addTokens(mph, tokens) {
-		for (let asset of this.#assets) {
-			if (asset[0].eq(mph)) {
-				throw new Error(`MultiAsset already contains ${bytesToHex(mph.bytes)}`);
-			}
-		}
-
-		this.#assets.push([mph, tokens.slice()]);
-	}
-
-	/**
-	 * @param {MintingPolicyHash} mph
-	 * @returns {number[][]}
-	 */
-	getTokenNames(mph) {
-		for (let [otherMph, tokens] of this.#assets) {
-			if (otherMph.eq(mph)) {
-				return tokens.map(([tokenName, _]) => tokenName);
-			}
-		}
-
-		return [];
-	}
-
-	/**
-	 * @param {Assets} other 
-	 * @returns {boolean}
-	 */
-	eq(other) {
-		for (let asset of this.#assets) {
-			for (let token of asset[1]) {
-				if (token[1] != other.get(asset[0], token[0])) {
-					return false;
-				}
-			}
-		}
-
-		for (let asset of other.#assets) {
-			for (let token of asset[1]) {
-				if (token[1] != this.get(asset[0], token[0])) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Strict gt, if other contains assets this one doesn't contain => return false
-	 * @param {Assets} other 
-	 * @returns {boolean}
-	 */
-	gt(other) {
-		if (this.isZero()) {
-			return false;
-		}
-
-		for (let asset of this.#assets) {
-			for (let token of asset[1]) {
-				if (token[1] <= other.get(asset[0], token[0])) {
-					return false;
-				}
-			}
-		}
-
-		for (let asset of other.#assets) {
-			for (let token of asset[1]) {
-				if (!this.has(asset[0], token[0])) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * @param {Assets} other 
-	 * @returns {boolean}
-	 */
-	ge(other) {
-		return this.gt(other) || this.eq(other);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	allPositive() {
-		for (let asset of this.#assets) {
-			for (let pair of asset[1]) {
-				if (pair[1] < 0n) {
-					return false;
-				} else if (pair[1] == 0n) {
-					throw new Error("unexpected");
-				}
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Throws an error if any contained quantity <= 0n
-	 */
-	assertAllPositive() {
-		assert(this.allPositive(), "non-positive token amounts detected");
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeMap(
-			this.#assets.map(
-				outerPair => {
-					return [outerPair[0].toCbor(), CborData.encodeMap(outerPair[1].map(
-						innerPair => {
-							return [
-								CborData.encodeBytes(innerPair[0]), CborData.encodeInteger(innerPair[1])
-							]
-						}
-					))]
-				}
-			)
-		)
-	}
-
-	/**
-	 * @param {number[]} bytes
-	 * @returns {Assets}
-	 */
-	static fromCbor(bytes) {
-		let ms = new Assets();
-
-		CborData.decodeMap(bytes, pairBytes => {
-			let mph = MintingPolicyHash.fromCbor(pairBytes);
-
-			/**
-			 * @type {[number[], bigint][]}
-			 */
-			let innerMap = [];
-			
-			CborData.decodeMap(pairBytes, innerPairBytes => {
-				innerMap.push([
-					CborData.decodeBytes(innerPairBytes),
-					CborData.decodeInteger(innerPairBytes),
-				]);
-			});
-
-			ms.#assets.push([mph, innerMap]);
-		});
-
-		return ms;
-	}
-
-	/**
-	 * @returns {Object}
-	 */
-	dump() {
-		let obj = {};
-
-		for (let [mph, tokens] of this.#assets) {
-			let innerObj = {};
-
-			for (let [tokenName, quantity] of tokens) {
-				innerObj[bytesToHex(tokenName)] = quantity.toString();
-			}
-
-			obj[mph.dump()] = innerObj;
-		}
-
-		return obj;
-	}
-
-	/**
-	 * Used when generating script contexts for running programs
-	 * @returns {MapData}
-	 */
-	toData() {
-		/** @type {[UplcData, UplcData][]} */
-		let pairs = [];
-
-		for (let asset of this.#assets) {
-			/** @type {[UplcData, UplcData][]} */
-			let innerPairs = [];
-
-			for (let token of asset[1]) {
-				innerPairs.push([
-					new ByteArrayData(token[0]),
-					new IntData(token[1]),
-				]);
-			}
-
-			pairs.push([
-				new ByteArrayData(asset[0].bytes),
-				new MapData(innerPairs),
-			])
-		}
-
-		return new MapData(pairs);
-	}
-
-	/**
-	 * Makes sure minting policies are in correct order
-	 * Mutates 'this'
-	 * Order of tokens per mintingPolicyHash isn't changed
-	 */
-	sort() {
-		this.#assets.sort((a, b) => {
-			return Hash.compare(a[0], b[0]);
-		});
-	}
-}
-
-export class Value extends CborData {
-	/** @type {bigint} */
-	#lovelace;
-
-	/** @type {Assets} */
-	#assets;
-	
-	/**
-	 * @param {bigint} lovelace 
-	 * @param {Assets} assets 
-	 */
-	constructor(lovelace = 0n, assets = new Assets()) {
-		super();
-		this.#lovelace = lovelace;
-		this.#assets = assets;
-	}
-
-	/**
-	 * @param {MintingPolicyHash} mph 
-	 * @param {number[]} tokenName 
-	 * @param {bigint} quantity 
-	 * @returns {Value}
-	 */
-	static asset(mph, tokenName, quantity) {
-		return new Value(0n, new Assets([
-			[mph, [
-				[tokenName, quantity]
-			]]
-		]));
-	}
-
-	/**
-	 * @type {bigint}
-	 */
-	get lovelace() {
-		return this.#lovelace;
-	}
-
-	/**
-	 * Setter for lovelace
-	 * Note: mutation is handy when balancing transactions
-	 * @param {bigint} lovelace
-	 */
-	setLovelace(lovelace) {
-		this.#lovelace = lovelace;
-	}
-
-	/**
-	 * @type {Assets}
-	 */
-	get assets() {
-		return this.#assets;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		if (this.#assets.isZero()) {
-			return CborData.encodeInteger(this.#lovelace);
-		} else {
-			return CborData.encodeTuple([
-				CborData.encodeInteger(this.#lovelace),
-				this.#assets.toCbor()
-			]);
-		}
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {Value}
-	 */
-	static fromCbor(bytes) {
-		let mv = new Value();
-
-		if (CborData.isTuple(bytes)) {
-			CborData.decodeTuple(bytes, (i, fieldBytes) => {
-				switch(i) {
-					case 0:
-						mv.#lovelace = CborData.decodeInteger(fieldBytes);
-						break;
-					case 1:
-						mv.#assets = Assets.fromCbor(fieldBytes);
-						break;
-					default:
-						throw new Error("unrecognized field");
-				}
-			});
-		} else {
-			mv.#lovelace = CborData.decodeInteger(bytes);
-		}
-
-		return mv;
-	}
-
-	/**
-	 * @param {Value} other 
-	 * @returns {Value}
-	 */
-	add(other) {
-		return new Value(this.#lovelace + other.#lovelace, this.#assets.add(other.#assets));
-	}
-
-	/**
-	 * @param {Value} other 
-	 * @returns {Value}
-	 */
-	sub(other) {
-		return new Value(this.#lovelace - other.#lovelace, this.#assets.sub(other.#assets));
-	}
-
-	/**
-	 * @param {Value} other 
-	 * @returns {boolean}
-	 */
-	eq(other) {
-		return (this.#lovelace == other.#lovelace) && (this.#assets.eq(other.#assets));
-	}
-
-	/**
-	 * Strictly greater than. Returns false if any asset is missing 
-	 * @param {Value} other 
-	 * @returns {boolean}
-	 */
-	gt(other) {
-		return (this.#lovelace > other.#lovelace) && (this.#assets.gt(other.#assets));
-	}
-
-	/**
-	 * Strictly >= 
-	 * @param {Value} other 
-	 * @returns {boolean}
-	 */
-	ge(other) {
-		return (this.#lovelace >= other.#lovelace) && (this.#assets.ge(other.#assets));
-	}
-
-	/**
-	 * Throws an error if any contained quantity is negative
-	 * Used when building transactions because transactions can't contain negative values
-	 * @returns {Value} - returns this
-	 */
-	assertAllPositive() {
-		assert(this.#lovelace >= 0n);
-
-		this.#assets.assertAllPositive();
-
-		return this;
-	}
-
-	/**
-	 * @returns {Object}
-	 */
-	dump() {
-		return {
-			lovelace: this.#lovelace.toString(),
-			assets: this.#assets.dump()
-		};
-	}
-
-	/**
-	 * Used when building script context
-	 * @returns {MapData}
-	 */
-	toData() {
-		let map = this.#assets.toData();
-
-		if (this.#lovelace != 0n) {
-			let inner = map.map; 
-
-			inner.unshift([
-				new ByteArrayData([]),
-				new MapData([
-					[new ByteArrayData([]), new IntData(this.#lovelace)]
-				]),
-			]);
-
-			// 'inner' is copy, so mutating won't change the original
-			map = new MapData(inner);
-		}
-
-		return map;
-	}
-
-	/**
-	 * Useful when deserializing inline datums
-	 * @param {UplcData} data
-	 * @returns {Value}
-	 */
-	static fromData(data) {
-		let sum = new Value();
-
-		let outerMap = data.map;
-
-		for (let [mphData, tokensData] of outerMap) {
-			let mphBytes = mphData.bytes;
-
-			let innerMap = tokensData.map;
-
-			if (mphBytes.length == 0) {
-				//lovelace
-				assert(innerMap.length == 1 && innerMap[0][0].bytes.length == 0); 
-				sum = sum.add(new Value(innerMap[0][1].int));
-			} else {
-				// other assets
-				let mph = new MintingPolicyHash(mphBytes);
-
-				for (let [tokenNameData, quantityData] of innerMap) {
-					let tokenName = tokenNameData.bytes;
-					let quantity = quantityData.int;
-
-					sum = sum.add(Value.asset(mph, tokenName, quantity));
-				}
-			}
-		}
-
-		return sum;
-	}
-}
-
-class Hash extends CborData {
-	/** @type {number[]} */
-	#bytes;
-
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		super();
-		this.#bytes = bytes;
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	get bytes() {
-		return this.#bytes;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	get hex() {
-		return bytesToHex(this.#bytes);
-	}
-
-	/**
-	 * @returns {number[]}
-	 */
-	toCbor() {
-		return CborData.encodeBytes(this.#bytes);
-	}
-
-	/**
-	 * Used internally for metadataHash and scriptDataHash
-	 * @param {number[]} bytes 
-	 * @returns {Hash}
-	 */
-	static fromCbor(bytes) {
-		return new Hash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * Might be needed for internal use
-	 * @param {string} str 
-	 * @returns {Hash}
-	 */
-	static fromHex(str) {
-		return new Hash(hexToBytes(str));
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	dump() {
-		return bytesToHex(this.#bytes);
-	}
-
-	/**
-	 * @param {Hash} other
-	 */
-	eq(other) {
-		return eq(this.#bytes, other.#bytes);
-	}
-
-	/**
-	 * @param {Hash} a 
-	 * @param {Hash} b 
-	 * @returns {number}
-	 */
-	static compare(a, b) {
-		return ByteArrayData.comp(a.#bytes, b.#bytes);
-	}
-}
-
-export class TxId extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		assert(bytes.length == 32);
-		super(bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {TxId}
-	 */
-	static fromCbor(bytes) {
-		return new TxId(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {TxId}
-	 */
-	static fromHex(str) {
-		return new TxId(hexToBytes(str));
-	}
-
-	/**
-	 * @returns {TxId}
-	 */
-	static dummy() {
-		return new TxId((new Array(32)).fill(0));
-	}
-}
-
-export class DatumHash extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		assert(bytes.length == 32);
-		super(bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {TxId}
-	 */
-	static fromCbor(bytes) {
-		return new DatumHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {TxId}
-	 */
-	static fromHex(str) {
-		return new DatumHash(hexToBytes(str));
-	}
-}
-
-export class PubKeyHash extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		assert(bytes.length == 28);
-		super(bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {PubKeyHash}
-	 */
-	static fromCbor(bytes) {
-		return new PubKeyHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {PubKeyHash}
-	 */
-	static fromHex(str) {
-		return new PubKeyHash(hexToBytes(str));
-	}
-}
-
-export class StakeKeyHash extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		assert(bytes.length == 28);
-		super(bytes);
-	}
-
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {StakeKeyHash}
-	 */
-	static fromCbor(bytes) {
-		return new StakeKeyHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {StakeKeyHash}
-	 */
-	static fromHex(str) {
-		return new StakeKeyHash(hexToBytes(str));
-	}
-}
-
-export class ScriptHash extends Hash {
-	/**
-	 * @param {number[]} bytes 
-	 */
-	constructor(bytes) {
-		assert(bytes.length == 28);
-		super(bytes);
-	}
-}
-
-export class ValidatorHash extends ScriptHash {
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {ValidatorHash}
-	 */
-	static fromCbor(bytes) {
-		return new ValidatorHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {ValidatorHash}
-	 */
-	static fromHex(str) {
-		return new ValidatorHash(hexToBytes(str));
-	}
-}
-
-export class MintingPolicyHash extends ScriptHash {
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {MintingPolicyHash}
-	 */
-	static fromCbor(bytes) {
-		return new MintingPolicyHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {MintingPolicyHash}
-	 */
-	static fromHex(str) {
-		return new MintingPolicyHash(hexToBytes(str));
-	}
-
-	/**
-	 * Encodes as bech32 string using 'asset' as human readable part
-	 * @returns {string}
-	 */
-	toBech32() {
-		return Crypto.encodeBech32("asset", Crypto.blake2b(this.bytes, 20));
-	}
-}
-
-export class StakingValidatorHash extends ScriptHash {
-	/**
-	 * @param {number[]} bytes 
-	 * @returns {StakingValidatorHash}
-	 */
-	static fromCbor(bytes) {
-		return new StakingValidatorHash(CborData.decodeBytes(bytes));
-	}
-
-	/**
-	 * @param {string} str 
-	 * @returns {StakingValidatorHash}
-	 */
-	static fromHex(str) {
-		return new StakingValidatorHash(hexToBytes(str));
 	}
 }
 
@@ -31232,11 +34370,11 @@ class SpendingRedeemer extends Redeemer {
 	 * @param {TxBody} body
 	 */
 	updateIndex(body) {
-		if (this.#input === null) {
+		if (this.#input == null) {
 			throw new Error("input can't be null");
 		} else {
 			this.#inputIndex = body.inputs.findIndex(i => {
-				return i.txId.eq(this.#input.txId) && (i.utxoIdx == this.#input.utxoIdx)
+				return i.txId.eq(assertDefined(this.#input).txId) && (i.utxoIdx == assertDefined(this.#input).utxoIdx)
 			});
 
 			assert(this.#inputIndex != -1);
@@ -31307,7 +34445,7 @@ class MintingRedeemer extends Redeemer {
 		if (this.#mph === null) {
 			throw new Error("can't have null mph at this point");
 		} else {
-			this.#mphIndex = body.minted.mintingPolicies.findIndex(mph => mph.eq(this.#mph));
+			this.#mphIndex = body.minted.mintingPolicies.findIndex(mph => mph.eq(assertDefined(this.#mph)));
 
 			assert(this.#mphIndex != -1);
 		}
@@ -31741,9 +34879,335 @@ class TxMetadata {
 }
 
 
-///////////////////////////////////////////////
-// Section 19. Property based testing framework
-///////////////////////////////////////////////
+////////////////////////////////////
+// Section 25: Highlighting function
+////////////////////////////////////
+
+/**
+ * Categories for syntax highlighting
+ */
+const SyntaxCategory = {
+	Normal:     0,
+	Comment:    1,
+	Literal:    2,
+	Symbol:     3,
+	Type:       4,
+	Keyword:    5,
+	Error:      6,
+};
+
+/**
+ * Applies syntax highlighting by returning a list of char categories.
+ * Not part of Tokeizer because it needs to be very fast and can't throw errors.
+ * Doesn't depend on any other functions so it can easily be ported to other languages.
+ * @param {string} src
+ * @returns {Uint8Array}
+ */
+export function highlight(src) {
+	let n = src.length;
+
+	const SyntaxState = {
+		Normal:        0,
+		SLComment:     1,
+		MLComment:     2,
+		String:        3,
+		NumberStart:   4,
+		HexNumber:     5,
+		BinaryNumber:  6,
+		OctalNumber:   7,
+		DecimalNumber: 8,
+		ByteArray:     9,
+	};
+
+	// array of categories
+	let data = new Uint8Array(n);
+
+	let j = 0; // position in data
+	let state = SyntaxState.Normal;
+
+	/** @type {SymbolToken[]} */
+	let groupStack = [];
+	
+	for (let i = 0; i < n; i++) {
+		let c = src[i];
+		let isLast = i == n - 1;
+
+		switch (state) {
+			case SyntaxState.Normal:
+				if (c == "/") {
+					// maybe comment
+					if (!isLast && src[i+1] == "/") {
+						data[j++] = SyntaxCategory.Comment;
+						data[j++] = SyntaxCategory.Comment;
+		
+						i++;
+						state = SyntaxState.SLComment;
+					} else if (!isLast && src[i+1] == "*") {
+						data[j++] = SyntaxCategory.Comment;
+						data[j++] = SyntaxCategory.Comment;
+
+						i++;
+						state = SyntaxState.MLComment;
+					} else {
+						data[j++] = SyntaxCategory.Symbol;
+					}
+				} else if (c == "[" || c == "]" || c == "{" || c == "}" || c == "(" || c == ")") {
+					let s = new SymbolToken(new Site(new Source(src), i), c);
+
+					if (Group.isOpenSymbol(s)) {
+						groupStack.push(s);
+						data[j++] = SyntaxCategory.Normal;
+					} else {
+						let prevGroup = groupStack.pop();
+
+						if (prevGroup === undefined) {
+							data[j++] = SyntaxCategory.Error;
+						} else if (c == Group.matchSymbol(prevGroup)) {
+							data[j++] = SyntaxCategory.Normal;
+						} else {
+							data[prevGroup.site.pos] = SyntaxCategory.Error;
+							data[j++] = SyntaxCategory.Error;
+						}
+					}
+				} else if (c == "%" || c == "!" || c == "&" || c == "*" || c == "+" || c == "-" || c == "<" || c == "=" || c == ">" || c == "|") {
+					// symbol
+					switch (c) {
+						case "&":
+							if (!isLast && src[i+1] == "&") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Normal;
+							}
+							break;
+						case "|":
+							if (!isLast && src[i+1] == "|") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Normal;
+							}
+							break;
+						case "!":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "=":
+							if (!isLast && (src[i+1] == "=" || src[i+1] == ">")) {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case ">":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "<":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "-":
+							if (!isLast && src[i+1] == ">") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						default:
+							data[j++] = SyntaxCategory.Symbol;
+					}
+				} else if (c == "\"") {
+					// literal string
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.String;
+				} else if (c == "0") {
+					// literal number
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.NumberStart;
+				} else if (c >= "1" && c <= "9") {
+					// literal decimal number
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.DecimalNumber;
+				} else if (c == "#") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.ByteArray;
+				} else if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_") {
+					// maybe keyword, builtin type, or boolean
+					let i0 = i;
+					let chars = [c];
+					// move i to the last word char
+					while (i + 1 < n) {
+						let d = src[i+1];
+
+						if ((d >= "a" && d <= "z") || (d >= "A" && d <= "Z") || d == "_" || (d >= "0" && d <= "9")) {
+							chars.push(d);
+							i++;
+						} else {
+							break;
+						}
+					}
+
+					let word = chars.join("");
+					/** @type {number} */
+					let type;
+					switch (word) {
+						case "true":
+						case "false":
+							type = SyntaxCategory.Literal;
+							break;
+						case "Bool":
+						case "Int":
+						case "ByteArray":
+						case "String":
+						case "Option":
+							type = SyntaxCategory.Type;
+							break;
+						case "if":
+						case "else":
+						case "switch":
+						case "func":
+						case "const":
+						case "struct":
+						case "enum":
+						case "import":
+						case "print":
+						case "error":
+						case "self":
+							type = SyntaxCategory.Keyword;
+							break;
+						case "testing":
+						case "spending":
+						case "staking":
+						case "minting":
+						case "module":
+							if (i0 == 0) {
+								type = SyntaxCategory.Keyword;
+							} else {
+								type = SyntaxCategory.Normal;
+							}
+							break;
+						default:
+							type = SyntaxCategory.Normal;
+					}
+
+					for (let ii = i0; ii < i0 + chars.length; ii++) {
+						data[j++] = type;
+					}
+				} else {
+					data[j++] = SyntaxCategory.Normal;
+				}
+				break;
+			case SyntaxState.SLComment:
+				data[j++] = SyntaxCategory.Comment;
+				if (c == "\n") {
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.MLComment:
+				data[j++] = SyntaxCategory.Comment;
+
+				if (c == "*" && !isLast && src[i+1] == "/") {
+					i++;
+					data[j++] = SyntaxCategory.Comment;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.String:
+				data[j++] = SyntaxCategory.Literal;
+
+				if (c == "\"") {
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.NumberStart:
+				if (c == "x") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.HexNumber;
+				} else if (c == "o") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.OctalNumber;
+				} else if (c == "b") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.BinaryNumber;
+				} else if (c >= "0" && c <= "9") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.DecimalNumber;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.DecimalNumber:
+				if (c >= "0" && c <= "9") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.HexNumber:
+			case SyntaxState.ByteArray:
+				if ((c >= "a" && c <= "f") || (c >= "0" && c <= "9")) {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.OctalNumber:
+				if (c >= "0" && c <= "7") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.BinaryNumber:
+				if (c == "0" || c == "1") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			default:
+				throw new Error("unhandled SyntaxState");
+		}		
+	}
+
+	for (let s of groupStack) {
+		data[s.site.pos] = SyntaxCategory.Error;
+	}
+
+	return data;
+}
+
+
+//////////////////////////////////////
+// Section 26: Fuzzy testing framework
+//////////////////////////////////////
 
 /**
  * @typedef {() => UplcValue} ValueGenerator
@@ -32192,11 +35656,366 @@ export class FuzzyTest {
 	}
 }
 
+
+////////////////////////////
+// Section 27: CoinSelection
+////////////////////////////
+
+/**
+ * Collection of coin selection algorithms
+ */
+export class CoinSelection {
+    /**
+     * @param {UTxO[]} utxos 
+     * @param {Value} amount 
+     * @returns {[UTxO[], UTxO[]]} - [picked, not picked that can be used as spares]
+     */
+    static pickSmallest(utxos, amount) {
+        let sum = new Value();
+
+        /** @type {UTxO[]} */
+        let notYetPicked = utxos.slice();
+
+        /** @type {UTxO[]} */
+        const picked = [];
+
+        const mphs = amount.assets.mintingPolicies;
+
+        /**
+         * Picks smallest utxos until 'needed' is reached
+         * @param {bigint} neededQuantity
+         * @param {(utxo: UTxO) => bigint} getQuantity
+         */
+        function picker(neededQuantity, getQuantity) {
+            // first sort notYetPicked in ascending order
+            notYetPicked.sort((a, b) => {
+                return Number(getQuantity(a) - getQuantity(b));
+            });
+
+
+            let count = 0n;
+            const remaining = [];
+
+            while (count < neededQuantity) {
+                const utxo = notYetPicked.shift();
+
+                if (utxo === undefined) {
+                    throw new Error("not enough utxos to cover amount");
+                } else {
+                    const qty = getQuantity(utxo);
+
+                    if (qty > 0n) {
+                        count += qty;
+                        picked.push(utxo);
+                        sum = sum.add(utxo.value);
+                    } else {
+                        remaining.push(utxo)
+                    }
+                }
+            }
+
+            notYetPicked = remaining;
+        }
+
+        for (const mph of mphs) {
+            const tokenNames = amount.assets.getTokenNames(mph);
+
+            for (const tokenName of tokenNames) {
+                const need = amount.assets.get(mph, tokenName);
+                const have = sum.assets.get(mph, tokenName);
+
+                if (have < need) {
+                    const diff = need - have;
+
+                    picker(diff, (utxo) => utxo.value.assets.get(mph, tokenName));
+                }
+            }
+        }
+
+        // now use the same strategy for lovelace
+        const need = amount.lovelace;
+        const have = sum.lovelace;
+
+        if (have < need) {
+            const diff = need - have;
+
+            picker(diff, (utxo) => utxo.value.lovelace);
+        }
+
+        return [picked, notYetPicked];
+    }
+}
+
+
+//////////////////////
+// Section 28: Wallets
+//////////////////////
+
+
+/**
+ * @typedef {{
+ *   usedAddresses: Promise<Address[]>,
+ *   unusedAddresses: Promise<Address[]>,
+ *   utxos: Promise<UTxO[]>,
+ *   signTx(tx: Tx): Promise<Signature[]>,
+ *   submitTx(tx: Tx): Promise<TxId>
+ * }} Wallet
+ */
+
+/**
+ * @typedef {{
+ *   getNetworkId(): Promise<number>,
+ *   getUsedAddresses(): Promise<string[]>,
+ *   getUnusedAddresses(): Promise<string[]>,
+ *   getUtxos(): Promise<string[]>,
+ *   signTx(txHex: string, partialSign: boolean): Promise<string>,
+ *   submitTx(txHex: string): Promise<string>
+ * }} Cip30Handle
+ */
+
+/**
+ * @implements {Wallet}
+ */
+export class Cip30Wallet {
+    #handle;
+
+    /**
+     * @param {Cip30Handle} handle 
+     */
+    constructor(handle) {
+        this.#handle = handle;
+    }
+
+    /**
+     * @type {Promise<Address[]>}
+     */
+    get usedAddresses() {
+        return this.#handle.getUsedAddresses().then(addresses => addresses.map(a => new Address(a)));
+    }
+
+    /**
+     * @type {Promise<Address[]>}
+     */
+    get unusedAddresses() {
+        return this.#handle.getUnusedAddresses().then(addresses => addresses.map(a => new Address(a)));
+    }
+
+    /**
+     * @type {Promise<UTxO[]>}
+     */
+    get utxos() {
+        return this.#handle.getUtxos().then(utxos => utxos.map(u => UTxO.fromCbor(hexToBytes(u))));
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<Signature[]>}
+     */
+    async signTx(tx) {
+        const res = await this.#handle.signTx(bytesToHex(tx.toCbor()), true);
+        
+        return TxWitnesses.fromCbor(hexToBytes(res)).signatures;
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const responseText = await this.#handle.submitTx(bytesToHex(tx.toCbor()));
+
+        return new TxId(responseText);
+    }
+}
+
+export class WalletHelper {
+    #wallet;
+
+    /**
+     * @param {Wallet} wallet 
+     */
+    constructor(wallet) {
+        this.#wallet = wallet;
+    }
+
+    /**
+     * @type {Promise<Address[]>}
+     */
+    get allAddresses() {
+        return this.#wallet.usedAddresses.then(usedAddress => this.#wallet.unusedAddresses.then(unusedAddresses => usedAddress.concat(unusedAddresses)));
+    }
+
+    /**
+     * @returns {Promise<Value>}
+     */
+    async calcBalance() {
+        let sum = new Value();
+
+        const utxos = await this.#wallet.utxos;
+
+        for (const utxo of utxos) {
+            sum = sum.add(utxo.value);
+        }
+
+        return sum;
+    }
+
+    /**
+     * @type {Promise<Address>}
+     */
+    get baseAddress() {
+        return this.allAddresses.then(addresses => assertDefined(addresses[0]));
+    }
+
+    /**
+     * @type {Promise<Address>}
+     */
+    get changeAddress() {
+        return this.#wallet.unusedAddresses.then(addresses => assertDefined(addresses[0]));
+    }
+
+    /**
+     * Returns the first UTxO, so the caller can check precisely which network the user is connected to (eg. preview or preprod)
+     * @type {Promise<?UTxO>}
+     */
+    get refUtxo() {
+        return this.#wallet.utxos.then(utxos => {
+            if(utxos.length == 0) {
+                return null;
+            } else {
+                return assertDefined(utxos[0])
+            }
+        });
+    }
+
+    /**
+     * @param {Value} amount 
+     * @returns {Promise<[UTxO[], UTxO[]]>} - [picked, not picked that can be used as spares]
+     */ 
+    async pickUtxos(amount) {
+        return CoinSelection.pickSmallest(await this.#wallet.utxos, amount);
+    }
+
+    /**
+     * Returned collateral can't contain an native assets (pure lovelace)
+     * TODO: combine UTxOs if a single UTxO isn't enough
+     * @param {bigint} amount - 2 Ada should cover most things
+     * @returns {Promise<UTxO>}
+     */
+    async pickCollateral(amount = 2000000n) {
+        const pureUtxos = (await this.#wallet.utxos).filter(utxo => utxo.value.assets.isZero());
+
+        if (pureUtxos.length == 0) {
+            throw new Error("no pure UTxOs in wallet (needed for collateral)");
+        }
+
+        const bigEnough = pureUtxos.filter(utxo => utxo.value.lovelace >= amount);
+
+        if (bigEnough.length == 0) {
+            throw new Error("no UTxO in wallet that is big enough to cover collateral");
+        }
+
+        bigEnough.sort((a,b) => Number(a.value.lovelace - b.value.lovelace));
+
+        return bigEnough[0];
+    }
+
+    /**
+     * @param {Address} addr
+     * @returns {Promise<boolean>}
+     */
+    async isOwnAddress(addr) {
+        const pkh = addr.pubKeyHash;
+
+        if (pkh === null) {
+            return false;
+        } else {
+            return this.isOwnPubKeyHash(pkh);
+        }
+    }
+
+        /**
+     * @param {PubKeyHash} pkh
+     * @returns {Promise<boolean>}
+     */
+    async isOwnPubKeyHash(pkh) {
+        const addresses = await this.allAddresses;
+
+        for (const addr of addresses) {
+            const aPkh = addr.pubKeyHash;
+
+            if (aPkh !== null && aPkh.eq(pkh)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+
+//////////////////////
+// Section 29: Network
+//////////////////////
+
+/**
+ * @typedef {{
+ *   submitTx(tx: Tx): Promise<TxId>
+ * }} Network
+ */
+
+/**
+ * @implements {Network}
+ */
+export class BlockfrostV0 {
+    #networkName;
+    #projectId;
+
+    /**
+     * @param {string} networkName - "preview", "preprod" or "mainnet"
+     * @param {string} projectId
+     */
+    constructor(networkName, projectId) {
+        this.#networkName = networkName;
+        this.#projectId = projectId
+    }
+
+    /** 
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const data = new Uint8Array(tx.toCbor());
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/tx/submit`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "content-type": "application/cbor",
+                "project_id": this.#projectId
+            },
+            body: data
+        }).catch(e => {
+            console.error(e);
+            throw e;
+        });
+
+        const responseText = await response.text();
+
+        if (response.status != 200) {
+            throw new Error(responseText);
+        } else {
+            return new TxId(JSON.parse(responseText));  
+        }
+    }   
+}
+
 /**
  * The following functions are used in ./test-suite.js and ./test-script-addr.js and aren't (yet) 
  * intended to be used by regular users of this library.
  */
 export const exportedForTesting = {
+	assert: assert,
 	setRawUsageNotifier: setRawUsageNotifier,
 	debug: debug,
 	setBlake2bDigestSize: setBlake2bDigestSize,

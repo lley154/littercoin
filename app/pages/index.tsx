@@ -51,8 +51,8 @@ import {
     
       const contractScript = fileContents.toString();
       const compiledScript = Program.new(contractScript).compile(optimize);
-      const valHash = compiledScript.validatorHash;
-      const valAddr = Address.fromValidatorHash(true, valHash);
+      const valHash = compiledScript.validatorHash; 
+      const valAddr = Address.fromValidatorHash(valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
       console.log("getServerSideProps: blockfrosturl", blockfrostUrl);
@@ -288,7 +288,7 @@ const Home: NextPage = (props) => {
     payload = await resp.json();
 
     if (payload.length != 1) {
-      throw console.error("littercoin reference script not found")
+      throw console.error("littercoin mint reference script not found")
     }
     const lovelaceAmount = payload[0].amount[0].quantity;
 
@@ -449,7 +449,7 @@ const Home: NextPage = (props) => {
 
     const valCompiledScript = Program.new(valContractScript).compile(optimize);
     
-    const valAddr = Address.fromValidatorHash(true, valCompiledScript.validatorHash);
+    const valAddr = Address.fromValidatorHash(valCompiledScript.validatorHash);
 
     // Get the change address from the wallet
     const hexChangeAddr = await walletAPI.getChangeAddress();
@@ -600,7 +600,7 @@ const Home: NextPage = (props) => {
     //console.log("prettyIR", Program.new(contractScript).prettyIR());
 
     const compiledScript = Program.new(contractScript).compile(optimize);
-    const valAddr = Address.fromValidatorHash(true, compiledScript.validatorHash);
+    const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
 
     // Get the change address from the wallet
     const hexChangeAddr = await walletAPI.getChangeAddress();

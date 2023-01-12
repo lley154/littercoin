@@ -6,10 +6,13 @@
 #
 # Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
 # Step 2.   Update src/deploy.js with that UTXO (and admin pkh) 
-# Step 3.   deno run --allow-read --allow-write src/deploy.js
+#           update src/threadtoken.hl with admin UTXO
+# Step 3.   deno run --allow-read --allow-write src/deploy-init.js
+#           update src/mint.hl with thread token value
+#           deno run --allow-read --allow-write src/deploy-mint.js
+#           update src/validator.hl with threadtoken and mint mph values
+#           deno run --allow-read --allow-write src/deploy-val.js
 # Step 4.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
-# Step 5.   Update scripts/[devnet|testnet|mainnet]/global-export-variables.sh
-#           with the UTXO to be used for admin collateral
 ##############################################################
 
 
@@ -81,7 +84,7 @@ echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
 admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
 $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
 
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$MIN_ADA_OUTPUT_TX_REF' ) | .key' > $WORK/admin-utxo-valid.json
 readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
 admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 

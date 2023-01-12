@@ -10,7 +10,7 @@ enum Redeemer {
  }
 
 // Define thread token value
-const TT_MPH: ByteArray = #1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565
+const TT_MPH: ByteArray = #89f6bc562db630e13c1441f35fd93b55f46d61cae7a5e5525dde4ab5
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
