@@ -706,7 +706,63 @@ const Home: NextPage = (props: any) => {
     const compiledScript = Program.new(lcValScript).compile(optimize);
 
     // Extract the validator script address
-    const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
+    const valHash = compiledScript.validatorHash;
+    const valAddr = Address.fromValidatorHash(valHash);
+
+    // Construct the inline datum
+    const newInlineDatum = Datum.inline(newDatum);
+    const value = new Value(newAdaAmount.valueOf(), new Assets([
+      [MintingPolicyHash.fromHex(threadTokenMPH), [
+          [hexToBytes(threadTokenName), BigInt(1)],
+          [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
+      ]]
+    ]));
+
+    // NFT add Ada receipt minting script
+    const mintScript =`
+    minting addAda
+
+    const OWNER_PKH: ByteArray = #` + changeAddr.pubKeyHash.hex + `
+    const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
+
+    const VAL_HASH: ByteArray = #` + valHash.hex + `
+    const valHash:ValidatorHash = ValidatorHash::new(VAL_HASH)
+
+    const ADA_AMT : Int = ` + newAdaAmount + `
+    const adaVal: Value = Value::lovelace(ADA_AMT)
+
+    // Define thread token value
+    const TT_MPH: ByteArray = #` + threadTokenMPH + `
+    const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
+    const ttAssetclass: AssetClass = AssetClass::new(
+            ttMph, 
+            "Thread Token Littercoin".encode_utf8()
+        )
+    const ttVal : Value = Value::new(ttAssetclass, 1)
+
+    // Define the littercoin asset class
+    const lcAssetClass: AssetClass = AssetClass::new(
+            ttMph, 
+            "Littercoin".encode_utf8()
+        )
+    const lcResVal : Value = Value::new(lcAssetClass, ` + lcResAmount.valueOf() + `)
+
+    func main(ctx: ScriptContext) -> Bool {
+        tx : Tx = ctx.tx;
+        mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+        donor_assetclass: AssetClass = AssetClass::new(
+          mph, 
+          "Donor Littercoin Receipt".encode_utf8()
+        );
+        donorVal : Value = Value::new(donor_assetclass, ` + adaQty + `);
+
+        (tx.minted == donorVal).trace("MNT1: ") &&
+        tx.is_signed_by(ownerPkh).trace("MNT:2 ") &&
+        (tx.value_locked_by(valHash) == (ttVal + adaVal + lcResVal)).trace("MNT3: ")
+    }`;
+
+    console.log("mintScrpit", mintScript);
+    const mintProgram = Program.new(mintScript).compile(optimize);
 
     // Start building the transaction
     const tx = new Tx();
@@ -725,17 +781,31 @@ const Home: NextPage = (props: any) => {
         compiledScript   // adding compiled script so it can be evaluated locally 
     );
 
-    // Construct the inline datum
-    const newInlineDatum = Datum.inline(newDatum);
-    const value = new Value(newAdaAmount.valueOf(), new Assets([
-      [MintingPolicyHash.fromHex(threadTokenMPH), [
-          [hexToBytes(threadTokenName), BigInt(1)],
-          [hexToBytes(lcTokenName), BigInt(lcResAmount.valueOf())]
-      ]]
-    ]));
-
-    // send Ada, updated dautm and thread token back to script address
+    // Send Ada, updated dautm and thread token back to script address
     tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+
+    // Attached NFT donor receipt minting script
+    tx.attachScript(mintProgram);
+    const donorTokenName = ByteArrayData.fromString("Donor Littercoin Receipt").toHex();
+    const tokens: [number[], bigint][] = [[hexToBytes(donorTokenName), BigInt(adaQty)]];
+    const mintRedeemer = new ConstrData(0, []);
+
+    // Indicate a mint with NFT donor minting tokens
+    tx.mintTokens(
+      mintProgram.mintingPolicyHash,
+      tokens,
+      mintRedeemer
+    )
+
+    // Add output with NFT donor receipt token
+    tx.addOutput(new TxOutput(
+      changeAddr,
+      new Value(BigInt(minAda), new Assets([[mintProgram.mintingPolicyHash, tokens]]))
+    ));
+
+    // Signed by the donor
+    tx.addSigner(changeAddr.pubKeyHash);
+
     tx.addCollateral(colatUtxo);
 
     const networkParams = new NetworkParams(
