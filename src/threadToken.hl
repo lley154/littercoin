@@ -9,7 +9,7 @@ const LC_FIXED_SUPPLY : Int = 1000000000  // 1 Billion littercoin
 // Define the UTXO to be spent
 const TX_ID: ByteArray = #5b40d19f33ceea6f0e576217920c66088d1c1e9c982e6ef3b71ab6b018e4c430
 const txId: TxId = TxId::new(TX_ID)
-const outputId: TxOutputId = TxOutputId::new(txId, 0)
+const outputId: TxOutputId = TxOutputId::new(txId, 2)
 
 func main(ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -29,7 +29,7 @@ func main(ctx: ScriptContext) -> Bool {
     
     (tx.minted == ttVal + lcVal).trace("TTMP1: ") &&
      tx.inputs.any((input: TxInput) -> Bool {
-                                    (input.output_id == outputId).trace("TTMP1: ")
+                                    (input.output_id == outputId).trace("TTMP2: ")
                                     }
     )
 }
