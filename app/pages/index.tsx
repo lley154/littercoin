@@ -80,6 +80,7 @@ import {
         for (var utxo of payload) {
           if (utxo.reference_script_hash === valHash.hex) {
             const lcVal = {
+              lcValScript: fileContents.toString(),
               lcValAddr: valAddr.toBech32(),
               lcValAdaAmt: utxo.amount[0].quantity, 
               lcRefTxId: utxo.tx_hash,
@@ -99,6 +100,7 @@ import {
 
 const Home: NextPage = (props: any) => {
 
+  const lcValScript = props.lcValScript as string;
   const lcValidatorScriptAddress = props.lcValAddr as string;
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
@@ -115,6 +117,7 @@ const Home: NextPage = (props: any) => {
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
+  const maxTxFee = process.env.NEXT_PUBLIC_MAX_TX_FEE as string;
   const lcSupply = process.env.NEXT_PUBLIC_LC_SUPPLY as string;
 
   const [lcInfo, setLCInfo] = useState(
@@ -673,23 +676,25 @@ const Home: NextPage = (props: any) => {
     return txHash;
   }   
 
-  const addAda = async (adaQty : any) => {
+  const addAda = async (adaQty : number) => {
 
+    const adaAmount = BigInt((adaQty)*1000000);
     const info = await fetchLittercoinInfo();
     const datObj = info?.datum;
     const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
     const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
     const lcResAmount: BigInt = BigInt(lcSupply) - BigInt(datLC);
-    const newAdaAmount : BigInt = BigInt(datAda) + BigInt(adaQty*1000000);
+    const newAdaAmount : BigInt = BigInt(datAda) + adaAmount;
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(datLC));
     const newDatum = new ListData([newDatAda, newDatLC]);
     const valRedeemer = new ConstrData(0, []);
-    const adaAmountVal = new Value(BigInt((adaQty)*1000000));
+    const adaUtxoAmt = adaAmount + BigInt(minAda) + BigInt(maxTxFee);
+    const adaUtxoVal = new Value(adaUtxoAmt);
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
-    const utxos = await walletHelper.pickUtxos(adaAmountVal);
+    const utxos = await walletHelper.pickUtxos(adaUtxoVal);
 
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
@@ -698,9 +703,7 @@ const Home: NextPage = (props: any) => {
     const colatUtxo = await walletHelper.pickCollateral();
 
     // Compile the Helios script 
-    const script = await fetch('/api/lcValidator'); 
-    const contractScript = await script.text();
-    const compiledScript = Program.new(contractScript).compile(optimize);
+    const compiledScript = Program.new(lcValScript).compile(optimize);
 
     // Extract the validator script address
     const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
@@ -710,10 +713,6 @@ const Home: NextPage = (props: any) => {
 
     // Add the UTXO as inputs
     tx.addInputs(utxos[0]);
-
-    // Add the spare UTXOs as inputs in case the UTXO selected is an exact
-    // Ada amount match and there is not enough funds to cover fees
-    tx.addInputs(utxos[1]);
 
     // Get thread token UTXO and add as an input
     const valUtxo = await getTTUtxo();
