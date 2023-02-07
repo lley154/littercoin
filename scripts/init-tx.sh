@@ -5,9 +5,11 @@
 ##############################################################
 #
 # Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
-# Step 2.   Update src/deploy.js with that UTXO (and admin pkh) 
-# Step 3.   deno run --allow-read --allow-write src/deploy.js
-# Step 4.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
+# Step 2.   Update src/threadToken.hl with that UTXO (and admin pkh) 
+# Step 3.   deno run --allow-read --allow-write src/deploy-init.js
+# Step 4.   Update src/lcValidator.hl with new thread token value
+# Step 5.   deno run --allow-read --allow-write src/deploy-val.js
+# Step 6.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
 ##############################################################
 
 
