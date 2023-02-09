@@ -9,7 +9,6 @@ import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
 import WalletInfo from '../components/WalletInfo';
-
 import {
   Address, 
   Assets, 
@@ -33,7 +32,6 @@ import {
   Tx, 
   UTxO,
   WalletHelper } from "@hyperionbt/helios";
-
   import path from 'path';
   import { promises as fs } from 'fs';
 
@@ -52,14 +50,20 @@ import {
     const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
 
     try {
-      //Find the absolute path of the contracts directory
-      const contractDirectory = path.join(process.cwd(), 'contracts/src');
+      
+      // Get the littercoin validator script
+      const contractDirectory = path.join(process.cwd(), 'contracts');
       const fileContents = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
       const contractScript = fileContents.toString();
       const compiledScript = Program.new(contractScript).compile(optimize);
       const valHash = compiledScript.validatorHash;
       const valAddr = Address.fromValidatorHash(valHash);
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
+
+      // Get the donation receipt minting script
+      const receiptMintFile = await fs.readFile(contractDirectory + '/receiptToken.hl', 'utf8');
+      const receiptMintScript = receiptMintFile.toString();
+
 
       var payload;
       let resp = await fetch(blockfrostUrl, {
@@ -82,16 +86,18 @@ import {
             const lcVal = {
               lcValScript: fileContents.toString(),
               lcValAddr: valAddr.toBech32(),
+              recMintScript: receiptMintScript,
               lcValAdaAmt: utxo.amount[0].quantity, 
               lcRefTxId: utxo.tx_hash,
               lcRefTxIdx: utxo.output_index
+              
             }
             return { props: lcVal }
           }
         }
       }
     } catch (err) {
-      console.log('getServerSideProps', err);
+      console.log('getServerSideProps error: ', err);
     } 
     // No valid reference utxo found
     return { props: {} };
@@ -102,9 +108,11 @@ const Home: NextPage = (props: any) => {
 
   const lcValScript = props.lcValScript as string;
   const lcValidatorScriptAddress = props.lcValAddr as string;
+  const recMintScript = props.recMintScript as string;
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
+ 
 
   const optimize = false;
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
@@ -513,7 +521,7 @@ const Home: NextPage = (props: any) => {
     const valScript = await fetch('/api/lcValidator'); 
     const valContractScript = await valScript.text();
     const valCompiledScript = Program.new(valContractScript).compile(optimize);
-    const valAddr = Address.fromValidatorHash(true, valCompiledScript.validatorHash);
+    const valAddr = Address.fromValidatorHash(valCompiledScript.validatorHash);
 
     // Start building the transaction
     const tx = new Tx();
@@ -718,51 +726,8 @@ const Home: NextPage = (props: any) => {
       ]]
     ]));
 
-    // NFT add Ada receipt minting script
-    const mintScript =`
-    minting addAda
-
-    const OWNER_PKH: ByteArray = #` + changeAddr.pubKeyHash.hex + `
-    const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
-
-    const VAL_HASH: ByteArray = #` + valHash.hex + `
-    const valHash:ValidatorHash = ValidatorHash::new(VAL_HASH)
-
-    const ADA_AMT : Int = ` + newAdaAmount + `
-    const adaVal: Value = Value::lovelace(ADA_AMT)
-
-    // Define thread token value
-    const TT_MPH: ByteArray = #` + threadTokenMPH + `
-    const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
-    const ttAssetclass: AssetClass = AssetClass::new(
-            ttMph, 
-            "Thread Token Littercoin".encode_utf8()
-        )
-    const ttVal : Value = Value::new(ttAssetclass, 1)
-
-    // Define the littercoin asset class
-    const lcAssetClass: AssetClass = AssetClass::new(
-            ttMph, 
-            "Littercoin".encode_utf8()
-        )
-    const lcResVal : Value = Value::new(lcAssetClass, ` + lcResAmount.valueOf() + `)
-
-    func main(ctx: ScriptContext) -> Bool {
-        tx : Tx = ctx.tx;
-        mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
-        donor_assetclass: AssetClass = AssetClass::new(
-          mph, 
-          "Donor Littercoin Receipt".encode_utf8()
-        );
-        donorVal : Value = Value::new(donor_assetclass, ` + adaQty + `);
-
-        (tx.minted == donorVal).trace("MNT1: ") &&
-        tx.is_signed_by(ownerPkh).trace("MNT:2 ") &&
-        (tx.value_locked_by(valHash) == (ttVal + adaVal + lcResVal)).trace("MNT3: ")
-    }`;
-
-    console.log("mintScrpit", mintScript);
-    const mintProgram = Program.new(mintScript).compile(optimize);
+    //Add Ada receipt minting script
+    const mintProgram = Program.new(recMintScript).compile(optimize);
 
     // Start building the transaction
     const tx = new Tx();
@@ -784,13 +749,17 @@ const Home: NextPage = (props: any) => {
     // Send Ada, updated dautm and thread token back to script address
     tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
 
-    // Attached NFT donor receipt minting script
+    // Attached donor receipt minting script
     tx.attachScript(mintProgram);
-    const donorTokenName = ByteArrayData.fromString("Donor Littercoin Receipt").toHex();
-    const tokens: [number[], bigint][] = [[hexToBytes(donorTokenName), BigInt(adaQty)]];
-    const mintRedeemer = new ConstrData(0, []);
+    const donorTokenName = ByteArrayData.fromString("Littercoin Donation").toHex();
+    const tokens: [number[], bigint][] = [[hexToBytes(donorTokenName), adaAmount]];
+    //const mintRedeemer = new ConstrData(0, []);
+    const mintRedeemer = new ConstrData(
+      0,
+      [new ByteArrayData(valHash.bytes)]
+    )
 
-    // Indicate a mint with NFT donor minting tokens
+    // Indicate a mint receipt for donation
     tx.mintTokens(
       mintProgram.mintingPolicyHash,
       tokens,

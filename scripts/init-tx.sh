@@ -60,16 +60,12 @@ thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.byt
 threat_token_redeemer_file_path="$BASE/scripts/$ENV/data/tt-redeemer-init.json"
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
-lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
-lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
 lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
 lc_redeemer_file_path="$BASE/scripts/$ENV/data/lc-redeemer-init.json"
 
 echo "starting littercoin init-tx.sh"
 
 echo $lc_validator_script_addr > $BASE/scripts/$ENV/data/lc-validator.addr
-echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
-
 
 ################################################################
 # Mint the threadtoken and littercoins and lock it

@@ -3,7 +3,6 @@ import * as helios from "./helios.js"
 const simplify = false;
 
 // Thread Token
-
 const threadTokenSrc = await Deno.readTextFile("./src/threadToken.hl");
 const programTT = helios.Program.new(threadTokenSrc);
 const myUplcProgramTT = programTT.compile(simplify);
@@ -23,21 +22,17 @@ await Deno.writeTextFile("./deploy/tt-minting-policy.hash", mphTT.hex);
 
 
 // Littercoin Token
-
 const tnLC = helios.ByteArrayData.fromString("Littercoin");
 console.log("littercoin token name: ", tnLC.toString());
-
 await Deno.writeTextFile("./deploy/lc-token-name.json", tnLC.toSchemaJson());
 
 
 // Littercoin Metadata
-
 const lcMetatdataSrc = await Deno.readTextFile("./src/lc-token-metadata.json");
 await Deno.writeTextFile("./deploy/lc-token-metadata.json", lcMetatdataSrc);
 
 
 // Merchant Token
-
 const merchTokenSrc = await Deno.readTextFile("./src/merchToken.hl");
 const programMT = helios.Program.new(merchTokenSrc);
 const myUplcProgramMT = programMT.compile(simplify);
@@ -47,6 +42,6 @@ const tnMT = helios.ByteArrayData.fromString("Merchant Token Littercoin");
 console.log("merchant token mph: ", mphMT.hex);
 console.log("merchant token name: ", tnMT.toString());
 
-await Deno.writeTextFile("./deploy/mt-token-name.json", tnMT.toSchemaJson());
-await Deno.writeTextFile("./deploy/mt-minting-policy.plutus", myUplcProgramMT.serialize());
-await Deno.writeTextFile("./deploy/mt-minting-policy.hash", mphMT.hex);
+await Deno.writeTextFile("./deploy/merchant-token-name.json", tnMT.toSchemaJson());
+await Deno.writeTextFile("./deploy/merchant-minting-policy.plutus", myUplcProgramMT.serialize());
+await Deno.writeTextFile("./deploy/merchant-minting-policy.hash", mphMT.hex);

@@ -1,0 +1,43 @@
+minting receipt
+
+enum Redeemer { 
+    Mint {
+        lcValHashBA: ByteArray,
+        adaAmt: Integer,
+        lcAmt: Integer
+    }
+ }
+
+// Define thread token value
+const TT_MPH: ByteArray = #806d79b1530d2f18fc342f480a4ac18230d0f6baca72bd649ee81546
+const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
+const ttAssetclass: AssetClass = AssetClass::new(
+        ttMph, 
+        "Thread Token Littercoin".encode_utf8()
+    )
+const ttVal : Value = Value::new(ttAssetclass, 1)
+
+
+func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+    
+
+    redeemer.switch {
+        red: Mint => {
+                // Check that thread token is part of this transaction
+                //vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
+                //tx.value_locked_by(vHash).contains(ttVal).trace("NFT1: ")
+                print("MPH: " + mph.show());
+                print("TT_MPH: " + TT_MPH.show());
+                print("red.lcValHashBA: " + red.lcValHashBA.show());
+                adaVal: Value = Value::lovelace(red.adaAmt);
+                lcResVal: Value = Value::new(lcAssetClass, red.lcResAmt);
+                (tx.value_locked_by(vHash) == (adaVal + ttVal + lcResVal)).trace("RT1: ")
+
+        }
+    }
+}
+
+const MINT_REDEEMER = Redeemer::Mint{#1a2b3c}

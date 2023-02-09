@@ -8,7 +8,7 @@ export default async function handler(
     res: NextApiResponse ) {
 
     //Find the absolute path of the json directory
-    const contractDirectory = path.join(process.cwd(), 'contracts/src');
+    const contractDirectory = path.join(process.cwd(), 'contracts');
     const fileContents = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
     res.setHeader('Content-Type', 'text');
     res.send(fileContents);
