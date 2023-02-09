@@ -31,11 +31,15 @@ import {
   TxWitnesses,
   Tx, 
   UTxO} from "@hyperionbt/helios";
-  //UTxO} from "@lley/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
 
+  declare global {
+    interface Window {
+        cardano:any;
+    }
+  }
 
   export async function getServerSideProps() {
   
@@ -46,26 +50,18 @@ import {
 
     try {
       //Find the absolute path of the contracts directory
-      const contractDirectory = path.join(process.cwd(), 'contracts/src');
+      const contractDirectory = path.join(process.cwd(), 'contracts');
       const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
       const valScript = valFile.toString();
       const compiledValScript = Program.new(valScript).compile(optimize);
       const valHash = compiledValScript.validatorHash; 
       const valAddr = Address.fromValidatorHash(valHash);
-      console.log("valAddr", valAddr.toBech32());
-
-      /*
       const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
       const mintScript = mintFile.toString();
-      const compiledMintScript = Program.new(mintScript).compile(optimize);
-      const mintHash = compiledMintScript.validatorHash; 
-      const mintAddr = Address.fromValidatorHash(mintHash);
-      console.log("mintAddr", mintAddr.toBech32());
-      */
+      const threadTokenFile = await fs.readFile(contractDirectory + '/threadToken.hl', 'utf8');
+      const threadTokenScript = threadTokenFile.toString();
 
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
-
-      console.log("blockfrost URL", blockfrostUrl);
 
       var payload;
       let resp = await fetch(blockfrostUrl, {
@@ -86,11 +82,12 @@ import {
         for (var utxo of payload) {
           if (utxo.reference_script_hash === valHash.hex) {
             const lcVal = {
-              lcValAddr: valAddr.toBech32(),
-              //lcMintAddr: mintAddr.toBech32(),
+              lcValScript: valScript,
               lcValAdaAmt: utxo.amount[0].quantity, 
               lcRefTxId: utxo.tx_hash,
-              lcRefTxIdx: utxo.output_index
+              lcRefTxIdx: utxo.output_index,
+              lcMintScript: mintScript,
+              ttMintScript: threadTokenScript
             }
             return { props: lcVal }
           }
@@ -106,23 +103,35 @@ import {
 
 const Home: NextPage = (props: any) => {
 
-  const lcValAddr = props.lcValAddr as string;
-  //const lcMintAddr = props.lcMintAddr as string;
+  const optimize = false;
+  const lcValScript = props.lcValScript as string;
+  const compiledValScript = Program.new(lcValScript).compile(optimize);
+  const lcValHash = compiledValScript.validatorHash; 
+  const lcValAddr = Address.fromValidatorHash(lcValHash);
+
+  const lcMintScript = props.lcMintScript as string;
+  const compiledLCMintScript = Program.new(lcMintScript).compile(optimize);
+  const lcTokenMPH = compiledLCMintScript.mintingPolicyHash;
+
+  const ttMintScript = props.ttMintScript as string;
+  const compiledTTMintScript = Program.new(ttMintScript).compile(optimize);
+  const threadTokenMPH = compiledTTMintScript.mintingPolicyHash;
+  
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
 
-  const optimize = false;
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
-  const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
+  //const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
-  const lcTokenMPH = process.env.NEXT_PUBLIC_LC_TOKEN_MPH as string;
+  //const lcTokenMPH = process.env.NEXT_PUBLIC_LC_TOKEN_MPH as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
-  const lcMintAddr = process.env.NEXT_PUBLIC_LC_MINT_ADDR as string;
+  //const lcMintAddr = process.env.NEXT_PUBLIC_LC_MINT_ADDR as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
+  const serviceFee = process.env.NEXT_PUBLIC_MAX_SERVICE_FEE as string;
 
   const [lcInfo, setLCInfo] = useState(
     {
@@ -145,7 +154,7 @@ const Home: NextPage = (props: any) => {
           const datObj = info?.datum;
           const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
           const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-          const datAddr : string = info?.address as string;
+          const datAddr : string = info?.address as unknown as string;
           
           setLCInfo({
             ...lcInfo,
@@ -199,7 +208,7 @@ const Home: NextPage = (props: any) => {
       const datObj = info?.datum;
       const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
       const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-      const datAddr : string = info?.address as string;
+      const datAddr : string = info?.address as unknown as string;
       
       setLCInfo({
         ...lcInfo,
@@ -215,7 +224,7 @@ const Home: NextPage = (props: any) => {
   // Get the utxo with the thread token at the LC validator address
   const getTTUtxo = async () => {
 
-    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValAddr + "/utxos/" + threadTokenMPH + threadTokenName;
+    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValAddr.toBech32() + "/utxos/" + threadTokenMPH.hex + threadTokenName;
     
     var payload;
     let resp = await fetch(blockfrostUrl, {
@@ -236,11 +245,11 @@ const Home: NextPage = (props: any) => {
       throw console.error("thread token not found")
     }
     const lovelaceAmount = payload[0].amount[0].quantity;
-    const mph = MintingPolicyHash.fromHex(threadTokenMPH);
+    //const mph = MintingPolicyHash.fromHex(threadTokenMPH);
     const token = hexToBytes(threadTokenName);
 
     const value = new Value(BigInt(lovelaceAmount), new Assets([
-        [mph, [
+        [threadTokenMPH, [
             [token, BigInt(1)]
         ]]
     ]));
@@ -249,7 +258,8 @@ const Home: NextPage = (props: any) => {
       TxId.fromHex(payload[0].tx_hash),
       BigInt(payload[0].output_index),
       new TxOutput(
-        Address.fromBech32(lcValAddr),
+        //Address.fromBech32(lcValAddr),
+        lcValAddr,
         value,
         Datum.inline(ListData.fromCbor(hexToBytes(payload[0].inline_datum)))
       )
@@ -258,67 +268,22 @@ const Home: NextPage = (props: any) => {
 
   const getLCValRefUtxo = async () => {
 
-    const response = await fetch('/api/lcValidator'); 
-    const contractScript = await response.text();
-    const compiledScript = Program.new(contractScript).compile(optimize);
+    //const response = await fetch('/api/lcValidator'); 
+    //const contractScript = await response.text();
+    //const compiledScript = Program.new(contractScript).compile(optimize);
 
     return new UTxO (
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
       new TxOutput(
-        Address.fromBech32(lcValAddr),
+        //Address.fromBech32(lcValAddr),
+        lcValAddr,
         new Value(BigInt(lcValAdaAmt)),
         null,
-        compiledScript
+        compiledValScript
       )
     )
   }
-
-
-  // Get the utxo with the lc minting reference script
-  const getLCMintRefUtxo = async () => {
-
-    const response = await fetch('/api/lcMint'); 
-    const contractScript = await response.text();
-    const compiledScript = Program.new(contractScript).compile(optimize);
-
-    
-    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcMintAddr + "/utxos/?order=asc";
-    
-    var payload;
-    let resp = await fetch(blockfrostUrl, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        project_id: apiKey,
-      },
-    });
-
-    if (resp?.status > 299) {
-      throw console.error(resp);
-    }
-
-    payload = await resp.json();
-
-    if (payload.length != 1) {
-      throw console.error("littercoin mint reference script not found")
-    }
-    const lovelaceAmount = payload[0].amount[0].quantity;
-
-    const value = new Value(BigInt(lovelaceAmount));
-
-    return new UTxO(
-      TxId.fromHex(payload[0].tx_hash),
-      BigInt(payload[0].output_index),
-      new TxOutput(
-        Address.fromBech32(lcMintAddr),
-        value,
-        null,
-        compiledScript
-      )
-    );
-  }
-
 
   const fetchLittercoinInfo = async () => {
 
@@ -333,39 +298,12 @@ const Home: NextPage = (props: any) => {
       const datJson = datData.toSchemaJson();
       const datObj = JSON.parse(datJson);
 
-      return {datum: datObj, address: lcValAddr};
+      return {datum: datObj, address: lcValAddr.toBech32()};
 
     } else {
       console.log("fetchLittercoin: thread token not found");
     }
   }
-
-  const submitTx = async (tx: Tx) : Promise<string> => {
-    const data = new Uint8Array(tx.toCbor());
-    const url = blockfrostAPI + "/tx/submit";
-
-    return new Promise((resolve, reject) => {
-        const req = new XMLHttpRequest();
-        req.onload = (_e) => {
-            if (req.status == 200) {
-                resolve(req.responseText);
-            } else {
-                reject(new Error(req.responseText));
-            }
-        }
-
-        req.onerror = (e) => {
-            reject(e);
-        }
-
-        req.open("POST", url, false);
-
-        req.setRequestHeader("content-type", "application/cbor");
-        req.setRequestHeader("project_id", apiKey);
-        
-        req.send(data);
-    });   
-}
 
   // user selects what wallet to connect to
   const handleWalletSelect = (obj : any) => {
@@ -456,13 +394,10 @@ const Home: NextPage = (props: any) => {
     }
     const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
 
-    const valScript = await fetch('/api/lcValidator'); 
-    const valContractScript = await valScript.text();
-    //console.log("prettyIR", Program.new(valContractScript).prettyIR());
-
-    const valCompiledScript = Program.new(valContractScript).compile(optimize);
-    
-    const valAddr = Address.fromValidatorHash(valCompiledScript.validatorHash);
+    //const valScript = await fetch('/api/lcValidator'); 
+    //const valContractScript = await valScript.text();
+    //const valCompiledScript = Program.new(valContractScript).compile(optimize);
+    //const valAddr = Address.fromValidatorHash(valCompiledScript.validatorHash);
 
     // Get the change address from the wallet
     const hexChangeAddr = await walletAPI.getChangeAddress();
@@ -480,46 +415,50 @@ const Home: NextPage = (props: any) => {
     const valRefUtxo = await getLCValRefUtxo();
     tx.addRefInput(
         valRefUtxo,
-        valCompiledScript
+        compiledValScript
     );
 
-    const mintScript = await fetch('/api/lcMint'); 
-    const mintContractScript = await mintScript.text();
+    //const mintScript = await fetch('/api/lcMint'); 
+    //const mintContractScript = await mintScript.text();
     //console.log("prettyIR", Program.new(mintContractScript).prettyIR());
-
-    const mintCompiledScript = Program.new(mintContractScript).compile(optimize);
-    const mintRefUtxo = await getLCMintRefUtxo();
-
+    //const mintCompiledScript = Program.new(mintContractScript).compile(optimize);
+    //const mintRefUtxo = await getLCMintRefUtxo();
+/*
     tx.addRefInput(
       mintRefUtxo,
       mintCompiledScript
   );
+*/
+
 
     const newInlineDatum = Datum.inline(newDatum);
-    const value = new Value(BigInt(datAda), new Assets([
-      [MintingPolicyHash.fromHex(threadTokenMPH), [
+    const outputValue = new Value(BigInt(datAda), new Assets([
+      [threadTokenMPH, [
           [hexToBytes(threadTokenName), BigInt(1)]
       ]]
     ]));
 
     // send Ada, updated dautm and thread token back to script address
-    tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+    tx.addOutput(new TxOutput(lcValAddr, outputValue, newInlineDatum));
+
+    // Add the script as a witness to the transaction
+    tx.attachScript(compiledLCMintScript);
 
     const mintRedeemer = new ConstrData(
       0,
-      [new ByteArrayData(valCompiledScript.validatorHash.bytes)]
+      [new ByteArrayData(lcValHash.bytes)]
     )
     const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
 
     tx.mintTokens(
-      MintingPolicyHash.fromHex(lcTokenMPH),
+      lcTokenMPH,
       tokens,
       mintRedeemer
     )
 
     tx.addOutput(new TxOutput(
       Address.fromBech32(address),
-      new Value(BigInt(minAda), new Assets([[MintingPolicyHash.fromHex(lcTokenMPH), tokens]]))
+      new Value(BigInt(minAda), new Assets([[lcTokenMPH, tokens]]))
     ));
 
     tx.addCollateral(colatUtxo);
@@ -539,14 +478,14 @@ const Home: NextPage = (props: any) => {
     console.log("Waiting for wallet signature...");
     const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
 
-    console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
+    //console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
 
     console.log("Verifying signature...");
     const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
     tx.addSignatures(signatures)
 
     console.log("Submitting transaction...");
-    console.log("signed tx: ", bytesToHex(tx.toCbor()));
+    //console.log("signed tx: ", bytesToHex(tx.toCbor()));
     const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
     //const txHash = await submitTx(tx);
     console.log("txHash", txHash);
@@ -608,12 +547,12 @@ const Home: NextPage = (props: any) => {
     }
     const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
 
-    const script = await fetch('/api/lcValidator'); 
-    const contractScript = await script.text();
+    //const script = await fetch('/api/lcValidator'); 
+    //const contractScript = await script.text();
     //console.log("prettyIR", Program.new(contractScript).prettyIR());
 
-    const compiledScript = Program.new(contractScript).compile(optimize);
-    const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
+    //const compiledScript = Program.new(contractScript).compile(optimize);
+    //const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
 
     // Get the change address from the wallet
     const hexChangeAddr = await walletAPI.getChangeAddress();
@@ -632,18 +571,18 @@ const Home: NextPage = (props: any) => {
     const valRefUtxo = await getLCValRefUtxo();
     tx.addRefInput(
         valRefUtxo,
-        compiledScript
+        compiledValScript
     );
 
     const newInlineDatum = Datum.inline(newDatum);
     const value = new Value(newAdaAmount.valueOf(), new Assets([
-      [MintingPolicyHash.fromHex(threadTokenMPH), [
+      [threadTokenMPH, [
           [hexToBytes(threadTokenName), BigInt(1)]
       ]]
     ]));
 
     // send Ada, updated dautm and thread token back to script address
-    tx.addOutput(new TxOutput(valAddr, value, newInlineDatum));
+    tx.addOutput(new TxOutput(lcValAddr, value, newInlineDatum));
     tx.addCollateral(colatUtxo);
 
     const networkParams = new NetworkParams(

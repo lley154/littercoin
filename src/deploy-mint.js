@@ -21,4 +21,3 @@ await Deno.writeTextFile("./deploy/redeemer-burn.json", burnRedeemerData.toSchem
 await Deno.writeTextFile("./deploy/lc-token-name.json", tn.toSchemaJson());
 await Deno.writeTextFile("./deploy/lc-minting-policy.plutus", uplcProgramMintLC.serialize());
 await Deno.writeTextFile("./deploy/lc-minting-policy.hash", mph.hex);
-
