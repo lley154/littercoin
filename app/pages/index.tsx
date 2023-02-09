@@ -47,15 +47,26 @@ import {
     try {
       //Find the absolute path of the contracts directory
       const contractDirectory = path.join(process.cwd(), 'contracts/src');
-      const fileContents = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
-    
-      const contractScript = fileContents.toString();
-      const compiledScript = Program.new(contractScript).compile(optimize);
-      const valHash = compiledScript.validatorHash; 
+      const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
+      const valScript = valFile.toString();
+      const compiledValScript = Program.new(valScript).compile(optimize);
+      const valHash = compiledValScript.validatorHash; 
       const valAddr = Address.fromValidatorHash(valHash);
+      console.log("valAddr", valAddr.toBech32());
+
+      /*
+      const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
+      const mintScript = mintFile.toString();
+      const compiledMintScript = Program.new(mintScript).compile(optimize);
+      const mintHash = compiledMintScript.validatorHash; 
+      const mintAddr = Address.fromValidatorHash(mintHash);
+      console.log("mintAddr", mintAddr.toBech32());
+      */
+
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
-      console.log("getServerSideProps: blockfrosturl", blockfrostUrl);
+      console.log("blockfrost URL", blockfrostUrl);
+
       var payload;
       let resp = await fetch(blockfrostUrl, {
         method: "GET",
@@ -76,6 +87,7 @@ import {
           if (utxo.reference_script_hash === valHash.hex) {
             const lcVal = {
               lcValAddr: valAddr.toBech32(),
+              //lcMintAddr: mintAddr.toBech32(),
               lcValAdaAmt: utxo.amount[0].quantity, 
               lcRefTxId: utxo.tx_hash,
               lcRefTxIdx: utxo.output_index
@@ -92,9 +104,10 @@ import {
   }
 
 
-const Home: NextPage = (props) => {
+const Home: NextPage = (props: any) => {
 
-  const lcValidatorScriptAddress = props.lcValAddr as string;
+  const lcValAddr = props.lcValAddr as string;
+  //const lcMintAddr = props.lcMintAddr as string;
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
@@ -202,7 +215,7 @@ const Home: NextPage = (props) => {
   // Get the utxo with the thread token at the LC validator address
   const getTTUtxo = async () => {
 
-    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValidatorScriptAddress + "/utxos/" + threadTokenMPH + threadTokenName;
+    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValAddr + "/utxos/" + threadTokenMPH + threadTokenName;
     
     var payload;
     let resp = await fetch(blockfrostUrl, {
@@ -236,7 +249,7 @@ const Home: NextPage = (props) => {
       TxId.fromHex(payload[0].tx_hash),
       BigInt(payload[0].output_index),
       new TxOutput(
-        Address.fromBech32(lcValidatorScriptAddress),
+        Address.fromBech32(lcValAddr),
         value,
         Datum.inline(ListData.fromCbor(hexToBytes(payload[0].inline_datum)))
       )
@@ -253,7 +266,7 @@ const Home: NextPage = (props) => {
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
       new TxOutput(
-        Address.fromBech32(lcValidatorScriptAddress),
+        Address.fromBech32(lcValAddr),
         new Value(BigInt(lcValAdaAmt)),
         null,
         compiledScript
@@ -262,7 +275,7 @@ const Home: NextPage = (props) => {
   }
 
 
-  // Get the utxo with the thread token at the LC validator address
+  // Get the utxo with the lc minting reference script
   const getLCMintRefUtxo = async () => {
 
     const response = await fetch('/api/lcMint'); 
@@ -320,7 +333,7 @@ const Home: NextPage = (props) => {
       const datJson = datData.toSchemaJson();
       const datObj = JSON.parse(datJson);
 
-      return {datum: datObj, address: lcValidatorScriptAddress};
+      return {datum: datObj, address: lcValAddr};
 
     } else {
       console.log("fetchLittercoin: thread token not found");

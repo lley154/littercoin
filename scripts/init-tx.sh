@@ -5,8 +5,7 @@
 ##############################################################
 #
 # Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
-# Step 2.   Update src/deploy.js with that UTXO (and admin pkh) 
-#           update src/threadtoken.hl with admin UTXO
+# Step 2.   update src/threadtoken.hl with admin UTXO
 # Step 3.   deno run --allow-read --allow-write src/deploy-init.js
 #           update src/mint.hl with thread token value
 #           deno run --allow-read --allow-write src/deploy-mint.js
