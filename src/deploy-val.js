@@ -17,7 +17,7 @@ console.log("merchant token name: ", tn.toSchemaJson());
 
 
 const valHash = lcUplcProgramLC.validatorHash;
-const valAddr = Address.fromValidatorHash(valHash);
+const valAddr = helios.Address.fromValidatorHash(valHash);
 console.log("littercoin validator hash: ", valHash.hex);
 console.log("littercoin validator address: ", valAddr.toBech32());
 

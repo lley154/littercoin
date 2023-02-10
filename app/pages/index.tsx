@@ -16,13 +16,14 @@ import {
   Assets, 
   bytesToHex, 
   ByteArrayData,
+  Cip30Handle,
+  Cip30Wallet,
   ConstrData, 
   Datum, 
   hexToBytes, 
   IntData, 
   TxId, 
   ListData, 
-  MintingPolicyHash, 
   NetworkParams,
   Program, 
   PubKeyHash,
@@ -30,7 +31,8 @@ import {
   TxOutput,
   TxWitnesses,
   Tx, 
-  UTxO} from "@hyperionbt/helios";
+  UTxO,
+  WalletHelper } from "@hyperionbt/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -123,11 +125,8 @@ const Home: NextPage = (props: any) => {
 
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
-  //const threadTokenMPH = process.env.NEXT_PUBLIC_THREAD_TOKEN_MPH as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
-  //const lcTokenMPH = process.env.NEXT_PUBLIC_LC_TOKEN_MPH as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
-  //const lcMintAddr = process.env.NEXT_PUBLIC_LC_MINT_ADDR as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
@@ -141,7 +140,6 @@ const Home: NextPage = (props: any) => {
         ratio: 0,
     }
   );
-
   const [valUtxo, setUTXO] = useState<undefined | any>(undefined);
   const [valRefUtxo, setRefUTXO] = useState<undefined | any>(undefined);
   const [networkParams, setNetworkParams] = useState<undefined | any>(undefined);
@@ -249,9 +247,7 @@ const Home: NextPage = (props: any) => {
       throw console.error("thread token not found")
     }
     const lovelaceAmount = payload[0].amount[0].quantity;
-    //const mph = MintingPolicyHash.fromHex(threadTokenMPH);
     const token = hexToBytes(threadTokenName);
-
     const value = new Value(BigInt(lovelaceAmount), new Assets([
         [threadTokenMPH, [
             [token, BigInt(1)]
@@ -273,10 +269,6 @@ const Home: NextPage = (props: any) => {
 
   const setLCValRefUtxo = async () => {
 
-    //const response = await fetch('/api/lcValidator'); 
-    //const contractScript = await response.text();
-    //const compiledScript = Program.new(contractScript).compile(optimize);
-
     const valRefUTXO = new UTxO (
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
@@ -287,7 +279,6 @@ const Home: NextPage = (props: any) => {
         compiledValScript
       )
     )
-    console.log("setRefUTXO", valRefUTXO);
     setRefUTXO(valRefUTXO);
 
     const networkParams = new NetworkParams(
@@ -338,15 +329,17 @@ const Home: NextPage = (props: any) => {
 
   const enableWallet = async () => {
 
-    let walletwalletAPI = undefined;
       try {
         const walletChoice = whichWalletSelected;
         if (walletChoice === "nami") {
-            walletwalletAPI = await window.cardano.nami.enable();
-        } else if (walletChoice === "eternl") {
-            walletwalletAPI = await window.cardano.eternl.enable(); 
-        } 
-        return walletwalletAPI 
+            const handle: Cip30Handle = await window.cardano.nami.enable();
+            const walletAPI = new Cip30Wallet(handle);
+            return walletAPI;
+          } else if (walletChoice === "eternl") {
+            const handle: Cip30Handle = await window.cardano.eternl.enable();
+            const walletAPI = new Cip30Wallet(handle);
+            return walletAPI;
+          } 
     } catch (err) {
         console.log('enableWallet error', err);
     }
@@ -354,8 +347,8 @@ const Home: NextPage = (props: any) => {
 
   const getBalance = async () => {
     try {
-        const balanceCBORHex = await walletAPI.getBalance();
-        const balanceAmountValue =  Value.fromCbor(hexToBytes(balanceCBORHex));
+        const walletHelper = new WalletHelper(walletAPI);
+        const balanceAmountValue  = await walletHelper.calcBalance();
         const balanceAmount = balanceAmountValue.lovelace;
         const walletBalance : BigInt = BigInt(balanceAmount);
         return walletBalance.toLocaleString();
@@ -368,82 +361,34 @@ const Home: NextPage = (props: any) => {
 
     const address = params[0];
     const lcQty = params[1];
-    //const info = await fetchLittercoinInfo();
-    //const datObj = info?.datum;
-    //const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
-    //const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-    //const newLCAmount : BigInt = BigInt(datLC) + BigInt(lcQty);
-    //const newDatAda = new IntData(BigInt(datAda));
     const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) + BigInt(lcQty);
     const newDatAda = new IntData(BigInt(lcInfo.adaAmount));
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
-
-    const valRedeemer = new ConstrData(
-      1,
-      []
-    )
-
+    const valRedeemer = new ConstrData(1,[])
     const minAdaVal = new Value(BigInt(minAda));
-    const cborUtxos = await walletAPI.getUtxos(bytesToHex(minAdaVal.toCbor()));
- 
-    let Utxos = [];
 
-    for (const cborUtxo of cborUtxos) {
-      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
-      Utxos.push(_utxo);
-    }
+    // Get wallet UTXOs
+    const walletHelper = new WalletHelper(walletAPI);
+    const utxos = await walletHelper.pickUtxos(minAdaVal);
+  
+    // Get change address
+    const changeAddr = await walletHelper.changeAddress;
 
-    var cborColatUtxo;
-    if (whichWalletSelected == "eternl") {
-      cborColatUtxo = await walletAPI.getCollateral();
-    } else if (whichWalletSelected == "nami") {
-      cborColatUtxo = await walletAPI.experimental.getCollateral();
-    } else {
-      throw console.error("No wallet selected")
-    }
-
-    if (cborColatUtxo.length == 0) {
-      throw console.error("No collateral set in wallet");
-    }
-    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
-
-    //const valScript = await fetch('/api/lcValidator'); 
-    //const valContractScript = await valScript.text();
-    //const valCompiledScript = Program.new(valContractScript).compile(optimize);
-    //const valAddr = Address.fromValidatorHash(valCompiledScript.validatorHash);
-
-    // Get the change address from the wallet
-    const hexChangeAddr = await walletAPI.getChangeAddress();
-    const changeAddr = Address.fromHex(hexChangeAddr);
+    // Determine the UTXO used for collateral
+    const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
 
-    for (const utxo of Utxos) {
-        tx.addInput(utxo);
-    }
-    //const valUtxo = await getTTUtxo();
-    //tx.addInput(valUtxo, valRedeemer);
-    tx.addInput(valUtxo, valRedeemer);
+    // Add the UTXO as inputs
+    tx.addInputs(utxos[0]);
 
-    //const valRefUtxo = await getLCValRefUtxo();
+    tx.addInput(valUtxo, valRedeemer);
     tx.addRefInput(
         valRefUtxo,
         compiledValScript
     );
-
-    //const mintScript = await fetch('/api/lcMint'); 
-    //const mintContractScript = await mintScript.text();
-    //console.log("prettyIR", Program.new(mintContractScript).prettyIR());
-    //const mintCompiledScript = Program.new(mintContractScript).compile(optimize);
-    //const mintRefUtxo = await getLCMintRefUtxo();
-/*
-    tx.addRefInput(
-      mintRefUtxo,
-      mintCompiledScript
-  );
-*/
 
     const newInlineDatum = Datum.inline(newDatum);
     const outputValue = new Value(BigInt(lcInfo.adaAmount), new Assets([
@@ -458,10 +403,7 @@ const Home: NextPage = (props: any) => {
     // Add the script as a witness to the transaction
     tx.attachScript(compiledLCMintScript);
 
-    const mintRedeemer = new ConstrData(
-      0,
-      [new ByteArrayData(lcValHash.bytes)]
-    )
+    const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
     const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
 
     tx.mintTokens(
@@ -479,32 +421,20 @@ const Home: NextPage = (props: any) => {
 
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
 
-    ///const networkParams = new NetworkParams(
-    //  await fetch(networkParamsUrl)
-    //      .then(response => response.json())
-    //)
     console.log("tx before final", tx.dump());
 
-    // send any change back to the buyer
+    // Send any change back to the buyer
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
 
-    console.log("Waiting for wallet signature...");
-    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
-
-    //console.log("unsigned tx: ", bytesToHex(tx.toCbor()));
-
     console.log("Verifying signature...");
-    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
-    tx.addSignatures(signatures)
+    const signatures = await walletAPI.signTx(tx);
+    tx.addSignatures(signatures);
 
     console.log("Submitting transaction...");
-    //console.log("signed tx: ", bytesToHex(tx.toCbor()));
-    const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
-    //const txHash = await submitTx(tx);
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
-    return txHash;
+    const txHash = await walletAPI.submitTx(tx);
+    console.log("txHash", txHash.hex);
+    setTx({ txId: txHash.hex });
    } 
 
 
@@ -523,61 +453,28 @@ const Home: NextPage = (props: any) => {
 
   const addAda = async (adaQty : any) => {
 
-    //const info = await fetchLittercoinInfo();
-    //const datObj = info?.datum;
-    //const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
-    //const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
     const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) + BigInt(adaQty*1000000);
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
-
-    const valRedeemer = new ConstrData(
-      0,
-      []
-    )
-
+    const valRedeemer = new ConstrData(0, [])
     const adaAmountVal = new Value(BigInt((adaQty)*1000000));
-    const cborUtxos = await walletAPI.getUtxos(bytesToHex(adaAmountVal.toCbor()));
+
+    // Get wallet UTXOs
+    const walletHelper = new WalletHelper(walletAPI);
+    const utxos = await walletHelper.pickUtxos(adaAmountVal);
  
-    let Utxos = [];
+    // Get change address
+    const changeAddr = await walletHelper.changeAddress;
 
-    for (const cborUtxo of cborUtxos) {
-      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
-      Utxos.push(_utxo);
-    }
-
-    var cborColatUtxo;
-    if (whichWalletSelected == "eternl") {
-      cborColatUtxo = await walletAPI.getCollateral();
-    } else if (whichWalletSelected == "nami") {
-      cborColatUtxo = await walletAPI.experimental.getCollateral();
-    } else {
-      throw console.error("No wallet selected")
-    }
-
-    if (cborColatUtxo.length == 0) {
-      throw console.error("No collateral set in wallet");
-    }
-    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
-
-    //const script = await fetch('/api/lcValidator'); 
-    //const contractScript = await script.text();
-    //console.log("prettyIR", Program.new(contractScript).prettyIR());
-
-    //const compiledScript = Program.new(contractScript).compile(optimize);
-    //const valAddr = Address.fromValidatorHash(compiledScript.validatorHash);
-
-    // Get the change address from the wallet
-    const hexChangeAddr = await walletAPI.getChangeAddress();
-    const changeAddr = Address.fromHex(hexChangeAddr);
+    // Determine the UTXO used for collateral
+    const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
 
-    for (const utxo of Utxos) {
-        tx.addInput(utxo);
-    }
+    // Add the UTXO as inputs
+    tx.addInputs(utxos[0]);
 
     //const valUtxo = await getTTUtxo();
     tx.addInput(valUtxo, valRedeemer);
@@ -599,28 +496,20 @@ const Home: NextPage = (props: any) => {
     tx.addOutput(new TxOutput(lcValAddr, value, newInlineDatum));
     tx.addCollateral(colatUtxo);
 
-    //const networkParams = new NetworkParams(
-    //  await fetch(networkParamsUrl)
-    //      .then(response => response.json())
-    //)
     console.log("tx before final", tx.dump());
 
-    // send any change back to the buyer
+    // Send any change back to the buyer
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
 
-    console.log("Waiting for wallet signature...");
-    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true)
-
     console.log("Verifying signature...");
-    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures
-    tx.addSignatures(signatures)
-
+    const signatures = await walletAPI.signTx(tx);
+    tx.addSignatures(signatures);
+    
     console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(bytesToHex(tx.toCbor()));
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
-    return txHash;
+    const txHash = await walletAPI.submitTx(tx);
+    console.log("txHash", txHash.hex);
+    setTx({ txId: txHash.hex });
   } 
 
   return (
