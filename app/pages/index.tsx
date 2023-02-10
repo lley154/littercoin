@@ -142,6 +142,9 @@ const Home: NextPage = (props: any) => {
     }
   );
 
+  const [valUtxo, setUTXO] = useState<undefined | any>(undefined);
+  const [valRefUtxo, setRefUTXO] = useState<undefined | any>(undefined);
+  const [networkParams, setNetworkParams] = useState<undefined | any>(undefined);
   const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
   const [tx, setTx] = useState({ txId : '' });
   const [walletInfo, setWalletInfo] = useState({ balance : ''});
@@ -193,6 +196,7 @@ const Home: NextPage = (props: any) => {
               ...walletInfo,
               balance : _balance
             });
+            await setLCValRefUtxo();
         }           
     }
     updateWalletInfo();
@@ -254,35 +258,43 @@ const Home: NextPage = (props: any) => {
         ]]
     ]));
 
-    return new UTxO(
+    const ttUtxo = new UTxO(
       TxId.fromHex(payload[0].tx_hash),
       BigInt(payload[0].output_index),
       new TxOutput(
-        //Address.fromBech32(lcValAddr),
         lcValAddr,
         value,
         Datum.inline(ListData.fromCbor(hexToBytes(payload[0].inline_datum)))
       )
     );
+    setUTXO(ttUtxo);
+    return ttUtxo;
   }
 
-  const getLCValRefUtxo = async () => {
+  const setLCValRefUtxo = async () => {
 
     //const response = await fetch('/api/lcValidator'); 
     //const contractScript = await response.text();
     //const compiledScript = Program.new(contractScript).compile(optimize);
 
-    return new UTxO (
+    const valRefUTXO = new UTxO (
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
       new TxOutput(
-        //Address.fromBech32(lcValAddr),
         lcValAddr,
         new Value(BigInt(lcValAdaAmt)),
         null,
         compiledValScript
       )
     )
+    console.log("setRefUTXO", valRefUTXO);
+    setRefUTXO(valRefUTXO);
+
+    const networkParams = new NetworkParams(
+      await fetch(networkParamsUrl)
+          .then(response => response.json())
+    );
+    setNetworkParams(networkParams);
   }
 
   const fetchLittercoinInfo = async () => {
@@ -356,12 +368,14 @@ const Home: NextPage = (props: any) => {
 
     const address = params[0];
     const lcQty = params[1];
-    const info = await fetchLittercoinInfo();
-    const datObj = info?.datum;
-    const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
-    const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-    const newLCAmount : BigInt = BigInt(datLC) + BigInt(lcQty);
-    const newDatAda = new IntData(BigInt(datAda));
+    //const info = await fetchLittercoinInfo();
+    //const datObj = info?.datum;
+    //const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
+    //const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
+    //const newLCAmount : BigInt = BigInt(datLC) + BigInt(lcQty);
+    //const newDatAda = new IntData(BigInt(datAda));
+    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) + BigInt(lcQty);
+    const newDatAda = new IntData(BigInt(lcInfo.adaAmount));
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
 
@@ -409,10 +423,11 @@ const Home: NextPage = (props: any) => {
     for (const utxo of Utxos) {
         tx.addInput(utxo);
     }
-    const valUtxo = await getTTUtxo();
+    //const valUtxo = await getTTUtxo();
+    //tx.addInput(valUtxo, valRedeemer);
     tx.addInput(valUtxo, valRedeemer);
 
-    const valRefUtxo = await getLCValRefUtxo();
+    //const valRefUtxo = await getLCValRefUtxo();
     tx.addRefInput(
         valRefUtxo,
         compiledValScript
@@ -430,9 +445,8 @@ const Home: NextPage = (props: any) => {
   );
 */
 
-
     const newInlineDatum = Datum.inline(newDatum);
-    const outputValue = new Value(BigInt(datAda), new Assets([
+    const outputValue = new Value(BigInt(lcInfo.adaAmount), new Assets([
       [threadTokenMPH, [
           [hexToBytes(threadTokenName), BigInt(1)]
       ]]
@@ -465,10 +479,10 @@ const Home: NextPage = (props: any) => {
 
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
 
-    const networkParams = new NetworkParams(
-      await fetch(networkParamsUrl)
-          .then(response => response.json())
-    )
+    ///const networkParams = new NetworkParams(
+    //  await fetch(networkParamsUrl)
+    //      .then(response => response.json())
+    //)
     console.log("tx before final", tx.dump());
 
     // send any change back to the buyer
@@ -509,13 +523,13 @@ const Home: NextPage = (props: any) => {
 
   const addAda = async (adaQty : any) => {
 
-    const info = await fetchLittercoinInfo();
-    const datObj = info?.datum;
-    const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
-    const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
-    const newAdaAmount : BigInt = BigInt(datAda) + BigInt(adaQty*1000000);
+    //const info = await fetchLittercoinInfo();
+    //const datObj = info?.datum;
+    //const datAda : number = Object.values(datObj?.list[0]) as unknown as number;
+    //const datLC : number = Object.values(datObj?.list[1]) as unknown as number;
+    const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) + BigInt(adaQty*1000000);
     const newDatAda = new IntData(newAdaAmount.valueOf());
-    const newDatLC = new IntData(BigInt(datLC));
+    const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
 
     const valRedeemer = new ConstrData(
@@ -565,10 +579,10 @@ const Home: NextPage = (props: any) => {
         tx.addInput(utxo);
     }
 
-    const valUtxo = await getTTUtxo();
+    //const valUtxo = await getTTUtxo();
     tx.addInput(valUtxo, valRedeemer);
 
-    const valRefUtxo = await getLCValRefUtxo();
+    //const valRefUtxo = await getLCValRefUtxo();
     tx.addRefInput(
         valRefUtxo,
         compiledValScript
@@ -585,10 +599,10 @@ const Home: NextPage = (props: any) => {
     tx.addOutput(new TxOutput(lcValAddr, value, newInlineDatum));
     tx.addCollateral(colatUtxo);
 
-    const networkParams = new NetworkParams(
-      await fetch(networkParamsUrl)
-          .then(response => response.json())
-    )
+    //const networkParams = new NetworkParams(
+    //  await fetch(networkParamsUrl)
+    //      .then(response => response.json())
+    //)
     console.log("tx before final", tx.dump());
 
     // send any change back to the buyer
