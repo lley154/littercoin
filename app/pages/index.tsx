@@ -129,8 +129,10 @@ const Home: NextPage = (props: any) => {
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
-  const minAda = process.env.NEXT_PUBLIC_MIN_ADA as string;
-  const serviceFee = process.env.NEXT_PUBLIC_MAX_SERVICE_FEE as string;
+  const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
+  const maxTxFee = BigInt(process.env.NEXT_PUBLIC_MAX_TX_FEE as string);
+  const minChangeAmt = BigInt(process.env.NEXT_PUBLIC_MIN_CHANGE_AMT as string);
+  //const serviceFee = BigInt(process.env.NEXT_PUBLIC_MAX_SERVICE_FEE as string);
 
   const [lcInfo, setLCInfo] = useState(
     {
@@ -366,11 +368,11 @@ const Home: NextPage = (props: any) => {
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
     const valRedeemer = new ConstrData(1,[])
-    const minAdaVal = new Value(BigInt(minAda));
+    const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
-    const utxos = await walletHelper.pickUtxos(minAdaVal);
+    const utxos = await walletHelper.pickUtxos(minUTXOVal);
   
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
@@ -414,7 +416,7 @@ const Home: NextPage = (props: any) => {
 
     tx.addOutput(new TxOutput(
       Address.fromBech32(address),
-      new Value(BigInt(minAda), new Assets([[lcTokenMPH, tokens]]))
+      new Value(minAda, new Assets([[lcTokenMPH, tokens]]))
     ));
 
     tx.addCollateral(colatUtxo);
