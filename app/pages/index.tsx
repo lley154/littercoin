@@ -5,7 +5,6 @@ import Head from 'next/head'
 import LittercoinInfo from '../components/LittercoinInfo';
 import MintLC from '../components/MintLC';
 import MintMerchantToken from '../components/MintMerchantToken';
-import MintOwnerToken from '../components/MintOwnerToken';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
@@ -53,15 +52,21 @@ import {
     try {
       //Find the absolute path of the contracts directory
       const contractDirectory = path.join(process.cwd(), 'contracts');
+      // Validator script
       const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
       const valScript = valFile.toString();
       const compiledValScript = Program.new(valScript).compile(optimize);
       const valHash = compiledValScript.validatorHash; 
       const valAddr = Address.fromValidatorHash(valHash);
+      // Littercoin minting script
       const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
       const mintScript = mintFile.toString();
+      // Thread token minting script
       const threadTokenFile = await fs.readFile(contractDirectory + '/threadToken.hl', 'utf8');
       const threadTokenScript = threadTokenFile.toString();
+      // Merchant token minting script
+      const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
+      const merchTokenScript = merchTokenFile.toString();
 
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
@@ -89,7 +94,8 @@ import {
               lcRefTxId: utxo.tx_hash,
               lcRefTxIdx: utxo.output_index,
               lcMintScript: mintScript,
-              ttMintScript: threadTokenScript
+              ttMintScript: threadTokenScript,
+              mtMintScript: merchTokenScript
             }
             return { props: lcVal }
           }
@@ -118,6 +124,10 @@ const Home: NextPage = (props: any) => {
   const ttMintScript = props.ttMintScript as string;
   const compiledTTMintScript = Program.new(ttMintScript).compile(optimize);
   const threadTokenMPH = compiledTTMintScript.mintingPolicyHash;
+
+  const mtMintScript = props.mtMintScript as string;
+  const compiledMerchMintScript = Program.new(mtMintScript).compile(optimize);
+  const merchTokenMPH = compiledMerchMintScript.mintingPolicyHash;
   
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
@@ -127,6 +137,7 @@ const Home: NextPage = (props: any) => {
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
+  const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
@@ -367,7 +378,6 @@ const Home: NextPage = (props: any) => {
     const newDatAda = new IntData(BigInt(lcInfo.adaAmount));
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
-    const valRedeemer = new ConstrData(1,[])
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
@@ -386,7 +396,10 @@ const Home: NextPage = (props: any) => {
     // Add the UTXO as inputs
     tx.addInputs(utxos[0]);
 
+    // Construct the mint littercoin validator redeemer
+    const valRedeemer = new ConstrData(1,[])
     tx.addInput(valUtxo, valRedeemer);
+
     tx.addRefInput(
         valRefUtxo,
         compiledValScript
@@ -405,6 +418,7 @@ const Home: NextPage = (props: any) => {
     // Add the script as a witness to the transaction
     tx.attachScript(compiledLCMintScript);
 
+    // Construct a mint littecoin minting redeemer
     const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
     const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
 
@@ -441,17 +455,155 @@ const Home: NextPage = (props: any) => {
 
 
   const burnLC = async (lcQty : any) => {
-    return true;
-  } 
+
+    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) - BigInt(lcQty);
+    const ratio : number = lcInfo.adaAmount / lcInfo.lcAmount;
+    const withdrawAda : number = Number(ratio) * Number(lcQty);
+    const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
+
+    const newDatAda = new IntData(newAdaAmount.valueOf());
+    const newDatLC = new IntData(newLCAmount.valueOf());
+    const newDatum = new ListData([newDatAda, newDatLC]);
+    
+    const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
+
+    // Get wallet UTXOs
+    const walletHelper = new WalletHelper(walletAPI);
+    const utxos = await walletHelper.pickUtxos(minUTXOVal);
+  
+    // Get change address
+    const changeAddr = await walletHelper.changeAddress;
+
+    // Determine the UTXO used for collateral
+    const colatUtxo = await walletHelper.pickCollateral();
+
+    // Start building the transaction
+    const tx = new Tx();
+
+    // Add the UTXO as inputs
+    tx.addInputs(utxos[0]);
+
+    // Add the UTXO spares so we also get the littercoin tokens
+    tx.addInputs(utxos[1]);
+
+    // Construct the burn littercoin validator redeemer
+    const valRedeemer = new ConstrData(2, [new ByteArrayData(changeAddr.pubKeyHash.bytes)])
+    tx.addInput(valUtxo, valRedeemer);
+
+    tx.addRefInput(
+        valRefUtxo,
+        compiledValScript
+    );
+
+    const newInlineDatum = Datum.inline(newDatum);
+    const outputValue = new Value(newAdaAmount.valueOf(), new Assets([
+      [threadTokenMPH, [
+          [hexToBytes(threadTokenName), BigInt(1)]
+      ]]
+    ]));
+
+    // send Ada, updated dautm and thread token back to script address
+    tx.addOutput(new TxOutput(lcValAddr, outputValue, newInlineDatum));
+
+    // Add the script as a witness to the transaction
+    tx.attachScript(compiledLCMintScript);
+
+    // Construct a burn littecoin minting redeemer
+    const mintRedeemer = new ConstrData(1, [new ByteArrayData(lcValHash.bytes)])
+    const lcTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), (BigInt(lcQty) * BigInt(-1))]];
+
+    tx.mintTokens(
+      lcTokenMPH,
+      lcTokens,
+      mintRedeemer
+    )
+
+    // Construct the merchant token so it can be returned
+    const merchTokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+
+    tx.addOutput(new TxOutput(
+      changeAddr,
+      new Value(BigInt(withdrawAda), new Assets([[merchTokenMPH, merchTokens]]))
+    ));
+
+    tx.addCollateral(colatUtxo);
+
+    console.log("tx before final", tx.dump());
+
+    // Send any change back to the buyer
+    await tx.finalize(networkParams, changeAddr);
+    console.log("tx after final", tx.dump());
+
+    console.log("Verifying signature...");
+    const signatures = await walletAPI.signTx(tx);
+    tx.addSignatures(signatures);
+
+    console.log("Submitting transaction...");
+    const txHash = await walletAPI.submitTx(tx);
+    console.log("txHash", txHash.hex);
+    setTx({ txId: txHash.hex });
+   } 
 
 
   const mintMerchantToken = async (merchAddress : string) => {
-    return true;
-  }   
 
-  const mintOwnerToken = async (ownerAddress : any) => {
-    return true;
-  }  
+    const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
+
+    // Get wallet UTXOs
+    const walletHelper = new WalletHelper(walletAPI);
+    const utxos = await walletHelper.pickUtxos(minUTXOVal);
+  
+    // Get change address
+    const changeAddr = await walletHelper.changeAddress;
+
+    // Determine the UTXO used for collateral
+    const colatUtxo = await walletHelper.pickCollateral();
+
+    // Start building the transaction
+    const tx = new Tx();
+
+    // Add the UTXO as inputs
+    tx.addInputs(utxos[0]);
+
+    // Add the script as a witness to the transaction
+    tx.attachScript(compiledMerchMintScript);
+
+    // Create an empty Redeemer because we must always send a Redeemer with
+    // a plutus script transaction even if we don't actually use it.
+    const mintRedeemer = new ConstrData(0, []);
+
+    const tokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+
+    tx.mintTokens(
+      merchTokenMPH,
+      tokens,
+      mintRedeemer
+    )
+
+    tx.addOutput(new TxOutput(
+      Address.fromBech32(merchAddress),
+      new Value(minAda, new Assets([[merchTokenMPH, tokens]]))
+    ));
+
+    tx.addCollateral(colatUtxo);
+
+    tx.addSigner(PubKeyHash.fromHex(ownerPkh));
+
+    console.log("tx before final", tx.dump());
+
+    // Send any change back to the buyer
+    await tx.finalize(networkParams, changeAddr);
+    console.log("tx after final", tx.dump());
+
+    console.log("Verifying signature...");
+    const signatures = await walletAPI.signTx(tx);
+    tx.addSignatures(signatures);
+
+    console.log("Submitting transaction...");
+    const txHash = await walletAPI.submitTx(tx);
+    console.log("txHash", txHash.hex);
+    setTx({ txId: txHash.hex });
+  }   
 
   const addAda = async (adaQty : any) => {
 
@@ -459,7 +611,6 @@ const Home: NextPage = (props: any) => {
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
-    const valRedeemer = new ConstrData(0, [])
     const adaAmountVal = new Value(BigInt((adaQty)*1000000));
 
     // Get wallet UTXOs
@@ -478,7 +629,8 @@ const Home: NextPage = (props: any) => {
     // Add the UTXO as inputs
     tx.addInputs(utxos[0]);
 
-    //const valUtxo = await getTTUtxo();
+    // Construct the add Ada validator remdeemer
+    const valRedeemer = new ConstrData(0, [])
     tx.addInput(valUtxo, valRedeemer);
 
     //const valRefUtxo = await getLCValRefUtxo();
@@ -556,7 +708,6 @@ const Home: NextPage = (props: any) => {
           {walletIsEnabled && !tx.txId && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
           {walletIsEnabled && !tx.txId && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
           {walletIsEnabled && !tx.txId && <div className={styles.border}><MintMerchantToken onMintMerchantToken={mintMerchantToken}/></div>}
-          {walletIsEnabled && !tx.txId && <div className={styles.border}><MintOwnerToken onMintOwnerToken={mintOwnerToken}/></div>}
 
       </main>
 
