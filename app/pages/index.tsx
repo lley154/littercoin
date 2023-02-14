@@ -52,18 +52,22 @@ import {
     try {
       //Find the absolute path of the contracts directory
       const contractDirectory = path.join(process.cwd(), 'contracts');
+      
       // Validator script
       const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
       const valScript = valFile.toString();
       const compiledValScript = Program.new(valScript).compile(optimize);
       const valHash = compiledValScript.validatorHash; 
       const valAddr = Address.fromValidatorHash(valHash);
+      
       // Littercoin minting script
       const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
       const mintScript = mintFile.toString();
+      
       // Thread token minting script
       const threadTokenFile = await fs.readFile(contractDirectory + '/threadToken.hl', 'utf8');
       const threadTokenScript = threadTokenFile.toString();
+      
       // Merchant token minting script
       const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
       const merchTokenScript = merchTokenFile.toString();
@@ -453,23 +457,40 @@ const Home: NextPage = (props: any) => {
     setTx({ txId: txHash.hex });
    } 
 
-
   const burnLC = async (lcQty : any) => {
 
-    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) - BigInt(lcQty);
+    const lcQtyAbs: number = Math.abs(Number(lcQty));
+    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) - BigInt(lcQtyAbs);
     const ratio : number = lcInfo.adaAmount / lcInfo.lcAmount;
-    const withdrawAda : number = Number(ratio) * Number(lcQty);
-    const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
+    const withdrawAda : number = Number(ratio) * lcQtyAbs;
+    const adaDiff: number = lcInfo.adaAmount - withdrawAda;
+    var newAdaAmount: BigInt;
+    if (adaDiff >= minAda) {
+      newAdaAmount = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
+    } else {
+      //newAdaAmount = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
+      throw console.error("Insufficient funds in Littercoin contract")
+    }
 
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
     
+    // Construct the Ada value that we need to spend from the wallet
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
+
+    // Construct the littercoin token value to be spent from the wallet
+    const lcTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
+    const lcVal: Value = new Value(BigInt(minAda), new Assets([[lcTokenMPH, lcTokens]]));
+
+    // Construct the merchant token to be spent from the wallet
+    const merchTokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+    const merchVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
-    const utxos = await walletHelper.pickUtxos(minUTXOVal);
+    const utxos = await walletHelper.pickUtxos(minUTXOVal.add(lcVal).add(merchVal));
+    console.log("utxos", utxos);
   
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
@@ -480,11 +501,7 @@ const Home: NextPage = (props: any) => {
     // Start building the transaction
     const tx = new Tx();
 
-    // Add the UTXO as inputs
     tx.addInputs(utxos[0]);
-
-    // Add the UTXO spares so we also get the littercoin tokens
-    tx.addInputs(utxos[1]);
 
     // Construct the burn littercoin validator redeemer
     const valRedeemer = new ConstrData(2, [new ByteArrayData(changeAddr.pubKeyHash.bytes)])
@@ -509,21 +526,31 @@ const Home: NextPage = (props: any) => {
     tx.attachScript(compiledLCMintScript);
 
     // Construct a burn littecoin minting redeemer
-    const mintRedeemer = new ConstrData(1, [new ByteArrayData(lcValHash.bytes)])
-    const lcTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), (BigInt(lcQty) * BigInt(-1))]];
+    const mintRedeemer = new ConstrData(1, [new ByteArrayData(lcValHash.bytes)]);
+    
+    // Construct the littercoin token value to be burned
+    const lcBurnTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), (BigInt(lcQty) * BigInt(-1))]];
 
     tx.mintTokens(
       lcTokenMPH,
-      lcTokens,
+      lcBurnTokens,
       mintRedeemer
     )
-
-    // Construct the merchant token so it can be returned
-    const merchTokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
+    
+    // Construct the merchant token value to be returned
+    const merchAdaVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
 
     tx.addOutput(new TxOutput(
       changeAddr,
-      new Value(BigInt(withdrawAda), new Assets([[merchTokenMPH, merchTokens]]))
+      merchAdaVal
+    ));
+
+    // Construct the ada withdraw amount
+    const withdrawAdaVal: Value = new Value(BigInt(withdrawAda));
+
+    tx.addOutput(new TxOutput(
+      changeAddr,
+      withdrawAdaVal
     ));
 
     tx.addCollateral(colatUtxo);
