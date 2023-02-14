@@ -72,6 +72,11 @@ import {
       const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
       const merchTokenScript = merchTokenFile.toString();
 
+      // Receipt token minting script
+      const receiptTokenFile = await fs.readFile(contractDirectory + '/receiptToken.hl', 'utf8');
+      const receiptTokenScript = receiptTokenFile.toString();
+
+
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
 
       var payload;
@@ -99,7 +104,8 @@ import {
               lcRefTxIdx: utxo.output_index,
               lcMintScript: mintScript,
               ttMintScript: threadTokenScript,
-              mtMintScript: merchTokenScript
+              mtMintScript: merchTokenScript,
+              recMintScript: receiptTokenScript
             }
             return { props: lcVal }
           }
@@ -116,23 +122,34 @@ import {
 const Home: NextPage = (props: any) => {
 
   const optimize = false;
+
+  // Littercoin validator script
   const lcValScript = props.lcValScript as string;
   const compiledValScript = Program.new(lcValScript).compile(optimize);
   const lcValHash = compiledValScript.validatorHash; 
   const lcValAddr = Address.fromValidatorHash(lcValHash);
 
+  // Littercoin minting script
   const lcMintScript = props.lcMintScript as string;
   const compiledLCMintScript = Program.new(lcMintScript).compile(optimize);
   const lcTokenMPH = compiledLCMintScript.mintingPolicyHash;
 
+  // Thread token minting script
   const ttMintScript = props.ttMintScript as string;
   const compiledTTMintScript = Program.new(ttMintScript).compile(optimize);
   const threadTokenMPH = compiledTTMintScript.mintingPolicyHash;
 
+  // Merchant token minting script
   const mtMintScript = props.mtMintScript as string;
   const compiledMerchMintScript = Program.new(mtMintScript).compile(optimize);
   const merchTokenMPH = compiledMerchMintScript.mintingPolicyHash;
+
+  // Receipt token minting script
+  const recMintScript = props.recMintScript as string;
+  const compiledRecMintScript = Program.new(recMintScript).compile(optimize);
+  const recTokenMPH = compiledRecMintScript.mintingPolicyHash;
   
+  // Littercoin reference UTXO
   const lcValAdaAmt = props.lcValAdaAmt as string;
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
@@ -142,6 +159,7 @@ const Home: NextPage = (props: any) => {
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
   const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
+  const recTokenName = process.env.NEXT_PUBLIC_REC_TOKEN_NAME as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
@@ -469,7 +487,7 @@ const Home: NextPage = (props: any) => {
       newAdaAmount = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
     } else {
       //newAdaAmount = BigInt(lcInfo.adaAmount) - BigInt(withdrawAda);
-      throw console.error("Insufficient funds in Littercoin contract")
+      throw console.error("Insufficient funds in Littercoin contract");
     }
 
     const newDatAda = new IntData(newAdaAmount.valueOf());
@@ -634,11 +652,15 @@ const Home: NextPage = (props: any) => {
 
   const addAda = async (adaQty : any) => {
 
-    const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) + BigInt(adaQty*1000000);
+    const lovelaceQty =  Number(adaQty) * 1000000;
+    if (lovelaceQty < minAda) {
+      throw console.error("Minimum donation is 2 Ada");
+    }
+    const newAdaAmount : BigInt = BigInt(lcInfo.adaAmount) + BigInt(lovelaceQty);
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
-    const adaAmountVal = new Value(BigInt((adaQty)*1000000));
+    const adaAmountVal = new Value(BigInt(lovelaceQty));
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
@@ -675,6 +697,25 @@ const Home: NextPage = (props: any) => {
 
     // send Ada, updated dautm and thread token back to script address
     tx.addOutput(new TxOutput(lcValAddr, value, newInlineDatum));
+
+    // Add the script as a witness to the transaction
+    tx.attachScript(compiledRecMintScript);
+
+    // Construct a receipt minting redeemer
+    const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
+    const tokens: [number[], bigint][] = [[hexToBytes(recTokenName), BigInt(adaQty)]];
+
+    tx.mintTokens(
+      recTokenMPH,
+      tokens,
+      mintRedeemer
+    )
+
+    tx.addOutput(new TxOutput(
+      changeAddr,
+      new Value(minAda, new Assets([[recTokenMPH, tokens]]))
+    ));
+
     tx.addCollateral(colatUtxo);
 
     console.log("tx before final", tx.dump());

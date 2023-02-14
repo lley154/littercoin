@@ -1,10 +1,7 @@
-minting littercoin
+minting receipt
 
 enum Redeemer { 
     Mint {
-        lcValHashBA: ByteArray
-    }
-    Burn {
         lcValHashBA: ByteArray
     }
  }
@@ -26,15 +23,9 @@ func main(redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         red: Mint => {
                 // Check that thread token is part of this transaction
                 vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                tx.value_locked_by(vHash).contains(ttVal).trace("LCM1: ")
-        },
-        red: Burn => {
-                // Check that thread token is part of this transaction
-                vHash: ValidatorHash = ValidatorHash::new(red.lcValHashBA); 
-                tx.value_locked_by(vHash).contains(ttVal).trace("LCM2: ")
+                tx.value_locked_by(vHash).contains(ttVal).trace("DRM1: ")
         }
     }
 }
 
 const MINT_REDEEMER = Redeemer::Mint{#1a2b3c}
-const BURN_REDEEMER = Redeemer::Burn{#1a2b3c}

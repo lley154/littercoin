@@ -21,7 +21,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #a9c693fbb5065379c26517e9ab36a08f3d4ceee556ae7e26b62a401d
+const TT_MPH: ByteArray = #c62d1a20c360f42f999aba795e5a795abf26e04bff76a1c05b5ccaaf
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -30,16 +30,20 @@ const ttAssetclass: AssetClass = AssetClass::new(
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #4d6fd047c7b8192aac55770dfaf226a17d56ac1cc15dc02cf6fb71f9
+const LC_MPH: ByteArray = #153dd3c9c194afead2c2435686b52b41c09fab4740095bf00d3750b8
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
         "Littercoin".encode_utf8()
     )
 
-// Define the pkh of the owner
-const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
-const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
+// Define the mph of the receipt token minting policy
+const REC_MPH: ByteArray = #580a0c6f416d68512035740ef10dd4ed1cf755636d2b0b8c5341d454
+const recMph: MintingPolicyHash = MintingPolicyHash::new(REC_MPH)
+const recAssetClass: AssetClass = AssetClass::new(
+        recMph, 
+        "Donation Receipt Littercoin".encode_utf8()
+    )
 
 // Define the merchant token
 const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
@@ -49,6 +53,11 @@ const merchAssetclass: AssetClass = AssetClass::new(
         "Merchant Token Littercoin".encode_utf8()
     )
 const merchVal: Value = Value::new(merchAssetclass, 1)
+
+// Define the pkh of the owner
+const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
+const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
+
 
 func getDatum (txOuts : []TxOutput) -> []TxOutput {
 
@@ -78,17 +87,19 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         outDat: Datum = Datum::from_data(dat.data);
                         addAdaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
                         adaVal: Value = Value::lovelace(outDat.adaAmount);
+                        recMintVal: Value = Value::new(recAssetClass, (addAdaDatumAmt/1000000));
 
                         // Verify that the total Ada amount from the datum and
                         // the thread token is the same as the output value
                         // locked at the validator address                   
                         (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV1: ") &&
-                        (addAdaDatumAmt >= minAda).trace("LCV2: ")
+                        (addAdaDatumAmt >= minAda).trace("LCV2: ") &&
+                        (tx.minted == recMintVal).trace("LCV3: ")
                     },
-                    else => false.trace("LCV3: ") // No inline datum found
+                    else => false.trace("LCV4: ") // No inline datum found
                 }
             } else {
-                false.trace("LCV4: ") // No datum found in outputs
+                false.trace("LCV5: ") // No datum found in outputs
             }
         },
         Mint => {
@@ -106,16 +117,16 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         // locked at the validator address.  Also check the tx 
                         // is signed by the owner pkh.  
 
-                        (adaDatumAmt == 0).trace("LCV5: ") && // Confirm no change in ada in datum
-                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV6: ") &&
-                        (tx.minted == lcMintVal).trace("LCV7: ") &&
-                        tx.is_signed_by(ownerPkh).trace("LCV8: ") &&  
-                        (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV9: ") 
+                        (adaDatumAmt == 0).trace("LCV6: ") && // Confirm no change in ada in datum
+                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV7: ") &&
+                        (tx.minted == lcMintVal).trace("LCV8: ") &&
+                        tx.is_signed_by(ownerPkh).trace("LCV9: ") &&  
+                        (0 < lcDatumAmt && lcDatumAmt < outDat.adaAmount).trace("LCV10: ") 
                     },
-                    else => false.trace("LCV10: " ) // Non inline datum found
+                    else => false.trace("LCV11: " ) // Non inline datum found
                 }
              } else {
-                false.trace("LCV11: ") // No datum found in outputs
+                false.trace("LCV12: ") // No datum found in outputs
              }
         },
         red: Burn => {
@@ -129,7 +140,6 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         lcBurnVal: Value = Value::new(lcAssetClass, lcDatumAmt) * (-1);
                         ratio: Int = datum.get_ratio();
                         adaWithdraw : Int = lcDatumAmt * ratio;
-                        //adaWithdrawVal: Value = Value::lovelace(adaWithdraw);
                         merchPkh: PubKeyHash = PubKeyHash::new(red.pkhBA);
                         merchOutTxs : []TxOutput = tx.outputs_sent_to(merchPkh);
                         
@@ -138,24 +148,23 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         // is equal to the amount of Ada remanining in the datum output.
                         // Finally confirm that thread token is sent to back to the validator
                         // with correct Ada amount                   
-                        (outDat.adaAmount >= minAda).trace("LCV12: ") &&
-                        (adaWithdraw >= minAda).trace("LCV13: ") &&
-                        (adaDatumAmt == adaWithdraw).trace("LCV14: ") &&
-                        (tx.minted == lcBurnVal).trace("LCV15: ") &&
-                        //(merchOutTxs.head.value == (adaWithdrawVal + merchVal)).trace("LCV16: ") &&
-                        (merchOutTxs.head.value == (minAdaVal + merchVal)).trace("LCV16: ") &&
-                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV17: ")
+                        (outDat.adaAmount >= minAda).trace("LCV13: ") &&
+                        (adaWithdraw >= minAda).trace("LCV14: ") &&
+                        (adaDatumAmt == adaWithdraw).trace("LCV15: ") &&
+                        (tx.minted == lcBurnVal).trace("LCV16: ") &&
+                        (merchOutTxs.head.value == (minAdaVal + merchVal)).trace("LCV17: ") &&
+                        (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV18: ")
                     },
-                    else => false.trace("LCV18: ") // No inline datum found
+                    else => false.trace("LCV19: ") // No inline datum found
                 }
             } else {
-                false.trace("LCV19: ") // No datum found in outputs
+                false.trace("LCV20: ") // No datum found in outputs
             }
         }
     }
 }
 
-// Datum order is important
+// Datum field order is important
 const LC_DATUM = Datum {
     adaAmount : 2000000,
     lcAmount : 0 

@@ -9,7 +9,7 @@
 # Step 3.   deno run --allow-read --allow-write src/deploy-init.js
 #           update src/mint.hl with thread token value
 #           deno run --allow-read --allow-write src/deploy-mint.js
-#           update src/validator.hl with threadtoken and mint mph values
+#           update src/validator.hl with threadtoken and mint and receipt mph values
 #           deno run --allow-read --allow-write src/deploy-val.js
 # Step 4.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
 # Step 5.   Copy src/*.hl app/contracts
