@@ -26,6 +26,7 @@ import {
   NetworkParams,
   Program, 
   PubKeyHash,
+  Signature,
   Value, 
   TxOutput,
   TxWitnesses,
@@ -798,7 +799,7 @@ const Home: NextPage = (props: any) => {
 
     console.log("Waiting for wallet signature...");
     const walletSig = await walletAPI2.signTx(bytesToHex(tx.toCbor()), true);
-    console.log("walletSig", walletSig);
+    //console.log("walletSig", walletSig);
 
 
     console.log("Verifying signature...");
@@ -806,16 +807,37 @@ const Home: NextPage = (props: any) => {
     console.log("TxWitness.signature", signatures);
     console.log("TxWitness.signature", signatures[0].dump());
 
-    tx.addSignatures(signatures);
+    const sigAPIKey = process.env.NEXT_PUBLIC_SIGNING_API_KEY as string;
+    const response = await fetch('/api/getSignature', {
+      method: 'POST',
+      body: JSON.stringify({ txCbor: bytesToHex(tx.toCbor()) }),
+      headers: {
+        'Content-type' : 'application/json',
+        'Authorization' : 'Basic ' + sigAPIKey
+      },
+    }) 
+    const cborData = await response.json();
+    
+    const signature = Signature.fromCbor(hexToBytes(cborData));
+    console.log("signature", signature.dump());
+
+    //const signatures2 = tx.witnesses;
+    //signatures2.addSignature(signature);
+
+    //const signatures2 = TxWitnesses.fromCbor(hexToBytes(data)).signatures;
+    //console.log("signature", signatures2[0].dump());
+
+    //tx.addSignatures(signatures);
+    tx.addSignature(signature);
 
     //console.log("Verifying signature...");
     //const signatures = await walletAPI.signTx(tx);
     //tx.addSignatures(signatures);
     
-    //console.log("Submitting transaction...");
-    //const txHash = await walletAPI.submitTx(tx);
-    //console.log("txHash", txHash.hex);
-    //setTx({ txId: txHash.hex });
+    console.log("Submitting transaction...");
+    const txHash = await walletAPI.submitTx(tx);
+    console.log("txHash", txHash.hex);
+    setTx({ txId: txHash.hex });
 
     //const txHash = await submitTx(tx);
     //console.log("txHash", txHash);
