@@ -392,6 +392,33 @@ const Home: NextPage = (props: any) => {
     }
   }
 
+  const submitTx = async (tx: Tx) : Promise<string> => {
+    const data = new Uint8Array(tx.toCbor());
+    const url = blockfrostAPI + "/tx/submit";
+
+    return new Promise((resolve, reject) => {
+        const req = new XMLHttpRequest();
+        req.onload = (_e) => {
+            if (req.status == 200) {
+                resolve(req.responseText);
+            } else {
+                reject(new Error(req.responseText));
+            }
+        }
+
+        req.onerror = (e) => {
+            reject(e);
+        }
+
+        req.open("POST", url, false);
+
+        req.setRequestHeader("content-type", "application/cbor");
+        req.setRequestHeader("project_id", apiKey);
+        
+        req.send(data);
+    });   
+  }
+
   const mintLC = async (params : any) => {
 
     const address = params[0];
@@ -660,17 +687,48 @@ const Home: NextPage = (props: any) => {
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
-    const adaAmountVal = new Value(BigInt(lovelaceQty));
+    const minUTXOVal = new Value(BigInt(lovelaceQty) + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
-    const utxos = await walletHelper.pickUtxos(adaAmountVal);
+    const utxos = await walletHelper.pickUtxos(minUTXOVal);
+    console.log("utxos from Helios wallet helper", utxos);
  
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
 
+    // wallet regression testing
+    const walletAPI2 = await window.cardano.nami.enable();
+
+    const cborUtxos = await walletAPI2.getUtxos(bytesToHex(minUTXOVal.toCbor()));
+    let Utxos = [];
+
+    for (const cborUtxo of cborUtxos) {
+      const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
+      Utxos.push(_utxo);
+    }
+    console.log("utxos direct from wallet API", Utxos);
+
+
+    var cborColatUtxo2;
+    if (whichWalletSelected == "eternl") {
+      cborColatUtxo2 = await walletAPI2.experimental.getCollateral();
+    } else if (whichWalletSelected == "nami") {
+      cborColatUtxo2 = await walletAPI2.experimental.getCollateral();
+    } else {
+      throw console.error("No wallet selected")
+    }
+
+    if (cborColatUtxo2.length == 0) {
+      throw console.error("No collateral set in wallet");
+    }
+    const colatUtxo2 = UTxO.fromCbor(hexToBytes(cborColatUtxo2[0]));
+    console.log("colatUtxo2", colatUtxo2);
+
+
     // Determine the UTXO used for collateral
     const colatUtxo = await walletHelper.pickCollateral();
+    console.log("colatUtxo", colatUtxo);
 
     // Start building the transaction
     const tx = new Tx();
@@ -718,20 +776,51 @@ const Home: NextPage = (props: any) => {
 
     tx.addCollateral(colatUtxo);
 
+    // Specify when this transaction is valid from.   This is needed so
+    // time is included in the transaction which will be use by the validator
+    // script.  Add two hours for time to live and offset the current time
+    // by 5 mins.
+    const currentTime = new Date().getTime();
+    const earlierTime = new Date(currentTime - 5 * 60 * 1000); 
+    const laterTime = new Date(currentTime + 2 * 60 * 60 * 1000); 
+   
+    tx.validFrom(earlierTime);
+    tx.validTo(laterTime);
+
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
+    console.log("tx cbor", bytesToHex(tx.toCbor()));
+    //console.log("tx body after final", tx.body.dump());
+    console.log("unsigned tx body: ", bytesToHex(tx.body.toCbor()));
+
+    console.log("Waiting for wallet signature...");
+    const walletSig = await walletAPI2.signTx(bytesToHex(tx.toCbor()), true);
+    console.log("walletSig", walletSig);
+
 
     console.log("Verifying signature...");
-    const signatures = await walletAPI.signTx(tx);
+    const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures;
+    console.log("TxWitness.signature", signatures);
+    console.log("TxWitness.signature", signatures[0].dump());
+
     tx.addSignatures(signatures);
+
+    //console.log("Verifying signature...");
+    //const signatures = await walletAPI.signTx(tx);
+    //tx.addSignatures(signatures);
     
-    console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(tx);
-    console.log("txHash", txHash.hex);
-    setTx({ txId: txHash.hex });
+    //console.log("Submitting transaction...");
+    //const txHash = await walletAPI.submitTx(tx);
+    //console.log("txHash", txHash.hex);
+    //setTx({ txId: txHash.hex });
+
+    //const txHash = await submitTx(tx);
+    //console.log("txHash", txHash);
+    //setTx({ txId: txHash});
+
   } 
 
   return (
