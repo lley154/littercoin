@@ -23,19 +23,19 @@ await Deno.writeTextFile("./deploy/lc-minting-policy.plutus", uplcProgramMintLC.
 await Deno.writeTextFile("./deploy/lc-minting-policy.hash", lcMPH.hex);
 
 
-const mintReceiptSrc = await Deno.readTextFile("./src/receiptToken.hl");
+const mintReceiptSrc = await Deno.readTextFile("./src/rewardsToken.hl");
 const programmintReceipt = helios.Program.new(mintReceiptSrc);
 const uplcProgrammintReceipt = programmintReceipt.compile(optimize);
 const receiptMPH = uplcProgrammintReceipt.mintingPolicyHash;
-const receiptTokenName = helios.ByteArrayData.fromString("Donation Receipt Littercoin");
+const receiptTokenName = helios.ByteArrayData.fromString("Donation Rewards Littercoin");
 
-console.log("Donation receipt mph: ", receiptMPH.hex);
-console.log("Donatino receipt token name: ", receiptTokenName.toSchemaJson());
+console.log("Donation rewards mph: ", receiptMPH.hex);
+console.log("Donation rewards token name: ", receiptTokenName.toSchemaJson());
 
 const mintReceiptRedeemer = programmintReceipt.evalParam("MINT_REDEEMER");
 const mintReceiptRedeemerData = mintReceiptRedeemer.data;
 
-await Deno.writeTextFile("./deploy/receipt-mint-redeemer-mint.json", mintReceiptRedeemerData.toSchemaJson());
-await Deno.writeTextFile("./deploy/receipt-mint-token-name.json", receiptTokenName.toSchemaJson());
-await Deno.writeTextFile("./deploy/receipt-minting-policy.plutus", uplcProgrammintReceipt.serialize());
-await Deno.writeTextFile("./deploy/receipt-minting-policy.hash", receiptMPH.hex);
+await Deno.writeTextFile("./deploy/rewards-mint-redeemer-mint.json", mintReceiptRedeemerData.toSchemaJson());
+await Deno.writeTextFile("./deploy/rewards-mint-token-name.json", receiptTokenName.toSchemaJson());
+await Deno.writeTextFile("./deploy/rewards-minting-policy.plutus", uplcProgrammintReceipt.serialize());
+await Deno.writeTextFile("./deploy/rewards-minting-policy.hash", receiptMPH.hex);

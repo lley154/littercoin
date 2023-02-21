@@ -15,8 +15,6 @@ import {
   Assets, 
   bytesToHex, 
   ByteArrayData,
-  Cip30Handle,
-  Cip30Wallet,
   ConstrData, 
   Datum, 
   hexToBytes, 
@@ -73,9 +71,9 @@ import {
       const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
       const merchTokenScript = merchTokenFile.toString();
 
-      // Receipt token minting script
-      const receiptTokenFile = await fs.readFile(contractDirectory + '/receiptToken.hl', 'utf8');
-      const receiptTokenScript = receiptTokenFile.toString();
+      // Littercoin rewards token minting script
+      const rewardsTokenFile = await fs.readFile(contractDirectory + '/rewardsToken.hl', 'utf8');
+      const rewardsTokenScript = rewardsTokenFile.toString();
 
 
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
@@ -106,7 +104,7 @@ import {
               lcMintScript: mintScript,
               ttMintScript: threadTokenScript,
               mtMintScript: merchTokenScript,
-              recMintScript: receiptTokenScript
+              recMintScript: rewardsTokenScript
             }
             return { props: lcVal }
           }
@@ -145,10 +143,10 @@ const Home: NextPage = (props: any) => {
   const compiledMerchMintScript = Program.new(mtMintScript).compile(optimize);
   const merchTokenMPH = compiledMerchMintScript.mintingPolicyHash;
 
-  // Receipt token minting script
+  // Littercoin donation rewards minting script
   const recMintScript = props.recMintScript as string;
   const compiledRecMintScript = Program.new(recMintScript).compile(optimize);
-  const recTokenMPH = compiledRecMintScript.mintingPolicyHash;
+  const rewardsTokenMPH = compiledRecMintScript.mintingPolicyHash;
   
   // Littercoin reference UTXO
   const lcValAdaAmt = props.lcValAdaAmt as string;
@@ -160,7 +158,7 @@ const Home: NextPage = (props: any) => {
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
   const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
-  const recTokenName = process.env.NEXT_PUBLIC_REC_TOKEN_NAME as string;
+  const rewardsTokenName = process.env.NEXT_PUBLIC_REWARDS_TOKEN_NAME as string;
   const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
@@ -688,14 +686,18 @@ const Home: NextPage = (props: any) => {
     const newDatum = new ListData([newDatAda, newDatLC]);
     const minUTXOVal = new Value(BigInt(lovelaceQty) + maxTxFee + minChangeAmt);
 
+    console.log("minUTXOVal", minUTXOVal);
     // Get wallet UTXOs
     const cborUtxos = await walletAPI.getUtxos(bytesToHex(minUTXOVal.toCbor()));
+    
+    console.log("cborUtxos", cborUtxos);
     let utxos = [];
 
     for (const cborUtxo of cborUtxos) {
       const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
       utxos.push(_utxo);
     }
+    console.log("utxos", utxos);
 
     var cborColatUtxo;
     if (whichWalletSelected == "eternl") {
@@ -744,25 +746,26 @@ const Home: NextPage = (props: any) => {
     // Add the script as a witness to the transaction
     tx.attachScript(compiledRecMintScript);
 
-    // Construct a receipt minting redeemer
+    // Construct a littercoin rewards minting redeemer
     const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
-    const tokens: [number[], bigint][] = [[hexToBytes(recTokenName), BigInt(adaQty)]];
+    const tokens: [number[], bigint][] = [[hexToBytes(rewardsTokenName), BigInt(adaQty)]];
 
     tx.mintTokens(
-      recTokenMPH,
+      rewardsTokenMPH,
       tokens,
       mintRedeemer
     )
 
     tx.addOutput(new TxOutput(
       changeAddr,
-      new Value(minAda, new Assets([[recTokenMPH, tokens]]))
+      new Value(minAda, new Assets([[rewardsTokenMPH, tokens]]))
     ));
 
     tx.addCollateral(colatUtxo);
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
+    console.log("networkParams", networkParams);
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
 

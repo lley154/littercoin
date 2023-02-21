@@ -21,7 +21,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #c62d1a20c360f42f999aba795e5a795abf26e04bff76a1c05b5ccaaf
+const TT_MPH: ByteArray = #8c529bf2a89499c3ff69930c2979aaf3c52928a7c2f0903aaae1047a
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -30,19 +30,19 @@ const ttAssetclass: AssetClass = AssetClass::new(
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #153dd3c9c194afead2c2435686b52b41c09fab4740095bf00d3750b8
+const LC_MPH: ByteArray = #0062e014f975b20d42570c993551b794b13709f8c6ce29ac722af0dd
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
         "Littercoin".encode_utf8()
     )
 
-// Define the mph of the receipt token minting policy
-const REC_MPH: ByteArray = #580a0c6f416d68512035740ef10dd4ed1cf755636d2b0b8c5341d454
-const recMph: MintingPolicyHash = MintingPolicyHash::new(REC_MPH)
-const recAssetClass: AssetClass = AssetClass::new(
-        recMph, 
-        "Donation Receipt Littercoin".encode_utf8()
+// Define the mph of the donation rewards token minting policy
+const REWARDS_MPH: ByteArray = #fff1907c10a7152a2430f8dd594a225a88c014009ad0f6a4abb9e08d
+const rewardsMph: MintingPolicyHash = MintingPolicyHash::new(REWARDS_MPH)
+const rewardsAssetClass: AssetClass = AssetClass::new(
+        rewardsMph, 
+        "Donation Rewards Littercoin".encode_utf8()
     )
 
 // Define the merchant token
@@ -87,14 +87,14 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
                         outDat: Datum = Datum::from_data(dat.data);
                         addAdaDatumAmt: Int = outDat.adaAmount - datum.adaAmount;
                         adaVal: Value = Value::lovelace(outDat.adaAmount);
-                        recMintVal: Value = Value::new(recAssetClass, (addAdaDatumAmt/1000000));
+                        rewardsMintVal: Value = Value::new(rewardsAssetClass, (addAdaDatumAmt/1000000));
 
                         // Verify that the total Ada amount from the datum and
                         // the thread token is the same as the output value
                         // locked at the validator address                   
                         (tx.value_locked_by(vHash) == (ttVal + adaVal)).trace("LCV1: ") &&
                         (addAdaDatumAmt >= minAda).trace("LCV2: ") &&
-                        (tx.minted == recMintVal).trace("LCV3: ")
+                        (tx.minted == rewardsMintVal).trace("LCV3: ")
                     },
                     else => false.trace("LCV4: ") // No inline datum found
                 }
