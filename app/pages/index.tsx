@@ -179,11 +179,11 @@ const Home: NextPage = (props: any) => {
   const [valUtxo, setUTXO] = useState<undefined | any>(undefined);
   const [valRefUtxo, setRefUTXO] = useState<undefined | any>(undefined);
   const [networkParams, setNetworkParams] = useState<undefined | any>(undefined);
-  const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
-  const [tx, setTx] = useState({ txId : '' });
-  const [walletInfo, setWalletInfo] = useState({ balance : ''});
-  const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
+  const [walletIsEnabled, setWalletIsEnabled] = useState(false);
+  const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
+  const [walletInfo, setWalletInfo] = useState({ balance : ''});
+  const [tx, setTx] = useState({ txId : '' });
 
   useEffect(() => {
       const getContractInfo = async () => {
@@ -236,6 +236,41 @@ const Home: NextPage = (props: any) => {
     updateWalletInfo();
   }, [walletAPI]);
 
+  // user selects what wallet to connect to
+  const handleWalletSelect = (obj : any) => {
+    const whichWalletSelected = obj.target.value
+    setWhichWalletSelected(whichWalletSelected);
+  }
+
+  const checkIfWalletFound = async () => {
+      
+    let walletFound = false;
+
+    const walletChoice = whichWalletSelected;
+    if (walletChoice === "nami") {
+        walletFound = !!window?.cardano?.nami;
+    } else if (walletChoice === "eternl") {
+        walletFound = !!window?.cardano?.eternl;
+    } 
+    return walletFound;
+  }
+
+  const enableWallet = async () => {
+
+    let walletAPI = undefined;
+      try {
+        const walletChoice = whichWalletSelected;
+        if (walletChoice === "nami") {
+            walletAPI = await window.cardano.nami.enable();
+        } else if (walletChoice === "eternl") {
+            walletAPI = await window.cardano.eternl.enable(); 
+        } 
+        return walletAPI 
+    } catch (err) {
+        console.log('enableWallet error', err);
+    }
+  }
+
   useEffect(() => {
     const updateLittercoinInfo = async () => {
 
@@ -258,7 +293,18 @@ const Home: NextPage = (props: any) => {
     updateLittercoinInfo();
   }, [tx]);
 
-  
+  const getBalance = async () => {
+    try {
+        const balanceCBORHex = await walletAPI.getBalance();
+        const balanceAmountValue =  Value.fromCbor(hexToBytes(balanceCBORHex));
+        const balanceAmount = balanceAmountValue.lovelace;
+        const walletBalance : BigInt = BigInt(balanceAmount);
+        return walletBalance.toLocaleString();
+    } catch (err) {
+        console.log('getBalance error: ', err);
+    }
+  }
+
   // Get the utxo with the thread token at the LC validator address
   const getTTUtxo = async () => {
 
@@ -323,7 +369,7 @@ const Home: NextPage = (props: any) => {
     );
     setNetworkParams(networkParams);
   }
-
+  
   const fetchLittercoinInfo = async () => {
 
     const utxo = await getTTUtxo();
@@ -344,55 +390,6 @@ const Home: NextPage = (props: any) => {
     }
   }
 
-  // user selects what wallet to connect to
-  const handleWalletSelect = (obj : any) => {
-    const whichWalletSelected = obj.target.value
-    setWhichWalletSelected(whichWalletSelected);
-  }
-
-  const checkIfWalletFound = async () => {
-      
-    let walletFound = false;
-
-    const walletChoice = whichWalletSelected;
-    if (walletChoice === "nami") {
-        walletFound = !!window?.cardano?.nami;
-    } else if (walletChoice === "eternl") {
-        walletFound = !!window?.cardano?.eternl;
-    } 
-    return walletFound;
-  }
-
-  const enableWallet = async () => {
-
-      try {
-        const walletChoice = whichWalletSelected;
-        if (walletChoice === "nami") {
-            const handle: Cip30Handle = await window.cardano.nami.enable();
-            const walletAPI = new Cip30Wallet(handle);
-            return walletAPI;
-          } else if (walletChoice === "eternl") {
-            const handle: Cip30Handle = await window.cardano.eternl.enable();
-            const walletAPI = new Cip30Wallet(handle);
-            return walletAPI;
-          } 
-    } catch (err) {
-        console.log('enableWallet error', err);
-    }
-  }
-
-  const getBalance = async () => {
-    try {
-        const walletHelper = new WalletHelper(walletAPI);
-        const balanceAmountValue  = await walletHelper.calcBalance();
-        const balanceAmount = balanceAmountValue.lovelace;
-        const walletBalance : BigInt = BigInt(balanceAmount);
-        return walletBalance.toLocaleString();
-    } catch (err) {
-        console.log('getBalance error: ', err);
-    }
-  }
-
   const submitTx = async (tx: Tx) : Promise<string> => {
     const data = new Uint8Array(tx.toCbor());
     const url = blockfrostAPI + "/tx/submit";
@@ -401,7 +398,7 @@ const Home: NextPage = (props: any) => {
         const req = new XMLHttpRequest();
         req.onload = (_e) => {
             if (req.status == 200) {
-                resolve(req.responseText);
+                resolve(req.responseText.replace(/["]/g, ''));
             } else {
                 reject(new Error(req.responseText));
             }
@@ -418,7 +415,7 @@ const Home: NextPage = (props: any) => {
         
         req.send(data);
     });   
-  }
+}
 
   const mintLC = async (params : any) => {
 
@@ -644,7 +641,6 @@ const Home: NextPage = (props: any) => {
     // Create an empty Redeemer because we must always send a Redeemer with
     // a plutus script transaction even if we don't actually use it.
     const mintRedeemer = new ConstrData(0, []);
-
     const tokens: [number[], bigint][] = [[hexToBytes(merchTokenName), BigInt(1)]];
 
     tx.mintTokens(
@@ -659,9 +655,7 @@ const Home: NextPage = (props: any) => {
     ));
 
     tx.addCollateral(colatUtxo);
-
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
-
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
@@ -680,6 +674,10 @@ const Home: NextPage = (props: any) => {
 
   const addAda = async (adaQty : any) => {
 
+    // re-enable wallet api if the wallet account has been changed
+    const api = await enableWallet();
+    setWalletAPI(api);
+    
     const lovelaceQty =  Number(adaQty) * 1000000;
     if (lovelaceQty < minAda) {
       throw console.error("Minimum donation is 2 Ada");
@@ -691,51 +689,37 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(BigInt(lovelaceQty) + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    const walletHelper = new WalletHelper(walletAPI);
-    const utxos = await walletHelper.pickUtxos(minUTXOVal);
-    console.log("utxos from Helios wallet helper", utxos);
- 
-    // Get change address
-    const changeAddr = await walletHelper.changeAddress;
-
-    // wallet regression testing
-    const walletAPI2 = await window.cardano.nami.enable();
-
-    const cborUtxos = await walletAPI2.getUtxos(bytesToHex(minUTXOVal.toCbor()));
-    let Utxos = [];
+    const cborUtxos = await walletAPI.getUtxos(bytesToHex(minUTXOVal.toCbor()));
+    let utxos = [];
 
     for (const cborUtxo of cborUtxos) {
       const _utxo = UTxO.fromCbor(hexToBytes(cborUtxo));
-      Utxos.push(_utxo);
+      utxos.push(_utxo);
     }
-    console.log("utxos direct from wallet API", Utxos);
 
-
-    var cborColatUtxo2;
+    var cborColatUtxo;
     if (whichWalletSelected == "eternl") {
-      cborColatUtxo2 = await walletAPI2.experimental.getCollateral();
+      cborColatUtxo = await walletAPI.getCollateral();
     } else if (whichWalletSelected == "nami") {
-      cborColatUtxo2 = await walletAPI2.experimental.getCollateral();
+      cborColatUtxo = await walletAPI.experimental.getCollateral();
     } else {
       throw console.error("No wallet selected")
     }
 
-    if (cborColatUtxo2.length == 0) {
+    if (cborColatUtxo.length == 0) {
       throw console.error("No collateral set in wallet");
     }
-    const colatUtxo2 = UTxO.fromCbor(hexToBytes(cborColatUtxo2[0]));
-    console.log("colatUtxo2", colatUtxo2);
-
-
-    // Determine the UTXO used for collateral
-    const colatUtxo = await walletHelper.pickCollateral();
-    console.log("colatUtxo", colatUtxo);
+    const colatUtxo = UTxO.fromCbor(hexToBytes(cborColatUtxo[0]));
+ 
+    // Get the change address from the wallet
+    const hexChangeAddr = await walletAPI.getChangeAddress();
+    const changeAddr = Address.fromHex(hexChangeAddr);
 
     // Start building the transaction
     const tx = new Tx();
 
     // Add the UTXO as inputs
-    tx.addInputs(utxos[0]);
+    tx.addInputs(utxos);
 
     // Construct the add Ada validator remdeemer
     const valRedeemer = new ConstrData(0, [])
@@ -746,7 +730,7 @@ const Home: NextPage = (props: any) => {
         valRefUtxo,
         compiledValScript
     );
-
+    // Construct output value with inline datum
     const newInlineDatum = Datum.inline(newDatum);
     const value = new Value(newAdaAmount.valueOf(), new Assets([
       [threadTokenMPH, [
@@ -754,7 +738,7 @@ const Home: NextPage = (props: any) => {
       ]]
     ]));
 
-    // send Ada, updated dautm and thread token back to script address
+    // Send Ada, updated dautm and thread token back to script address
     tx.addOutput(new TxOutput(lcValAddr, value, newInlineDatum));
 
     // Add the script as a witness to the transaction
@@ -776,73 +760,25 @@ const Home: NextPage = (props: any) => {
     ));
 
     tx.addCollateral(colatUtxo);
-
-    // Specify when this transaction is valid from.   This is needed so
-    // time is included in the transaction which will be use by the validator
-    // script.  Add two hours for time to live and offset the current time
-    // by 5 mins.
-    const currentTime = new Date().getTime();
-    const earlierTime = new Date(currentTime - 5 * 60 * 1000); 
-    const laterTime = new Date(currentTime + 2 * 60 * 60 * 1000); 
-   
-    tx.validFrom(earlierTime);
-    tx.validTo(laterTime);
-
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
-    console.log("tx cbor", bytesToHex(tx.toCbor()));
-    //console.log("tx body after final", tx.body.dump());
-    console.log("unsigned tx body: ", bytesToHex(tx.body.toCbor()));
 
     console.log("Waiting for wallet signature...");
-    const walletSig = await walletAPI2.signTx(bytesToHex(tx.toCbor()), true);
-    //console.log("walletSig", walletSig);
-
+    const walletSig = await walletAPI.signTx(bytesToHex(tx.toCbor()), true);
 
     console.log("Verifying signature...");
     const signatures = TxWitnesses.fromCbor(hexToBytes(walletSig)).signatures;
-    console.log("TxWitness.signature", signatures);
-    console.log("TxWitness.signature", signatures[0].dump());
-
-    const sigAPIKey = process.env.NEXT_PUBLIC_SIGNING_API_KEY as string;
-    const response = await fetch('/api/getSignature', {
-      method: 'POST',
-      body: JSON.stringify({ txCbor: bytesToHex(tx.toCbor()) }),
-      headers: {
-        'Content-type' : 'application/json',
-        'Authorization' : 'Basic ' + sigAPIKey
-      },
-    }) 
-    const cborData = await response.json();
-    
-    const signature = Signature.fromCbor(hexToBytes(cborData));
-    console.log("signature", signature.dump());
-
-    //const signatures2 = tx.witnesses;
-    //signatures2.addSignature(signature);
-
-    //const signatures2 = TxWitnesses.fromCbor(hexToBytes(data)).signatures;
-    //console.log("signature", signatures2[0].dump());
-
-    //tx.addSignatures(signatures);
-    tx.addSignature(signature);
-
-    //console.log("Verifying signature...");
-    //const signatures = await walletAPI.signTx(tx);
-    //tx.addSignatures(signatures);
+    tx.addSignatures(signatures);
     
     console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(tx);
-    console.log("txHash", txHash.hex);
-    setTx({ txId: txHash.hex });
-
-    //const txHash = await submitTx(tx);
-    //console.log("txHash", txHash);
-    //setTx({ txId: txHash});
-
+    console.log("walletAPI", walletAPI);
+    //const txHash = await walletAPI.submitTx(tx);
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
   } 
 
   return (
