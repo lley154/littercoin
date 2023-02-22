@@ -418,7 +418,7 @@ const Home: NextPage = (props: any) => {
         
         req.send(data);
     });   
-}
+  }
 
   const mintLC = async (params : any) => {
 
@@ -504,7 +504,7 @@ const Home: NextPage = (props: any) => {
     const signatures = await walletAPI.signTx(tx);
     tx.addSignatures(signatures);
 
-    // Get back-end signature of owner private key
+    // Get back-end signature of owner private key and submit tx
     console.log("Get Back-end to sign...");
     const response = await fetch('/api/getSignature', {
       method: 'POST',
@@ -513,13 +513,9 @@ const Home: NextPage = (props: any) => {
         'Content-type' : 'application/json'
       },
     }) 
-    const cborData = await response.json();
-    const signature = Signature.fromCbor(hexToBytes(cborData));
-    tx.addSignature(signature);
-    console.log("tx after back-end signed", tx.dump());
 
     console.log("Submitting transaction...");
-    const txHash = await submitTx(tx);
+    const txHash = await response.json();
     console.log("txHash", txHash);
     setTx({ txId: txHash });
    } 

@@ -13,6 +13,36 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse ) {
 
+    const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
+    const apiKey: string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+
+    const submitTx = async (tx: Tx) : Promise<string> => {
+      const data = new Uint8Array(tx.toCbor());
+      const url = blockfrostAPI + "/tx/submit";
+  
+      return new Promise((resolve, reject) => {
+          const req = new XMLHttpRequest();
+          req.onload = (_e) => {
+              if (req.status == 200) {
+                  resolve(req.responseText.replace(/["]/g, ''));
+              } else {
+                  reject(new Error(req.responseText));
+              }
+          }
+  
+          req.onerror = (e) => {
+              reject(e);
+          }
+  
+          req.open("POST", url, false);
+  
+          req.setRequestHeader("content-type", "application/cbor");
+          req.setRequestHeader("project_id", apiKey);
+          
+          req.send(data);
+      });   
+    }
+
     const hash32 = (data: any) => {
         const hash = blake2b(data, undefined, 32);
         return Buffer.from(hash);
@@ -61,8 +91,9 @@ export default async function handler(
         const signature = new Signature(pubKeyArray,
                                         signatureArray);
 
-        const sigCbor = bytesToHex(signature.toCbor());
-        res.status(200).json(sigCbor);
+        tx.addSignature(signature);
+        const txId = await submitTx(tx);
+        res.status(200).json(txId);
     }
     catch (err) {
         res.status(500).json('getSignature error: ' + err);
