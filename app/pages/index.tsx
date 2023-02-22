@@ -422,9 +422,13 @@ const Home: NextPage = (props: any) => {
 
   const mintLC = async (params : any) => {
 
+    // re-enable wallet api if the wallet account has been changed
+    const api = await enableWallet();
+    setWalletAPI(api);
+
     const address = params[0];
     const lcQty = params[1];
-    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) + BigInt(lcQty);
+    const newLCAmount = BigInt(lcInfo.lcAmount) + BigInt(lcQty);
     const newDatAda = new IntData(BigInt(lcInfo.adaAmount));
     const newDatLC = new IntData(newLCAmount.valueOf());
     const newDatum = new ListData([newDatAda, newDatLC]);
@@ -471,13 +475,15 @@ const Home: NextPage = (props: any) => {
     // Construct a mint littecoin minting redeemer
     const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
     const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
-
+    
+    // Add the mint to the tx
     tx.mintTokens(
       lcTokenMPH,
       tokens,
       mintRedeemer
     )
 
+    // Attached the output with the minted littercoins to the destinatino address
     tx.addOutput(new TxOutput(
       Address.fromBech32(address),
       new Value(minAda, new Assets([[lcTokenMPH, tokens]]))
@@ -485,6 +491,7 @@ const Home: NextPage = (props: any) => {
 
     tx.addCollateral(colatUtxo);
 
+    // Add owner pkh as a signer which is required to mint littercoin
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
 
     console.log("tx before final", tx.dump());
@@ -497,18 +504,36 @@ const Home: NextPage = (props: any) => {
     const signatures = await walletAPI.signTx(tx);
     tx.addSignatures(signatures);
 
+    // Get back-end signature of owner private key
+    console.log("Get Back-end to sign...");
+    const response = await fetch('/api/getSignature', {
+      method: 'POST',
+      body: JSON.stringify({ txCbor: bytesToHex(tx.toCbor()) }),
+      headers: {
+        'Content-type' : 'application/json'
+      },
+    }) 
+    const cborData = await response.json();
+    const signature = Signature.fromCbor(hexToBytes(cborData));
+    tx.addSignature(signature);
+    console.log("tx after back-end signed", tx.dump());
+
     console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(tx);
-    console.log("txHash", txHash.hex);
-    setTx({ txId: txHash.hex });
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
    } 
 
   const burnLC = async (lcQty : any) => {
 
-    const lcQtyAbs: number = Math.abs(Number(lcQty));
-    const newLCAmount : BigInt = BigInt(lcInfo.lcAmount) - BigInt(lcQtyAbs);
-    const ratio : number = lcInfo.adaAmount / lcInfo.lcAmount;
-    const withdrawAda : number = Number(ratio) * lcQtyAbs;
+    // re-enable wallet api if the wallet account has been changed
+    const api = await enableWallet();
+    setWalletAPI(api);
+    
+    const lcQtyAbs:number = Math.abs(Number(lcQty));
+    const newLCAmount = BigInt(lcInfo.lcAmount) - BigInt(lcQtyAbs);
+    const ratio: number = lcInfo.adaAmount / lcInfo.lcAmount;
+    const withdrawAda: number = Number(ratio) * lcQtyAbs;
     const adaDiff: number = lcInfo.adaAmount - withdrawAda;
     var newAdaAmount: BigInt;
     if (adaDiff >= minAda) {
@@ -612,14 +637,18 @@ const Home: NextPage = (props: any) => {
     tx.addSignatures(signatures);
 
     console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(tx);
-    console.log("txHash", txHash.hex);
-    setTx({ txId: txHash.hex });
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
    } 
 
 
   const mintMerchantToken = async (merchAddress : string) => {
 
+    // re-enable wallet api if the wallet account has been changed
+    const api = await enableWallet();
+    setWalletAPI(api);
+    
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
@@ -661,7 +690,7 @@ const Home: NextPage = (props: any) => {
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
     console.log("tx before final", tx.dump());
 
-    // Send any change back to the buyer
+    // Send any change back to the wallet
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
 
@@ -670,9 +699,9 @@ const Home: NextPage = (props: any) => {
     tx.addSignatures(signatures);
 
     console.log("Submitting transaction...");
-    const txHash = await walletAPI.submitTx(tx);
-    console.log("txHash", txHash.hex);
-    setTx({ txId: txHash.hex });
+    const txHash = await submitTx(tx);
+    console.log("txHash", txHash);
+    setTx({ txId: txHash });
   }   
 
   const addAda = async (adaQty : any) => {
@@ -748,7 +777,7 @@ const Home: NextPage = (props: any) => {
     tx.addCollateral(colatUtxo);
     console.log("tx before final", tx.dump());
 
-    // Send any change back
+    // Send any change back to the wallet
     await tx.finalize(networkParams, changeAddr);
     console.log("tx after final", tx.dump());
 
