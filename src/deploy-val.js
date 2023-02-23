@@ -1,9 +1,9 @@
 import * as helios from "./helios.js"
 
+const optimize = true;
 const lcValidatorSrc = await Deno.readTextFile("./src/lcValidator.hl");
 const programLC = helios.Program.new(lcValidatorSrc);
-const simplifyLC = false;
-const lcUplcProgramLC = programLC.compile(simplifyLC);
+const lcUplcProgramLC = programLC.compile(optimize);
 const lcDatum = programLC.evalParam("LC_DATUM");
 const lcDatumData = lcDatum.data;
 const valAddAdaRedeemer = programLC.evalParam("VAL_ADD_ADA_REDEEMER");

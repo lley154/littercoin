@@ -46,9 +46,10 @@ import {
   export async function getServerSideProps() {
   
     // set in env variables
-    const optimize = false;
+    const optimize = true;
     const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
     const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+    const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
 
     try {
       //Find the absolute path of the contracts directory
@@ -77,8 +78,12 @@ import {
       const rewardsTokenFile = await fs.readFile(contractDirectory + '/rewardsToken.hl', 'utf8');
       const rewardsTokenScript = rewardsTokenFile.toString();
 
+      // Network Parameters
+      const networkParamsFile = await fs.readFile(contractDirectory + '/' + networkParamsFilePath, 'utf8');
+      const networkParams = networkParamsFile.toString();
 
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
+      console.log("blockfrostUrl: ", blockfrostUrl);
 
       var payload;
       let resp = await fetch(blockfrostUrl, {
@@ -106,14 +111,15 @@ import {
               lcMintScript: mintScript,
               ttMintScript: threadTokenScript,
               mtMintScript: merchTokenScript,
-              recMintScript: rewardsTokenScript
+              recMintScript: rewardsTokenScript,
+              network: networkParams
             }
             return { props: lcVal }
           }
         }
       }
     } catch (err) {
-      console.log('getServerSideProps', err);
+      console.log('getServerSideProps error: ', err);
     } 
     // No valid reference utxo found
     return { props: {} };
@@ -122,7 +128,7 @@ import {
 
 const Home: NextPage = (props: any) => {
 
-  const optimize = false;
+  const optimize = true;
 
   // Littercoin validator script
   const lcValScript = props.lcValScript as string;
@@ -155,13 +161,17 @@ const Home: NextPage = (props: any) => {
   const lcValRefTxId = props.lcRefTxId as string;
   const lcValRefTxIdx = props.lcRefTxIdx as string;
 
+  // Network Params
+  //const networkParams = props.network as string;
+  const networkParams = new NetworkParams(props.network as string);
+
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
   const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
   const rewardsTokenName = process.env.NEXT_PUBLIC_REWARDS_TOKEN_NAME as string;
-  const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
+  //const networkParamsUrl = process.env.NEXT_PUBLIC_NETWORK_PARAMS_URL as string;
   const ownerPkh = process.env.NEXT_PUBLIC_OWNER_PKH as string;
   const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
   const maxTxFee = BigInt(process.env.NEXT_PUBLIC_MAX_TX_FEE as string);
@@ -178,7 +188,7 @@ const Home: NextPage = (props: any) => {
   );
   const [valUtxo, setUTXO] = useState<undefined | any>(undefined);
   const [valRefUtxo, setRefUTXO] = useState<undefined | any>(undefined);
-  const [networkParams, setNetworkParams] = useState<undefined | any>(undefined);
+  //const [networkParams, setNetworkParams] = useState<undefined | any>(undefined);
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
@@ -365,12 +375,6 @@ const Home: NextPage = (props: any) => {
       )
     )
     setRefUTXO(valRefUTXO);
-
-    const networkParams = new NetworkParams(
-      await fetch(networkParamsUrl)
-          .then(response => response.json())
-    );
-    setNetworkParams(networkParams);
   }
   
   const fetchLittercoinInfo = async () => {
@@ -720,6 +724,22 @@ const Home: NextPage = (props: any) => {
     const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
 
+    // See if there are any previous rewards tokens already minted
+    // in the user wallet. If so, then they need to be added to the
+    // the final output.
+    let rewardsTokenCount = BigInt(0);
+    for (const utxo of utxos[0]) {
+      const mphs = utxo.value.assets.mintingPolicies;
+      for (const mph of mphs) {
+        if (mph.hex == rewardsTokenMPH.hex) {
+          const tokenNames = utxo.value.assets.getTokenNames(mph);
+          for (const tokenName of tokenNames) {
+            rewardsTokenCount += utxo.value.assets.get(mph, tokenName);
+          }
+        }
+      }
+    }
+
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
 
@@ -757,13 +777,17 @@ const Home: NextPage = (props: any) => {
 
     // Construct a littercoin rewards minting redeemer
     const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
-    const tokens: [number[], bigint][] = [[hexToBytes(rewardsTokenName), BigInt(adaQty)]];
+    const mintTokens: [number[], bigint][] = [[hexToBytes(rewardsTokenName), 
+                                               BigInt(adaQty)]];
 
     tx.mintTokens(
       rewardsTokenMPH,
-      tokens,
+      mintTokens,
       mintRedeemer
     )
+
+    const tokens: [number[], bigint][] = [[hexToBytes(rewardsTokenName), 
+      (BigInt(adaQty) + rewardsTokenCount)]];
 
     tx.addOutput(new TxOutput(
       changeAddr,
