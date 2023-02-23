@@ -36,6 +36,7 @@ import {
 
   import path from 'path';
   import { promises as fs } from 'fs';
+  import axios from 'axios';
 
   declare global {
     interface Window {
@@ -400,28 +401,26 @@ const Home: NextPage = (props: any) => {
   const submitTx = async (tx: Tx) : Promise<string> => {
     const data = new Uint8Array(tx.toCbor());
     const url = blockfrostAPI + "/tx/submit";
-
-    return new Promise((resolve, reject) => {
-        const req = new XMLHttpRequest();
-        req.onload = (_e) => {
-            if (req.status == 200) {
-                resolve(req.responseText.replace(/["]/g, ''));
-            } else {
-                reject(new Error(req.responseText));
-            }
-        }
-
-        req.onerror = (e) => {
-            reject(e);
-        }
-
-        req.open("POST", url, false);
-
-        req.setRequestHeader("content-type", "application/cbor");
-        req.setRequestHeader("project_id", apiKey);
-        
-        req.send(data);
-    });   
+    const config = {
+      headers:{
+        "content-type": "application/cbor",
+        "project_id": apiKey
+      }
+    };
+    let txHash = "";
+    try {
+        await axios.post(url, data, config)
+        .then(function (response) {
+          txHash = response.data;
+        })
+        .catch(function (error) {
+          throw console.error("submitTx error: " + error);
+        });
+    } catch (error) {
+        console.error(error);
+        throw console.error("submitTx error: " + error);
+    }
+    return txHash;
   }
 
   const mintLC = async (params : any) => {
@@ -447,6 +446,22 @@ const Home: NextPage = (props: any) => {
 
     // Determine the UTXO used for collateral
     const colatUtxo = await walletHelper.pickCollateral();
+
+    // Check the total number of littercoin already in the utxos.
+    // We will then add this number to the minted amount
+    // so we can put the total amount of littercoins in the output.
+    let lcTokenCount = BigInt(0);
+    for (const utxo of utxos[0]) {
+      const mphs = utxo.value.assets.mintingPolicies;
+      for (const mph of mphs) {
+        if (mph.hex == lcTokenMPH.hex) {
+          const tokenNames = utxo.value.assets.getTokenNames(mph);
+          for (const tokenName of tokenNames) {
+            lcTokenCount += utxo.value.assets.get(mph, tokenName);
+          }
+        }
+      }
+    }
 
     // Start building the transaction
     const tx = new Tx();
@@ -478,19 +493,25 @@ const Home: NextPage = (props: any) => {
 
     // Construct a mint littecoin minting redeemer
     const mintRedeemer = new ConstrData(0, [new ByteArrayData(lcValHash.bytes)])
-    const tokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
+
+    // Construct the amount of littercoin tokens to mint
+    const mintTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), BigInt(lcQty)]];
     
     // Add the mint to the tx
     tx.mintTokens(
       lcTokenMPH,
-      tokens,
+      mintTokens,
       mintRedeemer
     )
 
-    // Attached the output with the minted littercoins to the destinatino address
+    // Construct the total amount of littercoin tokens
+    const lcTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), 
+                                            (BigInt(lcQty) + lcTokenCount)]];
+    
+    // Attached the output with the minted littercoins to the destination address
     tx.addOutput(new TxOutput(
       Address.fromBech32(address),
-      new Value(minAda, new Assets([[lcTokenMPH, tokens]]))
+      new Value(minAda, new Assets([[lcTokenMPH, lcTokens]]))
     ));
 
     tx.addCollateral(colatUtxo);
@@ -520,8 +541,13 @@ const Home: NextPage = (props: any) => {
 
     console.log("Submitting transaction...");
     const txHash = await response.json();
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
+
+    if (response.status == 200) {
+      console.log("txHash", txHash);
+      setTx({ txId: txHash });
+    } else {
+      console.log("Mint Littercoin Failed: " + txHash);
+    }
    } 
 
   const burnLC = async (lcQty : any) => {
@@ -566,8 +592,27 @@ const Home: NextPage = (props: any) => {
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
 
+    // Get unused address
+    const unusedAddr = walletAPI.unusedAddresses;
+
     // Determine the UTXO used for collateral
     const colatUtxo = await walletHelper.pickCollateral();
+
+    // Check the total number of littercoin in the utxos.
+    // We will then decrement the number of tokens being burned
+    // and put the rest (if any) in an output.
+    let lcTokenCount = BigInt(0);
+    for (const utxo of utxos[0]) {
+      const mphs = utxo.value.assets.mintingPolicies;
+      for (const mph of mphs) {
+        if (mph.hex == lcTokenMPH.hex) {
+          const tokenNames = utxo.value.assets.getTokenNames(mph);
+          for (const tokenName of tokenNames) {
+            lcTokenCount += utxo.value.assets.get(mph, tokenName);
+          }
+        }
+      }
+    }
 
     // Start building the transaction
     const tx = new Tx();
@@ -607,20 +652,32 @@ const Home: NextPage = (props: any) => {
       lcBurnTokens,
       mintRedeemer
     )
-    
-    // Construct the merchant token value to be returned
-    const merchAdaVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
 
-    tx.addOutput(new TxOutput(
-      changeAddr,
-      merchAdaVal
-    ));
+    // Construct the littercoin tokens to be returned if any
+    const lcDelta = lcTokenCount - BigInt(lcQty);
+    if (lcDelta > 0) {
+
+      const lcTokens: [number[], bigint][] = [[hexToBytes(lcTokenName), lcDelta]];
+      const merchAdaVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens],
+                                                                       [lcTokenMPH, lcTokens]]));
+      tx.addOutput(new TxOutput(
+        changeAddr,
+        merchAdaVal
+      ));
+    } else {
+      const merchAdaVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
+
+      tx.addOutput(new TxOutput(
+        changeAddr,
+        merchAdaVal
+      ));
+    }
 
     // Construct the ada withdraw amount
     const withdrawAdaVal: Value = new Value(BigInt(withdrawAda));
 
     tx.addOutput(new TxOutput(
-      changeAddr,
+      unusedAddr,
       withdrawAdaVal
     ));
 
@@ -726,7 +783,7 @@ const Home: NextPage = (props: any) => {
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
 
     // See if there are any previous rewards tokens already minted
-    // in the user wallet. If so, then they need to be added to the
+    // in the utxos. If so, then they need to be added to the
     // the final output.
     let rewardsTokenCount = BigInt(0);
     for (const utxo of utxos[0]) {

@@ -9,6 +9,8 @@ import {
     Signature,
     Tx } from "@hyperionbt/helios";
 
+import axios from 'axios';
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse ) {
@@ -17,30 +19,28 @@ export default async function handler(
     const apiKey: string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
 
     const submitTx = async (tx: Tx) : Promise<string> => {
-      const data = new Uint8Array(tx.toCbor());
-      const url = blockfrostAPI + "/tx/submit";
-  
-      return new Promise((resolve, reject) => {
-          const req = new XMLHttpRequest();
-          req.onload = (_e) => {
-              if (req.status == 200) {
-                  resolve(req.responseText.replace(/["]/g, ''));
-              } else {
-                  reject(new Error(req.responseText));
-              }
+        const data = new Uint8Array(tx.toCbor());
+        const url = blockfrostAPI + "/tx/submit";
+        const config = {
+          headers:{
+            "content-type": "application/cbor",
+            "project_id": apiKey
           }
-  
-          req.onerror = (e) => {
-              reject(e);
-          }
-  
-          req.open("POST", url, false);
-  
-          req.setRequestHeader("content-type", "application/cbor");
-          req.setRequestHeader("project_id", apiKey);
-          
-          req.send(data);
-      });   
+        };
+        let txHash = "";
+        try {
+            await axios.post(url, data, config)
+            .then(function (response) {
+              txHash = response.data;
+            })
+            .catch(function (error) {
+              throw console.error("submitTx error: " + error);
+            });
+        } catch (error) {
+            console.error(error);
+            throw console.error("submitTx error: " + error);
+        }
+        return txHash;
     }
 
     const hash32 = (data: any) => {
