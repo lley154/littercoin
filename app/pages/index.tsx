@@ -163,7 +163,7 @@ const Home: NextPage = (props: any) => {
 
   // Network Params
   //const networkParams = props.network as string;
-  const networkParams = new NetworkParams(props.network as string);
+  const networkParams = new NetworkParams(JSON.parse(props.network as string));
 
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
@@ -689,6 +689,7 @@ const Home: NextPage = (props: any) => {
     tx.addCollateral(colatUtxo);
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
     console.log("tx before final", tx.dump());
+    console.log("network", networkParams);
 
     // Send any change back to the wallet
     await tx.finalize(networkParams, changeAddr);
@@ -718,7 +719,7 @@ const Home: NextPage = (props: any) => {
     const newDatAda = new IntData(newAdaAmount.valueOf());
     const newDatLC = new IntData(BigInt(lcInfo.lcAmount));
     const newDatum = new ListData([newDatAda, newDatLC]);
-    const minUTXOVal = new Value(BigInt(lovelaceQty) + maxTxFee + minChangeAmt);
+    const minUTXOVal = new Value(BigInt(lovelaceQty) + minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
     const walletHelper = new WalletHelper(walletAPI);
