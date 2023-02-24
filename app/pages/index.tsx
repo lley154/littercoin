@@ -844,8 +844,7 @@ const Home: NextPage = (props: any) => {
 
     const tokens: [number[], bigint][] = [[hexToBytes(rewardsTokenName), 
       (BigInt(adaQty) + rewardsTokenCount.valueOf())]];
-
-    console.log("unusedAddr", unusedAddrs);  
+ 
     tx.addOutput(new TxOutput(
       unusedAddr,
       new Value(minAda, new Assets([[rewardsTokenMPH, tokens]]))
