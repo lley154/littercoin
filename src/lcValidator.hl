@@ -21,7 +21,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #6122ec8a216fa8eaee4d1242f1ff18616345e12db8ac88722e3eefcd
+const TT_MPH: ByteArray = #5d8df072e1067f20ba066663edf78387781fb47e1b220c1efd1fb55c
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -30,7 +30,7 @@ const ttAssetclass: AssetClass = AssetClass::new(
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #ff3bd10755259df83eca690fa4743b7d80eda1b2cbd25e4a3c2f5c5d
+const LC_MPH: ByteArray = #70a21aec9127d6f7cba17a7224e5c214d1bb0d4746612be9e89d8ccf
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -38,7 +38,7 @@ const lcAssetClass: AssetClass = AssetClass::new(
     )
 
 // Define the mph of the donation rewards token minting policy
-const REWARDS_MPH: ByteArray = #e2c3ca964a5f4918b39faa54502aa81c29af28fa3df1ac8115f54671
+const REWARDS_MPH: ByteArray = #e5a1aca75234ccc410e04fa5da9bcbc7d65c93583bc1dd599f696c92
 const rewardsMph: MintingPolicyHash = MintingPolicyHash::new(REWARDS_MPH)
 const rewardsAssetClass: AssetClass = AssetClass::new(
         rewardsMph, 
@@ -46,7 +46,7 @@ const rewardsAssetClass: AssetClass = AssetClass::new(
     )
 
 // Define the merchant token
-const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
+const MERCHANT_MPH: ByteArray = #10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 const merchMph: MintingPolicyHash = MintingPolicyHash::new(MERCHANT_MPH)
 const merchAssetclass: AssetClass = AssetClass::new(
         merchMph, 
@@ -164,10 +164,12 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     }
 }
 
-// Datum field order is important
+// Datum field order is important.  Initialize
+// with 2 littercoin because the users can't drain
+// the littercoin smart contract lower than 2 Ada
 const LC_DATUM = Datum {
     adaAmount : 2000000,
-    lcAmount : 0 
+    lcAmount : 2 
 }
 
 const VAL_ADD_ADA_REDEEMER = Redeemer::AddAda

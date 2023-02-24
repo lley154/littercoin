@@ -12,9 +12,6 @@ const valMintRedeemer = programLC.evalParam("VAL_MINT_REDEEMER");
 const valMintRedeemerData = valMintRedeemer.data;
 const valBurnRedeemer = programLC.evalParam("VAL_BURN_REDEEMER");
 const valBurnRedeemerData = valBurnRedeemer.data;
-const tn = helios.ByteArrayData.fromString("Merchant Token Littercoin");
-console.log("merchant token name: ", tn.toSchemaJson());
-
 
 const valHash = lcUplcProgramLC.validatorHash;
 const valAddr = helios.Address.fromValidatorHash(valHash);
