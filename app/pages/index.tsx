@@ -9,6 +9,7 @@ import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 import { useState, useEffect } from "react";
 import WalletInfo from '../components/WalletInfo';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 import {
   Address, 
@@ -192,7 +193,9 @@ const Home: NextPage = (props: any) => {
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
   const [walletInfo, setWalletInfo] = useState({ balance : ''});
+  const [isLoading, setIsLoading] = useState(false);
   const [tx, setTx] = useState({ txId : '' });
+  
 
   useEffect(() => {
       const getContractInfo = async () => {
@@ -441,6 +444,7 @@ const Home: NextPage = (props: any) => {
 
   const mintLC = async (params : any) => {
 
+    setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
     const api = await enableWallet();
     setWalletAPI(api);
@@ -548,15 +552,18 @@ const Home: NextPage = (props: any) => {
     const txHash = await response.json();
 
     if (response.status == 200) {
+      setIsLoading(false); 
       console.log("txHash", txHash);
       setTx({ txId: txHash });
     } else {
+      setIsLoading(false); 
       console.log("Mint Littercoin Failed: " + txHash);
     }
    } 
 
   const burnLC = async (lcQty : any) => {
 
+    setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
     const api = await enableWallet();
     setWalletAPI(api);
@@ -695,6 +702,7 @@ const Home: NextPage = (props: any) => {
 
     console.log("Submitting transaction...");
     const txHash = await submitTx(tx);
+    setIsLoading(false); 
     console.log("txHash", txHash);
     setTx({ txId: txHash });
    } 
@@ -702,6 +710,7 @@ const Home: NextPage = (props: any) => {
 
   const mintMerchantToken = async (merchAddress : string) => {
 
+    setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
     const api = await enableWallet();
     setWalletAPI(api);
@@ -758,12 +767,14 @@ const Home: NextPage = (props: any) => {
 
     console.log("Submitting transaction...");
     const txHash = await submitTx(tx);
+    setIsLoading(false); 
     console.log("txHash", txHash);
     setTx({ txId: txHash });
   }   
 
   const addAda = async (adaQty : any) => {
 
+    setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
     const api = await enableWallet();
     setWalletAPI(api);
@@ -851,11 +862,11 @@ const Home: NextPage = (props: any) => {
     ));
 
     tx.addCollateral(colatUtxo);
-    console.log("tx before final", tx.dump());
+    console.log("tx before final", await tx.dump());
 
     // Send any change back to the wallet
     await tx.finalize(networkParams, changeAddr);
-    console.log("tx after final", tx.dump());
+    console.log("tx after final", await tx.dump());
 
     console.log("Verifying signature...");
     const signatures = await walletAPI.signTx(tx);
@@ -864,6 +875,7 @@ const Home: NextPage = (props: any) => {
     console.log("Submitting transaction...");
     //const txHash = await walletAPI.submitTx(tx);
     const txHash = await submitTx(tx);
+    setIsLoading(false); 
     console.log("txHash", txHash);
     setTx({ txId: txHash });
   } 
@@ -902,14 +914,15 @@ const Home: NextPage = (props: any) => {
             </p>
           </div>
             {walletIsEnabled && <div className={styles.border}><WalletInfo walletInfo={walletInfo}/></div>}
+            {isLoading && <LoadingSpinner />}
             {tx.txId && <div className={styles.border}><b>Transaction Success!!!</b>
             <p>TxId &nbsp;&nbsp;<a href={"https://preprod.cexplorer.io/tx/" + tx.txId} target="_blank" rel="noopener noreferrer" >{tx.txId}</a></p>
             <p>Please wait until the transaction is confirmed on the blockchain and reload this page before doing another transaction</p>
           </div>}
-          {walletIsEnabled && !tx.txId && <div className={styles.border}><AddAda onAddAda={addAda}/></div>}
-          {walletIsEnabled && !tx.txId && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
-          {walletIsEnabled && !tx.txId && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
-          {walletIsEnabled && !tx.txId && <div className={styles.border}><MintMerchantToken onMintMerchantToken={mintMerchantToken}/></div>}
+          {walletIsEnabled && !tx.txId && !isLoading && <div className={styles.border}><AddAda onAddAda={addAda}/></div>}
+          {walletIsEnabled && !tx.txId && !isLoading && <div className={styles.border}><MintLC onMintLC={mintLC}/></div>}
+          {walletIsEnabled && !tx.txId && !isLoading && <div className={styles.border}><BurnLC onBurnLC={burnLC}/></div>}
+          {walletIsEnabled && !tx.txId && !isLoading && <div className={styles.border}><MintMerchantToken onMintMerchantToken={mintMerchantToken}/></div>}
 
       </main>
 
