@@ -44,12 +44,37 @@ import {
     }
   }
 
+  async function getUtxos(blockfrostUrl: string) {
+
+    const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+
+    try {
+       let res = await axios({
+            url: blockfrostUrl,
+            method: 'get',
+            timeout: 8000,
+            headers: {
+                'Content-Type': 'application/json',
+                'project_id': apiKey
+            }
+        })
+        if(res.status == 200){
+            return res.data;
+        } else {
+          console.log("getUtxos: error getting utxos from blockfrost", res);
+          return res.data;
+        }   
+    }
+    catch (err) {
+        console.error("getUtxos: error getting utxos from blockfrost", err);
+    }
+}
+
   export async function getServerSideProps() {
   
     // set in env variables
     const optimize = false;
     const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
-    const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
 
     try {
@@ -86,23 +111,11 @@ import {
       const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
       console.log("blockfrostUrl: ", blockfrostUrl);
 
-      var payload;
-      let resp = await fetch(blockfrostUrl, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          project_id: apiKey,
-        },
-      });
-  
-      if (resp?.status > 299) {
-        throw console.error("Blockfrost API error", resp)
-      }
-      payload = await resp.json();
+      let utxos = await getUtxos(blockfrostUrl);
 
       // Find the reference utxo with the correct validator hash
-      if (payload) {
-        for (var utxo of payload) {
+      if (utxos.length > 0) {
+        for (var utxo of utxos) {
           if (utxo.reference_script_hash === valHash.hex) {
             const lcVal = {
               lcValScript: valScript,
@@ -118,6 +131,8 @@ import {
             return { props: lcVal }
           }
         }
+      } else {
+        throw console.error("littercoin validator reference utxo not found")
       }
     } catch (err) {
       console.log('getServerSideProps error: ', err);
@@ -326,25 +341,11 @@ const Home: NextPage = (props: any) => {
     const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValAddr.toBech32() + "/utxos/" + threadTokenMPH.hex + threadTokenName;
     console.log("blockfrostUrl", blockfrostUrl);
 
-    var payload;
-    let resp = await fetch(blockfrostUrl, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        project_id: apiKey,
-      },
-    });
-
-    if (resp?.status > 299) {
-      throw console.error(resp);
-    }
-
-    payload = await resp.json();
-
-    if (payload.length == 0) {
+    let utxos = await getUtxos(blockfrostUrl);
+    if (utxos.length == 0) {
       throw console.error("thread token not found")
     }
-    const lovelaceAmount = payload[0].amount[0].quantity;
+    const lovelaceAmount = utxos[0].amount[0].quantity;
     const token = hexToBytes(threadTokenName);
     const value = new Value(BigInt(lovelaceAmount), new Assets([
         [threadTokenMPH, [
@@ -353,12 +354,12 @@ const Home: NextPage = (props: any) => {
     ]));
 
     const ttUtxo = new UTxO(
-      TxId.fromHex(payload[0].tx_hash),
-      BigInt(payload[0].output_index),
+      TxId.fromHex(utxos[0].tx_hash),
+      BigInt(utxos[0].output_index),
       new TxOutput(
         lcValAddr,
         value,
-        Datum.inline(ListData.fromCbor(hexToBytes(payload[0].inline_datum)))
+        Datum.inline(ListData.fromCbor(hexToBytes(utxos[0].inline_datum)))
       )
     );
     setUTXO(ttUtxo);
