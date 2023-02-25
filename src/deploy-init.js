@@ -1,7 +1,7 @@
 import * as helios from "./helios.js"
 
 // Set compiler optimizer flag
-const optimize = true;
+const optimize = false;
 
 // Thread token
 const threadTokenSrc = await Deno.readTextFile("./src/threadToken.hl");

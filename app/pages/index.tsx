@@ -26,10 +26,8 @@ import {
   NetworkParams,
   Program, 
   PubKeyHash,
-  Signature,
   Value, 
   TxOutput,
-  TxWitnesses,
   Tx, 
   UTxO,
   WalletHelper, 
@@ -48,7 +46,7 @@ import {
   export async function getServerSideProps() {
   
     // set in env variables
-    const optimize = true;
+    const optimize = false;
     const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
     const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
     const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
@@ -130,7 +128,8 @@ import {
 
 const Home: NextPage = (props: any) => {
 
-  const optimize = true;
+  // Set the Helios compiler optimizer flag
+  const optimize = false;
 
   // Littercoin validator script
   const lcValScript = props.lcValScript as string;
@@ -322,7 +321,8 @@ const Home: NextPage = (props: any) => {
   const getTTUtxo = async () => {
 
     const blockfrostUrl : string = blockfrostAPI + "/addresses/" + lcValAddr.toBech32() + "/utxos/" + threadTokenMPH.hex + threadTokenName;
-    
+    console.log("blockfrostUrl", blockfrostUrl);
+
     var payload;
     let resp = await fetch(blockfrostUrl, {
       method: "GET",

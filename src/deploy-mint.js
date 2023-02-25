@@ -1,6 +1,6 @@
 import * as helios from "./helios.js"
 
-const optimize = true;
+const optimize = false;
 
 const mintLCSrc = await Deno.readTextFile("./src/lcMint.hl");
 const programMintLC = helios.Program.new(mintLCSrc);
