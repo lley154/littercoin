@@ -233,6 +233,7 @@ const Home: NextPage = (props: any) => {
   const [whichWalletSelected, setWhichWalletSelected] = useState(undefined);
   const [walletIsEnabled, setWalletIsEnabled] = useState(false);
   const [walletAPI, setWalletAPI] = useState<undefined | any>(undefined);
+  const [walletHelper, setWalletHelper] = useState<undefined | any>(undefined);
   const [walletInfo, setWalletInfo] = useState({ balance : ''});
   const [isLoading, setIsLoading] = useState(false);
   const [tx, setTx] = useState({ txId : '' });
@@ -267,8 +268,13 @@ const Home: NextPage = (props: any) => {
   useEffect(() => {
     const enableSelectedWallet = async () => {
       if (walletIsEnabled) {
-        const api = await enableWallet();
-        setWalletAPI(api);
+        //const api = await enableWallet();
+        //setWalletAPI(api);
+        try {
+          await enableWallet();
+        } catch (err) {
+          console.error("enableSelectedWallet Failed: ", err);
+        }
       }
     }
     enableSelectedWallet();
@@ -315,15 +321,23 @@ const Home: NextPage = (props: any) => {
       if (walletChoice === "nami") {
           const handle: Cip30Handle = await window.cardano.nami.enable();
           const walletAPI = new Cip30Wallet(handle);
-          return walletAPI;
+          const walletHelper = new WalletHelper(walletAPI);
+          //return walletAPI;
+          setWalletHelper(walletHelper);
+          setWalletAPI(walletAPI);
         } else if (walletChoice === "eternl") {
           const handle: Cip30Handle = await window.cardano.eternl.enable();
           const walletAPI = new Cip30Wallet(handle);
-          return walletAPI;
+          const walletHelper = new WalletHelper(walletAPI);
+          //return walletAPI;
+          setWalletHelper(walletHelper);
+          setWalletAPI(walletAPI);
+          //return walletAPI;
         }
 
     } catch (err) {
-        console.log('enableWallet error', err);
+        console.error('enableWallet error', err);
+        throw err;
     }
   }
 
@@ -351,7 +365,7 @@ const Home: NextPage = (props: any) => {
 
   const getBalance = async () => {
     try {
-        const walletHelper = new WalletHelper(walletAPI);
+        //const walletHelper = new WalletHelper(walletAPI);
         const balanceAmountValue  = await walletHelper.calcBalance();
         const balanceAmount = balanceAmountValue.lovelace;
         const walletBalance : BigInt = BigInt(balanceAmount);
@@ -487,7 +501,7 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    const walletHelper = new WalletHelper(walletAPI);
+    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
   
     // Get change address
@@ -615,21 +629,19 @@ const Home: NextPage = (props: any) => {
     const merchVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
 
     // Get wallet UTXOs
-    const walletHelper = new WalletHelper(walletAPI);
+    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal.add(lcVal).add(merchVal));
 
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
 
     // Get unused addresses if available
-    let unusedAddr:Address[] = [];
+    let unusedAddr:Address;
     const unusedAddresses: Address[] = await walletAPI.unusedAddresses;
-    if (unusedAddresses.length < 3) {
-      unusedAddr.push(changeAddr);
-      unusedAddr.push(changeAddr);
-      unusedAddr.push(changeAddr);
+    if (unusedAddresses.length < 1) {
+      unusedAddr = changeAddr;
     } else {
-      unusedAddr = unusedAddresses;
+      unusedAddr = unusedAddresses[0];
     }
 
     // Determine the UTXO used for collateral
@@ -646,7 +658,7 @@ const Home: NextPage = (props: any) => {
     tx.addInputs(utxos[0]);
 
     // Construct the burn littercoin validator redeemer
-    const valRedeemer = new ConstrData(2, [new ByteArrayData(unusedAddr[0].pubKeyHash.bytes)])
+    const valRedeemer = new ConstrData(2, [new ByteArrayData(unusedAddr.pubKeyHash.bytes)])
     tx.addInput(valUtxo, valRedeemer);
 
     tx.addRefInput(
@@ -682,7 +694,7 @@ const Home: NextPage = (props: any) => {
     // Make sure the output address matches the pkh provided in the validator redeemer above
     const merchAdaVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
     tx.addOutput(new TxOutput(
-      unusedAddr[0],
+      unusedAddr,
       merchAdaVal
     ));
 
@@ -690,7 +702,7 @@ const Home: NextPage = (props: any) => {
     const withdrawAdaVal: Value = new Value(BigInt(withdrawAda));
 
     tx.addOutput(new TxOutput(
-      unusedAddr[1],
+      unusedAddr,
       withdrawAdaVal
     ));
 
@@ -702,7 +714,7 @@ const Home: NextPage = (props: any) => {
       const lcVal: Value = new Value(BigInt(minAda), new Assets([[lcTokenMPH, lcTokens]]));
       
       tx.addOutput(new TxOutput(
-        unusedAddr[2],
+        unusedAddr,
         lcVal
       ));
     } 
@@ -737,7 +749,7 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    const walletHelper = new WalletHelper(walletAPI);
+    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
   
     // Get change address
@@ -795,8 +807,13 @@ const Home: NextPage = (props: any) => {
 
     setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
-    const api = await enableWallet();
-    setWalletAPI(api);
+    //const api = await enableWallet();
+    //setWalletAPI(api);
+    try {
+      await enableWallet();
+    } catch (err) {
+      console.error("AddAda Failed: ", err);
+    }
     
     const lovelaceQty =  Number(adaQty) * 1000000;
     if (lovelaceQty < minAda) {
@@ -809,7 +826,7 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(BigInt(lovelaceQty) + minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    const walletHelper = new WalletHelper(walletAPI);
+    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
 
     // See if there are any previous rewards tokens already minted
