@@ -61,85 +61,111 @@ import {
         if(res.status == 200){
             return res.data;
         } else {
-          console.log("getUtxos: error getting utxos from blockfrost", res);
-          return res.data;
+          throw console.error("getUtxos: error getting utxos from blockfrost: ", res);
         }   
     }
     catch (err) {
-        console.error("getUtxos: error getting utxos from blockfrost", err);
+        throw console.error("getUtxos: error getting utxos from blockfrost: ", err);
     }
 }
 
-  export async function getServerSideProps() {
-  
-    // set in env variables
-    const optimize = false;
-    const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
-    const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
+const signSubmitTx = async (tx: Tx) : Promise<string> => {
+  const payload = bytesToHex(tx.toCbor());
+  const urlAPI = "/api/getSignature";
 
-    try {
-      //Find the absolute path of the contracts directory
-      const contractDirectory = path.join(process.cwd(), 'contracts');
-      
-      // Validator script
-      const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
-      const valScript = valFile.toString();
-      const compiledValScript = Program.new(valScript).compile(optimize);
-      const valHash = compiledValScript.validatorHash; 
-      const valAddr = Address.fromValidatorHash(valHash);
-      
-      // Littercoin minting script
-      const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
-      const mintScript = mintFile.toString();
-      
-      // Thread token minting script
-      const threadTokenFile = await fs.readFile(contractDirectory + '/threadToken.hl', 'utf8');
-      const threadTokenScript = threadTokenFile.toString();
-      
-      // Merchant token minting script
-      const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
-      const merchTokenScript = merchTokenFile.toString();
-
-      // Littercoin rewards token minting script
-      const rewardsTokenFile = await fs.readFile(contractDirectory + '/rewardsToken.hl', 'utf8');
-      const rewardsTokenScript = rewardsTokenFile.toString();
-
-      // Network Parameters
-      const networkParamsFile = await fs.readFile(contractDirectory + '/' + networkParamsFilePath, 'utf8');
-      const networkParams = networkParamsFile.toString();
-
-      const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
-      console.log("blockfrostUrl: ", blockfrostUrl);
-
-      let utxos = await getUtxos(blockfrostUrl);
-
-      // Find the reference utxo with the correct validator hash
-      if (utxos.length > 0) {
-        for (var utxo of utxos) {
-          if (utxo.reference_script_hash === valHash.hex) {
-            const lcVal = {
-              lcValScript: valScript,
-              lcValAdaAmt: utxo.amount[0].quantity, 
-              lcRefTxId: utxo.tx_hash,
-              lcRefTxIdx: utxo.output_index,
-              lcMintScript: mintScript,
-              ttMintScript: threadTokenScript,
-              mtMintScript: merchTokenScript,
-              recMintScript: rewardsTokenScript,
-              network: networkParams
-            }
-            return { props: lcVal }
+  try {
+    let res = await axios({
+          url: urlAPI,
+          data: payload,
+          method: 'post',
+          timeout: 8000,
+          headers: {
+              'Content-Type': 'application/cbor'
           }
-        }
+      })
+      if(res.status == 200){
+          return res.data;
       } else {
-        throw console.error("littercoin validator reference utxo not found")
-      }
-    } catch (err) {
-      console.log('getServerSideProps error: ', err);
-    } 
-    // No valid reference utxo found
-    return { props: {} };
+        console.error("signSumitTx API Error: ", res);
+        throw res.data;
+      }   
   }
+  catch (err) {
+      console.error("signSubmitTx Failed: ", err);
+      throw err;
+  }
+}
+
+export async function getServerSideProps() {
+
+  // set in env variables
+  const optimize = false;
+  const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
+  const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
+
+  try {
+    //Find the absolute path of the contracts directory
+    const contractDirectory = path.join(process.cwd(), 'contracts');
+    
+    // Validator script
+    const valFile = await fs.readFile(contractDirectory + '/lcValidator.hl', 'utf8');
+    const valScript = valFile.toString();
+    const compiledValScript = Program.new(valScript).compile(optimize);
+    const valHash = compiledValScript.validatorHash; 
+    const valAddr = Address.fromValidatorHash(valHash);
+    
+    // Littercoin minting script
+    const mintFile = await fs.readFile(contractDirectory + '/lcMint.hl', 'utf8');
+    const mintScript = mintFile.toString();
+    
+    // Thread token minting script
+    const threadTokenFile = await fs.readFile(contractDirectory + '/threadToken.hl', 'utf8');
+    const threadTokenScript = threadTokenFile.toString();
+    
+    // Merchant token minting script
+    const merchTokenFile = await fs.readFile(contractDirectory + '/merchToken.hl', 'utf8');
+    const merchTokenScript = merchTokenFile.toString();
+
+    // Littercoin rewards token minting script
+    const rewardsTokenFile = await fs.readFile(contractDirectory + '/rewardsToken.hl', 'utf8');
+    const rewardsTokenScript = rewardsTokenFile.toString();
+
+    // Network Parameters
+    const networkParamsFile = await fs.readFile(contractDirectory + '/' + networkParamsFilePath, 'utf8');
+    const networkParams = networkParamsFile.toString();
+
+    const blockfrostUrl : string = blockfrostAPI + "/addresses/" + valAddr.toBech32() + "/utxos/?order=asc";
+    console.log("blockfrostUrl: ", blockfrostUrl);
+
+    let utxos = await getUtxos(blockfrostUrl);
+
+    // Find the reference utxo with the correct validator hash
+    if (utxos.length > 0) {
+      for (var utxo of utxos) {
+        if (utxo.reference_script_hash === valHash.hex) {
+          const lcVal = {
+            lcValScript: valScript,
+            lcValAdaAmt: utxo.amount[0].quantity, 
+            lcRefTxId: utxo.tx_hash,
+            lcRefTxIdx: utxo.output_index,
+            lcMintScript: mintScript,
+            ttMintScript: threadTokenScript,
+            mtMintScript: merchTokenScript,
+            recMintScript: rewardsTokenScript,
+            network: networkParams
+          }
+          return { props: lcVal }
+        }
+      }
+    } else {
+      throw console.error("littercoin validator reference utxo not found")
+    }
+  } catch (err) {
+    console.log('getServerSideProps error: ', err);
+  } 
+  // No valid reference utxo found
+  return { props: {} };
+}
 
 
 const Home: NextPage = (props: any) => {
@@ -402,28 +428,30 @@ const Home: NextPage = (props: any) => {
   }
 
   const submitTx = async (tx: Tx) : Promise<string> => {
-    const data = new Uint8Array(tx.toCbor());
-    const url = blockfrostAPI + "/tx/submit";
-    const config = {
-      headers:{
-        "content-type": "application/cbor",
-        "project_id": apiKey
-      }
-    };
-    let txHash = "";
+    const payload = new Uint8Array(tx.toCbor());
+    const blockfrostUrl = blockfrostAPI + "/tx/submit";
+    const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
+
     try {
-        await axios.post(url, data, config)
-        .then(function (response) {
-          txHash = response.data;
+      let res = await axios({
+            url: blockfrostUrl,
+            data: payload,
+            method: 'post',
+            timeout: 8000,
+            headers: {
+                'Content-Type': 'application/cbor',
+                'project_id': apiKey
+            }
         })
-        .catch(function (error) {
-          throw console.error("submitTx error: " + error);
-        });
-    } catch (error) {
-        console.error(error);
-        throw console.error("submitTx error: " + error);
+        if(res.status == 200){
+            return res.data;
+        } else {
+          throw console.error("submitTx Blockfrost Error: ", res);
+        }   
     }
-    return txHash;
+    catch (err) {
+        throw console.error("submitTx Failed: ", err);
+    }
   }
 
   // Get the number of tokens in a set of utxo for a given mph
@@ -540,27 +568,17 @@ const Home: NextPage = (props: any) => {
     tx.addSignatures(signatures);
 
     // Get back-end signature of owner private key and submit tx
-    console.log("Get Back-end to sign...");
-    const response = await fetch('/api/getSignature', {
-      method: 'POST',
-      body: JSON.stringify({ txCbor: bytesToHex(tx.toCbor()) }),
-      headers: {
-        'Content-type' : 'application/json'
-      },
-    }) 
-
     console.log("Submitting transaction...");
-    const txHash = await response.json();
-
-    if (response.status == 200) {
+    try {
+      const txHash = await signSubmitTx(tx);
       setIsLoading(false); 
       console.log("txHash", txHash);
       setTx({ txId: txHash });
-    } else {
+    } catch (error) {
       setIsLoading(false); 
-      console.log("Mint Littercoin Failed: " + txHash);
+      console.error("Mint Littercoin Failed: " + error);
     }
-   } 
+  } 
 
   const burnLC = async (lcQty : any) => {
 
