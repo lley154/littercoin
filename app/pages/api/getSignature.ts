@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { Bip32PrivateKey } from '@stricahq/bip32ed25519';
-import { mnemonicToEntropy } from 'bip39';
 import { Buffer } from "buffer";
 import { blake2b } from "blakejs";
 import {
@@ -54,15 +53,11 @@ export default async function handler(
     function harden(num: number) {
         return 0x80000000 + num;
     }
-
-    // PLEASE NOTE: DO NOT STORE THE REAL PASS PHRASE IN APPLICATION CODE...THIS IS DONE FOR EXAMPLE PURPOSES ONLY
-    const entropy = mnemonicToEntropy(
-        [ "witness", "pipe", "egg", "awake", "hood", "false", "fury", "announce", "one", "wool", "diagram", "weird", "phone", "treat", "bacon" ].join(' ')
-        );
     
     try {
-        const buffer = Buffer.from(entropy, 'hex');
-        const rootKey = await Bip32PrivateKey.fromEntropy(buffer);
+        const rootKeyHex : string = process.env.NEXT_PUBLIC_ROOT_KEY as string;
+        const buffer = Buffer.from(rootKeyHex, 'hex');
+        const rootKey = new Bip32PrivateKey(buffer);
 
         const accountKey = rootKey
         .derive(harden(1852)) // purpose
