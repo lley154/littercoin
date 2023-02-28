@@ -3,8 +3,10 @@ import { bytesToHex} from '@hyperionbt/helios';
 import pkg from '@stricahq/bip32ed25519';
 const { Bip32PrivateKey } = pkg;
 
-
-// Usage: node ./utils/generate-private-key.js
+/***************************************************
+* Temporarily set "type": "module" in the package.json
+* Usage: node ./utils/generate-private-key.js
+****************************************************/
 
 // PLEASE NOTE: DO NOT STORE THE REAL PASS PHRASE IN APPLICATION CODE...THIS IS DONE FOR EXAMPLE PURPOSES ONLY
 const entropy = mnemonicToEntropy(
