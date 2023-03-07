@@ -22,8 +22,8 @@ import {
   Datum, 
   hexToBytes, 
   IntData, 
-  TxId, 
   ListData, 
+  MintingPolicyHash,
   NetworkParams,
   Program, 
   PubKeyHash,
@@ -31,9 +31,10 @@ import {
   TxOutput,
   TxRefInput,
   Tx, 
+  TxId,
   UTxO,
   WalletHelper, 
-  MintingPolicyHash} from "@hyperionbt/helios";
+  } from "@hyperionbt/helios";
 
   import path from 'path';
   import { promises as fs } from 'fs';
@@ -206,11 +207,9 @@ const Home: NextPage = (props: any) => {
   const lcValRefTxIdx = props.lcRefTxIdx as string;
 
   // Network Params
-  //const networkParams = props.network as string;
   const networkParams = new NetworkParams(JSON.parse(props.network as string));
 
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
-  const apiKey : string = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY as string;
   const threadTokenName = process.env.NEXT_PUBLIC_THREAD_TOKEN_NAME as string;
   const lcTokenName = process.env.NEXT_PUBLIC_LC_TOKEN_NAME as string;
   const merchTokenName = process.env.NEXT_PUBLIC_MERCH_TOKEN_NAME as string;
@@ -269,8 +268,6 @@ const Home: NextPage = (props: any) => {
   useEffect(() => {
     const enableSelectedWallet = async () => {
       if (walletIsEnabled) {
-        //const api = await enableWallet();
-        //setWalletAPI(api);
         try {
           await enableWallet();
         } catch (err) {
@@ -323,17 +320,14 @@ const Home: NextPage = (props: any) => {
           const handle: Cip30Handle = await window.cardano.nami.enable();
           const walletAPI = new Cip30Wallet(handle);
           const walletHelper = new WalletHelper(walletAPI);
-          //return walletAPI;
           setWalletHelper(walletHelper);
           setWalletAPI(walletAPI);
         } else if (walletChoice === "eternl") {
           const handle: Cip30Handle = await window.cardano.eternl.enable();
           const walletAPI = new Cip30Wallet(handle);
           const walletHelper = new WalletHelper(walletAPI);
-          //return walletAPI;
           setWalletHelper(walletHelper);
           setWalletAPI(walletAPI);
-          //return walletAPI;
         }
 
     } catch (err) {
@@ -366,7 +360,6 @@ const Home: NextPage = (props: any) => {
 
   const getBalance = async () => {
     try {
-        //const walletHelper = new WalletHelper(walletAPI);
         const balanceAmountValue  = await walletHelper.calcBalance();
         const balanceAmount = balanceAmountValue.lovelace;
         const walletBalance : BigInt = BigInt(balanceAmount);
@@ -409,19 +402,6 @@ const Home: NextPage = (props: any) => {
 
   const setLCValRefUtxo = async () => {
 
-    /*
-    const valRefUTXO = new UTxO (
-      TxId.fromHex(lcValRefTxId),
-      BigInt(lcValRefTxIdx),
-      new TxOutput(
-        lcValAddr,
-        new Value(BigInt(lcValAdaAmt)),
-        null,
-        compiledValScript
-      )
-    )
-    */
-
     const valRefUTXO = new TxRefInput(
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
@@ -432,7 +412,6 @@ const Home: NextPage = (props: any) => {
         compiledValScript
       )
     )
-
     setRefUTXO(valRefUTXO);
   }
   
@@ -448,9 +427,7 @@ const Home: NextPage = (props: any) => {
       const datData = utxo.origOutput.datum.data;
       const datJson = datData.toSchemaJson();
       const datObj = JSON.parse(datJson);
-
       return {datum: datObj, address: lcValAddr.toBech32()};
-
     } else {
       console.log("fetchLittercoin: thread token not found");
     }
@@ -516,14 +493,10 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
   
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
-
-    // Determine the UTXO used for collateral
-    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Check the total number of littercoin already in the utxos.
     // We will then add this number to the minted amount
@@ -580,8 +553,6 @@ const Home: NextPage = (props: any) => {
       Address.fromBech32(address),
       new Value(minAda, new Assets([[lcTokenMPH, lcTokens]]))
     ));
-
-    //tx.addCollateral(colatUtxo);
 
     // Add owner pkh as a signer which is required to mint littercoin
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
@@ -644,7 +615,6 @@ const Home: NextPage = (props: any) => {
     const merchVal: Value = new Value(BigInt(minAda), new Assets([[merchTokenMPH, merchTokens]]));
 
     // Get wallet UTXOs
-    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal.add(lcVal).add(merchVal));
 
     // Get change address
@@ -658,9 +628,6 @@ const Home: NextPage = (props: any) => {
     } else {
       unusedAddr = unusedAddresses[0];
     }
-
-    // Determine the UTXO used for collateral
-    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Check the total number of littercoin in the utxos.
     // We will then decrement the number of tokens being burned
@@ -734,8 +701,6 @@ const Home: NextPage = (props: any) => {
       ));
     } 
 
-    //tx.addCollateral(colatUtxo);
-
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
@@ -764,14 +729,10 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
   
     // Get change address
     const changeAddr = await walletHelper.changeAddress;
-
-    // Determine the UTXO used for collateral
-    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
@@ -798,7 +759,6 @@ const Home: NextPage = (props: any) => {
       new Value(minAda, new Assets([[merchTokenMPH, tokens]]))
     ));
 
-    //tx.addCollateral(colatUtxo);
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
     console.log("tx before final", tx.dump());
     console.log("network", networkParams);
@@ -839,7 +799,6 @@ const Home: NextPage = (props: any) => {
     const minUTXOVal = new Value(BigInt(lovelaceQty) + minAda + maxTxFee + minChangeAmt);
 
     // Get wallet UTXOs
-    //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
     console.log("utxos", utxos);
 
@@ -859,9 +818,6 @@ const Home: NextPage = (props: any) => {
     } else {
       unusedAddr = unusedAddrs[0];
     }
-
-    // Determine the UTXO used for collateral
-    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
@@ -912,9 +868,6 @@ const Home: NextPage = (props: any) => {
       new Value(minAda, new Assets([[rewardsTokenMPH, tokens]]))
     ));
 
-    //tx.addCollateral(colatUtxo);
-    // Adding spare UTXOs to be used for collateral
-
     console.log("tx before final", await tx.dump());
 
     // Send any change back to the wallet
@@ -926,7 +879,6 @@ const Home: NextPage = (props: any) => {
     tx.addSignatures(signatures);
 
     console.log("Submitting transaction...");
-    //const txHash = await walletAPI.submitTx(tx);
     const txHash = await submitTx(tx);
     setIsLoading(false); 
     console.log("txHash", txHash);
