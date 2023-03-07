@@ -7,8 +7,8 @@
 // Email:         cschmitz398@gmail.com
 // Website:       https://www.hyperion-bt.org
 // Repository:    https://github.com/hyperion-bt/helios
-// Version:       0.11.2
-// Last update:   January 2023
+// Version:       0.12.12
+// Last update:   March 2023
 // License:       Unlicense
 //
 //
@@ -74,10 +74,10 @@
 //    Section 9: Uplc built-in functions     UPLC_BUILTINS, dumpCostModels, findUplcBuiltin, 
 //                                           isUplcBuiltin
 //
-//    Section 10: Uplc AST                   ScriptPurpose, UplcValue, DEFAULT_UPLC_RTE_CALLBACKS, 
-//                                           UplcRte, UplcStack, UplcAnon, UplcDelayedValue, 
-//                                           UplcInt, UplcByteArray, UplcString, UplcUnit, 
-//                                           UplcBool, UplcPair, UplcMapItem, UplcList, UplcMap, 
+//    Section 10: Uplc AST                   ScriptPurpose, getPurposeName, UplcValue, UplcType, 
+//                                           DEFAULT_UPLC_RTE_CALLBACKS, UplcRte, UplcStack, 
+//                                           UplcAnon, UplcDelayedValue, UplcInt, UplcByteArray, 
+//                                           UplcString, UplcUnit, UplcBool, UplcPair, UplcList, 
 //                                           UplcDataValue, UplcTerm, UplcVariable, UplcDelay, 
 //                                           UplcLambda, UplcCall, UplcConst, UplcForce, 
 //                                           UplcError, UplcBuiltin
@@ -168,35 +168,40 @@
 //    Section 19: IR definitions             onNotifyRawUsage, setRawUsageNotifier, RawFunc, 
 //                                           makeRawFunctions, wrapWithRawFunctions
 //
-//    Section 20: IR AST objects             IRScope, IRExprStack, IRValue, IRFuncValue, 
-//                                           IRLiteralValue, IRCallStack, IRVariable, IRExpr, 
-//                                           IRNameExpr, IRLiteral, IRFuncExpr, IRCallExpr, 
-//                                           IRUserCallExpr, IRCoreCallExpr, IRErrorCallExpr
+//    Section 20: IR Context objects         IRScope, IRVariable, IRValue, IRFuncValue, 
+//                                           IRLiteralValue, IRDeferredValue, IRCallStack
 //
-//    Section 21: IR AST build functions     buildIRExpr, buildIRFuncExpr
+//    Section 21: IR AST objects             IRNameExprRegistry, IRExprRegistry, IRExpr, 
+//                                           IRNameExpr, IRLiteralExpr, IRConstExpr, IRFuncExpr, 
+//                                           IRCallExpr, IRCoreCallExpr, IRUserCallExpr, 
+//                                           IRAnonCallExpr, IRNestedAnonCallExpr, IRFuncDefExpr, 
+//                                           IRErrorCallExpr
 //
-//    Section 22: IR Program                 IRProgram, IRParametricProgram
+//    Section 22: IR AST build functions     buildIRExpr, buildIRFuncExpr
 //
-//    Section 23: Helios program             Module, MainModule, RedeemerProgram, 
+//    Section 23: IR Program                 IRProgram, IRParametricProgram
+//
+//    Section 24: Helios program             Module, MainModule, RedeemerProgram, 
 //                                           DatumRedeemerProgram, TestingProgram, 
 //                                           SpendingProgram, MintingProgram, StakingProgram
 //
-//    Section 24: Tx types                   Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput, 
-//                                           TxOutput, ChangeTxOutput, DCert, StakeAddress, 
-//                                           Signature, RedeemerCostTracker, Redeemer, 
+//    Section 25: Tx types                   Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput, 
+//                                           TxOutput, DCert, StakeAddress, Signature, Redeemer, 
 //                                           SpendingRedeemer, MintingRedeemer, Datum, 
 //                                           HashedDatum, InlineDatum, encodeMetadata, 
 //                                           decodeMetadata, TxMetadata
 //
-//    Section 25: Highlighting function      SyntaxCategory, highlight
+//    Section 26: Highlighting function      SyntaxCategory, highlight
 //
-//    Section 26: Fuzzy testing framework    FuzzyTest
+//    Section 27: Fuzzy testing framework    FuzzyTest
 //
-//    Section 27: CoinSelection              CoinSelection
+//    Section 28: CoinSelection              CoinSelection
 //
-//    Section 28: Wallets                    Cip30Wallet, WalletHelper
+//    Section 29: Wallets                    Cip30Wallet, WalletHelper
 //
-//    Section 29: Network                    BlockfrostV0
+//    Section 30: Network                    BlockfrostV0
+//
+//    Section 31: Emulator                   WalletEmulator, GenesisTx, RegularTx, NetworkEmulator
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +214,7 @@
 /**
  * Version of the Helios library.
  */
-export const VERSION = "0.11.2";
+export const VERSION = "0.12.12";
 
 /**
  * Global debug flag. Not currently used for anything though.
@@ -491,19 +496,24 @@ function padZeroes(bits, n) {
 }
 
 /**
- * Converts a 8 bit integer number into a bit string with a "0b" prefix.
+ * Converts a 8 bit integer number into a bit string with an optional "0b" prefix.
  * The result is padded with leading zeroes to become 'n' chars long ('2 + n' chars long if you count the "0b" prefix). 
  * @example
  * byteToBitString(7) => "0b00000111"
  * @package
  * @param {number} b 
- * @param {number} n 
+ * @param {number} n
+ * @param {boolean} prefix
  * @returns {string}
  */
-function byteToBitString(b, n = 8) {
+function byteToBitString(b, n = 8, prefix = true) {
 	const s = padZeroes(b.toString(2), n);
 
-	return "0b" + s;
+	if (prefix) {
+		return "0b" + s;
+	} else {
+		return s;
+	}
 }
 
 /**
@@ -2372,9 +2382,8 @@ class UInt64 {
  *     bech32 encoding, checking, and decoding
  *     sha2_256, sha2_512, sha3 and blake2b hashing
  *     ed25519 pubkey generation, signing, and signature verification (NOTE: the current implementation is very slow)
- * @package
  */
-class Crypto {
+export class Crypto {
 	/**
 	 * Returns a simple random number generator
      * @package
@@ -6190,10 +6199,11 @@ export class TxId extends Hash {
 	}
 
 	/**
+	 * Filled with 255 so that the internal show() function has max execution budget cost
 	 * @returns {TxId}
 	 */
 	static dummy() {
-		return new TxId((new Array(32)).fill(0));
+		return new TxId((new Array(32)).fill(255));
 	}
 }
 
@@ -6343,7 +6353,7 @@ export class Address extends HeliosData {
 
 		let result = new Address(bytes);
 
-		assert(prefix == (result.isForTestnet() ? "addr_test" : "addr"), "invalid Address prefix");
+		assert(prefix == (Address.isForTestnet(result) ? "addr_test" : "addr"), "invalid Address prefix");
 
 		return result;
 	}
@@ -6436,7 +6446,7 @@ export class Address extends HeliosData {
 	 */
 	toBech32() {
 		return Crypto.encodeBech32(
-			this.isForTestnet() ? "addr_test" : "addr",
+			Address.isForTestnet(this) ? "addr_test" : "addr",
 			this.#bytes
 		);
 	}
@@ -6452,10 +6462,11 @@ export class Address extends HeliosData {
 	}
 
 	/**
+	 * @param {Address} address
 	 * @returns {boolean}
 	 */
-	isForTestnet() {
-		let type = this.#bytes[0] & 0b00001111;
+	static isForTestnet(address) {
+		let type = address.bytes[0] & 0b00001111;
 
 		return type == 0;
 	}
@@ -6657,11 +6668,22 @@ export class Assets extends CborData {
 	#assets;
 
 	/**
-	 * @param {[MintingPolicyHash, [number[], bigint][]][]} assets 
+	 * @param {[MintingPolicyHash | number[] | string, [number[] | string, bigint | number][]][]} assets 
 	 */
 	constructor(assets = []) {
 		super();
-		this.#assets = assets;
+		this.#assets = assets.map(([rawMph, tokens]) => {
+			const mph = rawMph instanceof MintingPolicyHash ? rawMph : new MintingPolicyHash(rawMph);
+
+			return [
+				mph,
+				tokens.map(([rawName, amount]) => {
+					const name = Array.isArray(rawName) ? rawName : hexToBytes(rawName);
+
+					return [name, BigInt(amount)];
+				})
+			];
+		});
 	}
 
 	/**
@@ -6669,6 +6691,21 @@ export class Assets extends CborData {
 	 */
 	get mintingPolicies() {
 		return this.#assets.map(([mph, _]) => mph);
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get nTokenTypes() {
+		let count = 0;
+		
+		this.#assets.forEach(([mph, tokens]) => {
+			tokens.forEach(([tokenName, _]) => {
+				count += 1
+			})
+		})
+
+		return count;
 	}
 
 	/**
@@ -7129,6 +7166,20 @@ export class Value extends HeliosData {
 	}
 
 	/**
+	 * @param {Value[]} values 
+	 * @returns {Value}
+	 */
+	static sum(values) {
+		let s = new Value(0n);
+
+		values.forEach(v => {
+			s = s.add(v);
+		});
+
+		return s;
+	}
+	
+	/**
 	 * @param {Value} other 
 	 * @returns {Value}
 	 */
@@ -7445,7 +7496,7 @@ export class NetworkParams {
      * @package
 	 * @type {[number, number]} - [mem, cpu]
 	 */
-	get txExecutionBudget() {
+	get maxTxExecutionBudget() {
 		return [
 			assertNumber(this.#raw?.latestParams?.maxTxExecutionUnits?.memory),
 			assertNumber(this.#raw?.latestParams?.maxTxExecutionUnits?.steps),
@@ -7458,6 +7509,18 @@ export class NetworkParams {
 	 */
 	get maxTxSize() {
 		return assertNumber(this.#raw?.latestParams?.maxTxSize);
+	}
+
+	/**
+	 * @package
+	 * @type {bigint}
+	 */
+	get maxTxFee() {
+		const [a, b] = this.txFeeParams;
+		const [feePerMem, feePerCpu] = this.exFeeParams;
+		const [maxMem, maxCpu] = this.maxTxExecutionBudget;
+
+		return BigInt(a) + BigInt(Math.ceil(b*this.maxTxSize)) + BigInt(Math.ceil(feePerMem*maxMem)) + BigInt(Math.ceil(feePerCpu*maxCpu));
 	}
 
 	/**
@@ -8205,7 +8268,7 @@ const ScriptPurpose = {
  * @param {number} id
  * @returns {string}
  */
- function getPurposeName(id) {
+function getPurposeName(id) {
 	switch (id) {
 		case ScriptPurpose.Testing:
 			return "testing";
@@ -8253,6 +8316,14 @@ export class UplcValue {
      */
 	get site() {
 		return this.#site;
+	}
+
+	/**
+	 * @package
+	 * @type {number}
+	 */
+	get length() {
+		throw new Error("not a list nor a map");
 	}
 
 	/**
@@ -8336,28 +8407,6 @@ export class UplcValue {
 	}
 
 	/**
-	 * Distinguishes a mapItem from a pair
-	 * @returns {boolean}
-	 */
-	isMapItem() {
-		return false;
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get key() {
-		throw this.site.typeError(`expected a Plutus-core data-pair, got '${this.toString()}'`);
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get value() {
-		throw this.site.typeError(`expected a Plutus-core data-pair_, got '${this.toString()}'`);
-	}
-
-	/**
 	 * Distinguishes a list from a map
 	 * @returns {boolean}
 	 */
@@ -8366,25 +8415,17 @@ export class UplcValue {
 	}
 
 	/**
-	 * DIstinguishes a map from a list
-	 * @returns {boolean}
+	 * @type {UplcType}
 	 */
-	isMap() {
-		return false;
+	get itemType() {
+		throw this.site.typeError("not a list");
 	}
 
 	/**
-	 * @type {UplcData[]}
+	 * @type {UplcValue[]}
 	 */
 	get list() {
 		throw this.site.typeError(`expected a Plutus-core list, got '${this.toString()}'`);
-	}
-
-	/**
-	 * @type {UplcMapItem[]}
-	 */
-	get map() {
-		throw this.site.typeError(`expected a Plutus-core map, got '${this.toString()}'`);
 	}
 
     /**
@@ -8454,6 +8495,54 @@ export class UplcValue {
 	}
 }
 
+export class UplcType {
+	#typeBits;
+
+	/**
+	 * @param {string} typeBits 
+	 */
+	constructor(typeBits) {
+		this.#typeBits = typeBits;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	typeBits() {
+		return this.#typeBits;
+	}
+
+	/**
+	 * @param {UplcValue} value 
+	 * @returns {boolean}
+	 */
+	isSameType(value) {
+		return this.#typeBits == value.typeBits();
+	}
+
+	/**
+	 * @returns {UplcType}
+	 */
+	static newDataType() {
+		return new UplcType("1000");
+	}
+
+	/**
+	 * @returns {UplcType}
+	 */
+	static newDataPairType() {
+		return new UplcType(["0111", "0111", "0110", "1000", "1000"].join("1"));
+	}
+
+	/**
+	 * @param {number[]} lst
+	 * @returns {UplcType}
+	 */
+	static fromNumbers(lst) {
+		return new UplcType(lst.map(x => byteToBitString(x, 4, false)).join("1"));
+	}
+}
+
 /**
  * @package
  * @typedef {[?string, UplcValue][]} UplcRawStack
@@ -8464,7 +8553,7 @@ export class UplcValue {
 * @property {(msg: string) => Promise<void>} [onPrint]
 * @property {(site: Site, rawStack: UplcRawStack) => Promise<boolean>} [onStartCall]
 * @property {(site: Site, rawStack: UplcRawStack) => Promise<void>} [onEndCall]
-* @property {(cost: Cost) => void} [onIncrCost]
+* @property {(name: string, isTerm: boolean, cost: Cost) => void} [onIncrCost]
 */
 
 /**
@@ -8474,7 +8563,7 @@ export const DEFAULT_UPLC_RTE_CALLBACKS = {
 	onPrint: async function (/** @type {string} */ msg) {return},
 	onStartCall: async function(/** @type {Site} */ site, /** @type {UplcRawStack} */ rawStack) {return false},
 	onEndCall: async function(/** @type {Site} */ site, /** @type {UplcRawStack} */ rawStack) {return},
-	onIncrCost: function(/** @type {Cost} */ cost) {return},
+	onIncrCost: function(/** @type {string} */ name, /** @type {boolean} */ isTerm, /** @type {Cost} */ cost) {return},
 }
 
 /**
@@ -8515,63 +8604,65 @@ class UplcRte {
 	}
 
 	/**
+	 * @param {string} name - for breakdown
+	 * @param {boolean} isTerm
 	 * @param {Cost} cost 
 	 */
-	incrCost(cost) {
+	incrCost(name, isTerm, cost) {
 		if (cost.mem <= 0n || cost.cpu <= 0n) {
 			throw new Error("cost not increasing");
 		}
 
 		if (this.#callbacks.onIncrCost !== undefined) {
-			this.#callbacks.onIncrCost(cost);
+			this.#callbacks.onIncrCost(name, isTerm, cost);
 		}
 	}
 
 	incrStartupCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreStartupCost);
+			this.incrCost("startup", true, this.#networkParams.plutusCoreStartupCost);
 		}
 	}
 
 	incrVariableCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreVariableCost);
+			this.incrCost("variable", true, this.#networkParams.plutusCoreVariableCost);
 		}
 	}
 
 	incrLambdaCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreLambdaCost);
+			this.incrCost("lambda", true, this.#networkParams.plutusCoreLambdaCost);
 		}
 	}
 
 	incrDelayCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreDelayCost);
+			this.incrCost("delay", true, this.#networkParams.plutusCoreDelayCost);
 		}
 	}
 
 	incrCallCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreCallCost);
+			this.incrCost("call", true, this.#networkParams.plutusCoreCallCost);
 		}
 	}
 
 	incrConstCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreConstCost);
+			this.incrCost("const", true, this.#networkParams.plutusCoreConstCost);
 		}
 	}
 
 	incrForceCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreForceCost);
+			this.incrCost("force", true, this.#networkParams.plutusCoreForceCost);
 		}
 	}
 
 	incrBuiltinCost() {
 		if (this.#networkParams !== null) {
-			this.incrCost(this.#networkParams.plutusCoreBuiltinCost);
+			this.incrCost("builtin", true, this.#networkParams.plutusCoreBuiltinCost);
 		}
 	}
 
@@ -8583,7 +8674,7 @@ class UplcRte {
 		if (this.#networkParams !== null) {
 			let cost = fn.calcCost(this.#networkParams, ...args);
 
-			this.incrCost(cost);
+			this.incrCost(fn.name, false, cost);
 		}
 	}
 
@@ -9716,6 +9807,20 @@ export class UplcPair extends UplcValue {
 	}
 
 	/**
+	 * @type {UplcData}
+	 */
+	get key() {
+		return this.#first.data;
+	}
+
+	/**
+	 * @type {UplcData}
+	 */
+	get value() {
+		return this.#second.data;
+	}
+
+	/**
 	 * @returns {string}
 	 */
 	typeBits() {
@@ -9732,109 +9837,39 @@ export class UplcPair extends UplcValue {
 	}
 }
 
-/**
- * Plutus-core pair value class that only contains data
- * Only used during evaluation.
- * @package
- */
-class UplcMapItem extends UplcValue {
-	#key;
-	#value;
-
-	/**
-	 * @param {Site} site 
-	 * @param {UplcData} key 
-	 * @param {UplcData} value 
-	 */
-	constructor(site, key, value) {
-		super(site);
-		this.#key = key;
-		this.#value = value;
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get memSize() {
-		return (new UplcDataValue(this.site, this.#key)).memSize + 
-			(new UplcDataValue(this.site, this.#value)).memSize;
-	}
-
-	/**
-	 * @param {Site} newSite 
-	 * @returns {UplcMapItem}
-	 */
-	copy(newSite) {
-		return new UplcMapItem(newSite, this.#key, this.#value);
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return `(${this.#key.toString()}: ${this.#value.toString()})`;
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isMapItem() {
-		return true;
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get key() {
-		return this.#key;
-	}
-
-	/**
-	 * @type {UplcData}
-	 */
-	get value() {
-		return this.#value;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	typeBits() {
-		// 7 (7 (6) (8)) (8)
-		return ["0111", "0111", "0110", "1000", "1000"].join("1");
-	}
-
-	/**
-	 * @param {BitWriter} bitWriter
-	 */
-	toFlatValueInternal(bitWriter) {
-		(new UplcDataValue(this.site, this.#key)).toFlatValueInternal(bitWriter);
-		(new UplcDataValue(this.site, this.#value)).toFlatValueInternal(bitWriter);
-	}
-}
-
 /** 
  * Plutus-core list value class.
  * Only used during evaluation.
 */
 export class UplcList extends UplcValue {
+	#itemType;
 	#items;
 
 	/**
 	 * @param {Site} site 
-	 * @param {UplcData[]} items 
+	 * @param {UplcType} itemType 
+	 * @param {UplcValue[]} items 
 	 */
-	constructor(site, items) {
+	constructor(site, itemType, items) {
 		super(site);
+		this.#itemType = itemType;
 		this.#items = items;
 	}
 
 	/**
 	 * Constructs a UplcList without requiring a Site
-	 * @param {UplcData[]} items 
+	 * @param {UplcType} type 
+	 * @param {UplcValue[]} items 
 	 */
-	static new(items) {
-		return new UplcList(Site.dummy(), items);
+	static new(type, items) {
+		return new UplcList(Site.dummy(), type, items);
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get length() {
+		return this.#items.length;
 	}
 
 	/**
@@ -9844,12 +9879,14 @@ export class UplcList extends UplcValue {
 		let sum = 0;
 
 		for (let item of this.#items) {
-			let data = new UplcDataValue(this.site, item);
-
-			sum += data.memSize;
+			sum += item.copy(this.site).memSize;
 		}
 
 		return sum;
+	}
+
+	get itemType() {
+		return this.#itemType;
 	}
 
 	/**
@@ -9857,7 +9894,7 @@ export class UplcList extends UplcValue {
 	 * @returns {UplcList}
 	 */
 	copy(newSite) {
-		return new UplcList(newSite, this.#items.slice());
+		return new UplcList(newSite, this.#itemType, this.#items.slice());
 	}
 
 	/**
@@ -9868,7 +9905,7 @@ export class UplcList extends UplcValue {
 	}
 
 	/**
-	 * @type {UplcData[]}
+	 * @type {UplcValue[]}
 	 */
 	get list() {
 		return this.#items.slice();
@@ -9885,8 +9922,8 @@ export class UplcList extends UplcValue {
 	 * @returns {string}
 	 */
 	typeBits() {
-		// 7 (5) (8)
-		return ["0111", "0101", "1000"].join("1");
+		// 7 (5) (type bits of content)
+		return ["0111", "0101", this.#itemType.typeBits()].join("1");
 	}
 
 	/**
@@ -9896,100 +9933,7 @@ export class UplcList extends UplcValue {
 		for (let item of this.#items) {
 			bitWriter.write('1');
 
-			(new UplcDataValue(this.site, item)).toFlatValueInternal(bitWriter);
-		}
-
-		bitWriter.write('0');
-	}
-}
-
-/**
- * Plutus-core map value class.
- * Only used during evaluation.
- */
-export class UplcMap extends UplcValue {
-	#pairs;
-
-	/**
-	 * @param {Site} site 
-	 * @param {UplcMapItem[]} pairs 
-	 */
-	constructor(site, pairs) {
-		super(site);
-		this.#pairs = pairs;
-	}
-
-	/**
-	 * Constructs a UplcMap without requiring a Site
-	 * @param {[UplcData, UplcData][]} pairs 
-	 * @returns {UplcMap}
-	 */
-	static new(pairs) {
-		const site = Site.dummy();
-
-		return new UplcMap(site, pairs.map(([key, val]) => new UplcMapItem(site, key, val)));
-	}
-
-	/**
-	 * @type {number}
-	 */
-	get memSize() {
-		let sum = 0;
-
-		for (let pair of this.#pairs) {
-
-			sum += pair.memSize;
-		}
-
-		return sum;
-	}
-
-	/**
-	 * @param {Site} newSite 
-	 * @returns {UplcMap}
-	 */
-	copy(newSite) {
-		return new UplcMap(newSite, this.#pairs.slice());
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isMap() {
-		return true;
-	}
-
-	/**
-	 * @type {UplcMapItem[]}
-	 */
-	get map() {
-		return this.#pairs.slice();
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return `{${this.#pairs.map((pair) => `${pair.key.toString()}: ${pair.value.toString()}`).join(", ")}}`;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	typeBits() {
-		// 7 (5) (7 (7 (6) (8)) (8))
-		return ["0111", "0101", "0111", "0111", "0110", "1000", "1000"].join("1");
-	}
-
-	/**
-	 * @param {BitWriter} bitWriter 
-	 */
-	toFlatValueInternal(bitWriter) {
-
-		for (let pair of this.#pairs) {
-			bitWriter.write('1');
-
-			pair.toFlatValueInternal(bitWriter);
+			item.copy(this.site).toFlatValueInternal(bitWriter);
 		}
 
 		bitWriter.write('0');
@@ -10052,7 +9996,7 @@ export class UplcDataValue extends UplcValue {
 	 * @returns {string}
 	 */
 	typeBits() {
-		return '1000';
+		return UplcType.newDataType().typeBits();
 	}
 
 	/**
@@ -10462,6 +10406,13 @@ class UplcBuiltin extends UplcTerm {
 	}
 
 	/**
+	 * @type {string}
+	 */
+	get name() {
+		return this.#name.toString();
+	}
+
+	/**
 	 * @returns {string}
 	 */
 	toString() {
@@ -10769,8 +10720,6 @@ class UplcBuiltin extends UplcTerm {
 
 					if (a.isPair()) {
 						return a.first.copy(callSite);
-					} else if (a.isMapItem()) {
-						return new UplcDataValue(callSite, a.key);
 					} else {
 						throw callSite.typeError(`expected pair or data-pair for first arg, got '${a.toString()}'`);
 					}
@@ -10781,34 +10730,38 @@ class UplcBuiltin extends UplcTerm {
 
 					if (a.isPair()) {
 						return a.second.copy(callSite);
-					} else if (a.isMapItem()) {
-						return new UplcDataValue(callSite, a.value);
 					} else {
 						throw callSite.typeError(`expected pair or data-pair for first arg, got '${a.toString()}'`);
 					}
 				});
 			case "chooseList":
-				throw new Error("no immediate need, so don't bother yet");
+				return new UplcAnon(this.site, rte, 3, (callSite, _, a, b, c) => {
+					rte.calcAndIncrCost(this, a, b, c);
+
+					if (a.isList()) {
+						if (a.length == 0) {
+							return b.copy(callSite);
+						} else {
+							return c.copy(callSite);
+						}
+					} else {
+						throw callSite.typeError(`expected list or map first arg, got '${a.toString()}'`);
+					}
+				});
 			case "mkCons":
 				// only allow data items in list
 				return new UplcAnon(this.site, rte, 2, (callSite, _, a, b) => {
 					rte.calcAndIncrCost(this, a, b);
 
 					if (b.isList()) {
-						if (!a.isData()) {
-							throw callSite.typeError(`expected data, got ${a.toString()}`);
+						if (!b.itemType.isSameType(a)) {
+							throw callSite.typeError(`wrong type for 2nd arg of mkCons`);
 						}
 
-						let item = a.data;
 						let lst = b.list;
-						lst.unshift(item);
+						lst.unshift(a);
 
-						return new UplcList(callSite, lst);
-					} else if (b.isMap()) {
-						let pairs = b.map;
-						pairs.unshift(new UplcMapItem(callSite, a.key, a.value));
-
-						return new UplcMap(callSite, pairs);
+						return new UplcList(callSite, b.itemType, lst);
 					} else {
 						throw callSite.typeError(`expected list or map for second arg, got '${b.toString()}'`);
 					}
@@ -10818,16 +10771,9 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (a.isList()) {
-						let lst = a.list;
+						const lst = a.list;
 						if (lst.length == 0) {
 							throw callSite.runtimeError("empty list");
-						}
-
-						return new UplcDataValue(callSite, lst[0]);
-					} else if (a.isMap()) {
-						let lst = a.map;
-						if (lst.length == 0) {
-							throw callSite.runtimeError("empty map");
 						}
 
 						return lst[0].copy(callSite);
@@ -10845,14 +10791,7 @@ class UplcBuiltin extends UplcTerm {
 							throw callSite.runtimeError("empty list");
 						}
 
-						return new UplcList(callSite, lst.slice(1));
-					} else if (a.isMap()) {
-						let lst = a.map;
-						if (lst.length == 0) {
-							throw callSite.runtimeError("empty map");
-						}
-
-						return new UplcMap(callSite, lst.slice(1));
+						return new UplcList(callSite, a.itemType, lst.slice(1));
 					} else {
 						throw callSite.typeError(`__core__tail expects list or map, got '${a.toString()}'`);
 					}
@@ -10863,8 +10802,6 @@ class UplcBuiltin extends UplcTerm {
 
 					if (a.isList()) {
 						return new UplcBool(callSite, a.list.length == 0);
-					} else if (a.isMap()) {
-						return new UplcBool(callSite, a.map.length == 0);
 					} else {
 						throw callSite.typeError(`__core__nullList expects list or map, got '${a.toString()}'`);
 					}
@@ -10893,24 +10830,26 @@ class UplcBuiltin extends UplcTerm {
 				return new UplcAnon(this.site, rte, 2, (callSite, _, a, b) => {
 					rte.calcAndIncrCost(this, a, b);
 
-					let i = a.int;
+					const i = a.int;
 					assert(i >= 0);
-					let lst = b.list;
-					return new UplcDataValue(callSite, new ConstrData(Number(i), lst));
+
+					const lst = b.list;
+
+					return new UplcDataValue(callSite, new ConstrData(Number(i), lst.map(item => item.data)));
 				});
 			case "mapData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
 					rte.calcAndIncrCost(this, a);
 
-					return new UplcDataValue(callSite, new MapData(a.map.map(pair => {
-						return [pair.key, pair.value];
+					return new UplcDataValue(callSite, new MapData(a.list.map(pair => {
+						return [pair.first.data, pair.second.data];
 					})));
 				});
 			case "listData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
 					rte.calcAndIncrCost(this, a);
 
-					return new UplcDataValue(callSite, new ListData(a.list));
+					return new UplcDataValue(callSite, new ListData(a.list.map(item => item.data)));
 				});
 			case "iData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
@@ -10929,14 +10868,14 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for arg of unConstrData, got ${a.toString()}`);
 					}
 
 					let data = a.data;
 					if (!(data instanceof ConstrData)) {
 						throw callSite.runtimeError(`unexpected unConstrData argument '${data.toString()}'`);
 					} else {
-						return new UplcPair(callSite, new UplcInt(callSite, BigInt(data.index)), new UplcList(callSite, data.fields));
+						return new UplcPair(callSite, new UplcInt(callSite, BigInt(data.index)), new UplcList(callSite, UplcType.newDataType(), data.fields.map(f => new UplcDataValue(callSite, f))));
 					}
 				});
 			case "unMapData":
@@ -10944,14 +10883,14 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for arg of unMapData, got ${a.toString()}`);
 					}
 
 					let data = a.data;
 					if (!(data instanceof MapData)) {
 						throw callSite.runtimeError(`unexpected unMapData argument '${data.toString()}'`);
 					} else {
-						return new UplcMap(callSite, data.map.map(([fst, snd]) => new UplcMapItem(callSite, fst, snd)));
+						return new UplcList(callSite, UplcType.newDataPairType(), data.map.map(([fst, snd]) => new UplcPair(callSite, new UplcDataValue(callSite, fst), new UplcDataValue(callSite, snd))));
 					}
 				});
 			case "unListData":
@@ -10959,14 +10898,14 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for arg of unListData, got ${a.toString()}`);
 					}
 
 					let data = a.data;
 					if (!(data instanceof ListData)) {
 						throw callSite.runtimeError(`unexpected unListData argument '${data.toString()}'`);
 					} else {
-						return new UplcList(callSite, data.list);
+						return new UplcList(callSite, UplcType.newDataType(), data.list.map(item => new UplcDataValue(callSite, item)));
 					}
 				});
 			case "unIData":
@@ -10974,7 +10913,7 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for arg of unIData, got ${a.toString()}`);
 					}
 
 					let data = a.data;
@@ -10989,7 +10928,7 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for arg of unBData, got ${a.toString()}`);
 					}
 
 					let data = a.data;
@@ -11004,11 +10943,11 @@ class UplcBuiltin extends UplcTerm {
 					rte.calcAndIncrCost(this, a, b);
 
 					if (!a.isData()) {
-						throw callSite.typeError(`expected data, got ${a.toString()}`);
+						throw callSite.typeError(`expected data for 1st arg of equalsData, got ${a.toString()}`);
 					}
 
 					if (!b.isData()) {
-						throw callSite.typeError(`expected data, got ${b.toString()}`);
+						throw callSite.typeError(`expected data for 2nd arg of equalsData, got ${b.toString()}`);
 					}
 
 					return new UplcBool(callSite, a.data.isSame(b.data));
@@ -11017,7 +10956,7 @@ class UplcBuiltin extends UplcTerm {
 				return new UplcAnon(this.site, rte, 2, (callSite, _, a, b) => {
 					rte.calcAndIncrCost(this, a, b);
 
-					return new UplcMapItem(callSite, a.data, b.data);
+					return new UplcPair(callSite, new UplcDataValue(callSite, a.data), new UplcDataValue(callSite, b.data));
 				});
 			case "mkNilData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
@@ -11025,7 +10964,7 @@ class UplcBuiltin extends UplcTerm {
 
 					a.assertUnit();
 
-					return new UplcList(callSite, []);
+					return new UplcList(callSite, UplcType.newDataType(), []);
 				});
 			case "mkNilPairData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
@@ -11033,7 +10972,7 @@ class UplcBuiltin extends UplcTerm {
 
 					a.assertUnit();
 
-					return new UplcMap(callSite, []);
+					return new UplcList(callSite, UplcType.newDataPairType(), []);
 				});
 			case "serialiseData":
 				return new UplcAnon(this.site, rte, 1, (callSite, _, a) => {
@@ -11322,12 +11261,22 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 	}
 
 	/**
-	 * @typedef {Object} Profile
-	 * @property {bigint} mem  - in 8 byte words (i.e. 1 mem unit is 64 bits)
-	 * @property {bigint} cpu  - in reference cpu microseconds
-	 * @property {number} size - in bytes
-	 * @property {UserError | UplcValue} result - result
-	 * @property {string[]} messages - printed messages (can be helpful when debugging)
+	 * @typedef {{
+	 *   mem: bigint, 
+	 *   cpu: bigint,
+	 *   size: number,
+	 *   builtins: {[name: string]: Cost},
+	 *   terms: {[name: string]: Cost},
+	 *   result: UserError | UplcValue,
+	 *   messages: string[]
+	 * }} Profile
+	 * mem:  in 8 byte words (i.e. 1 mem unit is 64 bits)
+	 * cpu:  in reference cpu microseconds
+	 * size: in bytes
+	 * builtins: breakdown per builtin
+	 * terms: breakdown per termtype
+	 * result: result of evaluation
+	 * messages: printed messages (can be helpful when debugging)
 	 */
 
 	/**
@@ -11342,11 +11291,46 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 		let cpuCost = 0n;
 
 		/**
-		 * @type {(cost: Cost) => void}
+		 * @type {{[name: string]: Cost}}
 		 */
-		callbacks.onIncrCost = (cost) => {
+		const builtins = {};
+
+		/**
+		 * @type {{[name: string]: Cost}}
+		 */
+		const terms = {};
+		
+		/**
+		 * @type {(name: string, isTerm: boolean, cost: Cost) => void}
+		 */
+		callbacks.onIncrCost = (name, isTerm, cost) => {
 			memCost += cost.mem;
 			cpuCost += cost.cpu;
+
+			if (name !== undefined) {
+				if (isTerm) {
+					const prev = terms[name];
+					if (prev !== undefined) {
+						terms[name] = {
+							mem: prev.mem + cost.mem,
+							cpu: prev.cpu + cost.cpu
+						};
+					} else {
+						terms[name] = cost;
+					}
+				} else {
+					const prev = builtins[name];
+
+					if (prev !== undefined) {
+						builtins[name] = {
+							mem: prev.mem + cost.mem,
+							cpu: prev.cpu + cost.cpu
+						};
+					} else {
+						builtins[name] = cost;
+					}
+				}
+			}
 		};
 		
 		/** @type {string[]} */
@@ -11365,8 +11349,10 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 			mem: memCost,
 			cpu: cpuCost,
 			size: this.calcSize(),
+			builtins: builtins,
+			terms: terms,
 			result: result,
-			messages: messages,
+			messages: messages
 		};
 	}
 
@@ -11615,6 +11601,21 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 	}
 
 	/**
+	 * @param {() => UplcValue} typedReader 
+	 * @returns {UplcValue[]}
+	 */
+	readList(typedReader) {
+		/** @type {UplcValue[]} */
+		let items = [];
+
+		while (this.readBits(1) == 1) {
+			items.push(typedReader());
+		}
+
+		return items;
+	}
+
+	/**
 	 * Reads a data object
 	 * @returns {UplcData}
 	 */
@@ -11622,35 +11623,6 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 		let bytes = this.readBytes();
 
 		return UplcData.fromCbor(bytes);
-	}
-
-	/**
-	 * @returns {UplcData[]}
-	 */
-	readDataList() {
-		/** @type {UplcData[]} */
-		let items = [];
-
-		while (this.readBits(1) == 1) {
-			items.push(this.readData());
-		}
-
-		return items;
-	}
-
-	/**
-	 * @returns {UplcMapItem[]}
-	 */
-	readDataPairList() {
-		/** @type {UplcMapItem[]} */
-		let pairs = [];
-
-		while (this.readBits(1) == 1) {
-			pairs.push(new UplcMapItem(Site.dummy(), this.readData(), this.readData()));
-		}
-
-
-		return pairs;
 	}
 
 	/**
@@ -11697,47 +11669,62 @@ const PLUTUS_SCRIPT_VERSION = "PlutusScriptV2";
 	}
 
 	/**
-	 * Reads a single constant (recursive types not yet handled)
+	 * Reads a single constant
 	 * @param {number[]} typeList 
 	 * @returns {UplcValue}
 	 */
 	readTypedValue(typeList) {
-		let type = assertDefined(typeList.shift());
+		const typedReader = this.constructTypedReader(typeList);
 
-		assert(type == 7 || typeList.length == 0);
+		assertEq(typeList.length, 0, "Did not consume all type parameters");
+
+		return typedReader();
+	}
+
+	/**
+	 * Constructs a reader for a single construct recursively
+	 * @param {number[]} typeList 
+	 * NOTE: the implicit assumption is that this functions modifies the typeList
+	 * by removing all elements that it "consumed" to define a type
+	 * @returns {() => UplcValue}
+	 */
+	constructTypedReader(typeList){
+		const type = assertDefined(typeList.shift());
 
 		switch (type) {
 			case 0: // signed Integer
-				return this.readInteger(true);
+				return () => this.readInteger(true);
 			case 1: // bytearray
-				return this.readByteArray();
+				return () => this.readByteArray();
 			case 2: // utf8-string
-				return this.readString();
+				return () => this.readString();
 			case 3:
-				return new UplcUnit(Site.dummy()); // no reading needed
+				return () => new UplcUnit(Site.dummy()); // no reading needed
 			case 4: // Bool
-				return new UplcBool(Site.dummy(), this.readBits(1) == 1);
+				return () => new UplcBool(Site.dummy(), this.readBits(1) == 1);
 			case 5:
 			case 6:
 				throw new Error("unexpected type tag without type application");
 			case 7:
-				if (eq(typeList, [5, 8])) {
-					return new UplcList(Site.dummy(), this.readDataList());
-				} else if (eq(typeList, [5, 7, 7, 6, 8, 8])) {
-					// map of (data, data)
-					return new UplcMap(Site.dummy(), this.readDataPairList());
-				} else if (eq(typeList, [7, 6, 8, 8])) {
-					// pair of (data, data)
-					return new UplcMapItem(Site.dummy(), this.readData(), this.readData());
-				} else if (eq(typeList, [7, 6, 0, 7, 5, 8])) {
-					// constr
-					return new UplcPair(Site.dummy(), this.readInteger(true), new UplcList(Site.dummy(), this.readDataList()));
+				let containerType = assertDefined(typeList.shift());
+				if (containerType == 5) {
+					// typeList is consumed by the construct call, so make sure to read it before!
+					const listType = UplcType.fromNumbers(typeList);
+					const typeReader = this.constructTypedReader(typeList);
+
+					return () => new UplcList(Site.dummy(), listType, this.readList(typeReader));
 				} else {
-					console.log(typeList);
-					throw new Error("unhandled container type")
+					assertEq(containerType, 7, "Unexpected type tag");
+					containerType = assertDefined(typeList.shift());
+					if (containerType == 6) {
+						// typeList is consumed by the construct call, so make sure to read it in correct order!
+						const leftReader = this.constructTypedReader(typeList);
+						const rightReader = this.constructTypedReader(typeList);
+						return () => new UplcPair(Site.dummy(), leftReader(), rightReader())
+					}
 				}
 			case 8:
-				return new UplcDataValue(Site.dummy(), this.readData());
+				return () => new UplcDataValue(Site.dummy(), this.readData());
 			default:
 				throw new Error(`unhandled constant type ${type.toString()}`);
 		}
@@ -12449,6 +12436,7 @@ function tokenizeIR(rawSrc, codeMap) {
  *   nFields(site: Site): number,
  *   hasField(key: Word): boolean,
  *   getFieldType(site: Site, i: number): Type,
+ * 	 getFieldIndex(site: Site, name: string): number,
  *   getFieldName(i: number): string,
  *   getConstrIndex(site: Site): number,
  *   nEnumMembers(site: Site): number,
@@ -12640,6 +12628,17 @@ class EvalEntity {
 	 * @returns {Type}
 	 */
 	getFieldType(site, i) {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * Returns the index of struct or enumMember fields.
+	 * Used to order literal struct fields.
+	 * @param {Site} site
+	 * @param {string} name
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
 		throw new Error("not yet implemented");
 	}
 
@@ -13022,6 +13021,16 @@ class StatementType extends DataType {
 	 */
 	getFieldType(site, i) {
 		return this.#statement.getFieldType(site, i);
+	}
+
+	/**
+	 * Returns the index of a named field of a Struct or an EnumMember
+	 * @param {Site} site
+	 * @param {string} name
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		return this.#statement.getFieldIndex(site, name);
 	}
 
 	/**
@@ -13605,7 +13614,12 @@ class Instance extends NotType {
 		} else if (type instanceof FuncType) {
 			return new FuncInstance(type);
 		} else if (type instanceof ParamType) {
-			return new DataInstance(type.dataType);
+			const t = type.type;
+			if (t == null) {
+				throw new Error("expected non-null type");
+			} else {
+				return Instance.new(t);
+			}
 		} else if (type instanceof ErrorType) {
 			return new ErrorInstance();
 		} else if (type instanceof VoidType) {
@@ -13701,6 +13715,16 @@ class DataInstance extends Instance {
 	 */
 	getFieldType(site, i) {
 		return this.#type.getFieldType(site, i);
+	}
+
+	/**
+	 * Returns the index of a named field
+	 * @param {Site} site 
+	 * @param {string} name 
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		return this.#type.getFieldIndex(site, name);
 	}
 
 	/**
@@ -13833,12 +13857,22 @@ class FuncInstance extends Instance {
 	}
 
 	/**
-	 * Throws an error because a function value doens't have any fields.
+	 * Throws an error because a function value doesn't have any fields.
 	 * @param {Site} site
 	 * @param {number} i
 	 * @returns {Type}
 	 */
 	getFieldType(site, i) {
+		throw site.typeError("a function doesn't have fields");
+	}
+
+	/**
+	 * Throws an error because a function value have any fields.
+	 * @param {Site} site 
+	 * @param {string} name 
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
 		throw site.typeError("a function doesn't have fields");
 	}
 
@@ -14004,6 +14038,15 @@ class VoidInstance extends Instance {
 	}
 
 	/**
+	 * @param {Site} site
+	 * @param {string} name
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		throw new Error("can't get field-type of void");
+	}
+
+	/**
 	 * @param {Site} site 
 	 * @returns {number}
 	 */
@@ -14144,10 +14187,13 @@ class IntType extends BuiltinType {
 	 */
 	getTypeMember(name) {
 		switch (name.value) {
-			case "parse":
-				return Instance.new(new FuncType([new StringType()], new IntType()));
 			case "from_little_endian":
 				return Instance.new(new FuncType([new ByteArrayType()], new IntType()));
+			case "max":
+			case "min": 
+				return Instance.new(new FuncType([new IntType(), new IntType()], new IntType()));
+			case "parse":
+				return Instance.new(new FuncType([new StringType()], new IntType()));
 			default:
 				return super.getTypeMember(name);
 		}
@@ -14173,6 +14219,11 @@ class IntType extends BuiltinType {
 			case "__leq":
 			case "__lt":
 				return Instance.new(new FuncType([new IntType()], new BoolType()));
+			case "bound":
+				return Instance.new(new FuncType([new IntType(), new IntType()], new IntType()));
+			case "bound_min":
+			case "bound_max":
+				return Instance.new(new FuncType([new IntType()], new IntType()));
 			case "to_bool":
 				return Instance.new(new FuncType([], new BoolType()));
 			case "to_hex":
@@ -14461,21 +14512,6 @@ class ParamType extends Type {
 		}
 	}
 
-    /**
-     * @type {DataType}
-     */
-    get dataType() {
-        const t = this.type;
-
-        if (t == null) {
-            throw new Error("expected non-null type");
-        } else if (t instanceof DataType) {
-            return t;
-        } else {
-            throw new Error("expected a dataType");
-        }
-    }
-
 	toString() {
 		if (this.#type === null) {
 			return this.#name;
@@ -14522,6 +14558,20 @@ class ParamType extends Type {
 			throw new Error("should've been set");
 		} else {
 			return this.#type.getFieldType(site, i);
+		}
+	}
+
+	/**
+	 * Returns the i-th field of a Struct or an EnumMember
+	 * @param {Site} site
+	 * @param {string} name
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		if (this.#type === null) {
+			throw new Error("should've been set");
+		} else {
+			return this.#type.getFieldIndex(site, name);
 		}
 	}
 
@@ -14725,6 +14775,8 @@ class ListType extends BuiltinType {
 				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new OptionType(this.#itemType)));
 			case "filter":
 				return Instance.new(new FuncType([new FuncType([this.#itemType], new BoolType())], new ListType(this.#itemType)));
+			case "for_each":
+				return Instance.new(new FuncType([new FuncType([this.#itemType], new VoidType())], new VoidType()));
 			case "fold": {
 				let a = new ParamType("a");
 				return new ParamFuncValue([a], new FuncType([new FuncType([a, this.#itemType], a), a], a));
@@ -14862,6 +14914,8 @@ class MapType extends BuiltinType {
 				let a = new ParamType("a");
 				return new ParamFuncValue([a], new FuncType([new FuncType([this.#keyType, this.#valueType, new FuncType([], a)], a), a], a));
 			}
+			case "for_each":
+				return Instance.new(new FuncType([new FuncType([this.#keyType, this.#valueType], new VoidType())], new VoidType()));
 			case "get":
 				return Instance.new(new FuncType([this.#keyType], this.#valueType));
 			case "get_safe":
@@ -14996,6 +15050,21 @@ class OptionType extends BuiltinType {
 	 */
 	getInstanceMember(name) {
 		switch (name.value) {
+			case "map": {
+				let a = new ParamType("a");
+				return new ParamFuncValue([a], new FuncType([new FuncType([this.#someType], a)], new OptionType(a)), () => {
+					let type = a.type;
+					if (type === null) {
+						throw new Error("should've been inferred by now");
+					} else {
+						if ((new BoolType()).isBaseOf(Site.dummy(), type)) {
+							return "map_to_bool";
+						} else {
+							return "map";
+						}
+					}
+				});
+			}
 			case "unwrap":
 				return Instance.new(new FuncType([], this.#someType));
 			default:
@@ -15067,7 +15136,18 @@ class OptionSomeType extends BuiltinEnumMember {
 	 * @returns {Type}
 	 */
 	getFieldType(site, i) {
+		assert(i == 0);
 		return this.#someType;
+	}
+
+	/**
+	 * @param {Site} site
+	 * @param {string} name
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		assert(name == "some");
+		return 0;
 	}
 
 	/**
@@ -15570,31 +15650,37 @@ class ScriptContextType extends BuiltinType {
 				return Instance.new(new TxType());
 			case "get_spending_purpose_output_id":
 				if (this.#purpose == ScriptPurpose.Minting || this.#purpose == ScriptPurpose.Staking) {
-					throw name.referenceError("not available in minting script");
+					throw name.referenceError("not available in minting/staking script");
 				} else {
 					return Instance.new(new FuncType([], new TxOutputIdType()));
 				}
 			case "get_current_validator_hash":
 				if (this.#purpose == ScriptPurpose.Minting || this.#purpose == ScriptPurpose.Staking) {
-					throw name.referenceError("not available in minting script");
+					throw name.referenceError("not available in minting/staking script");
 				} else {
 					return Instance.new(new FuncType([], new ValidatorHashType(this.#purpose)));
 				}
 			case "get_current_minting_policy_hash":
 				if (this.#purpose == ScriptPurpose.Spending || this.#purpose == ScriptPurpose.Staking) {
-					throw name.referenceError("not available in minting script");
+					throw name.referenceError("not available in spending/staking script");
 				} else {
 					return Instance.new(new FuncType([], new MintingPolicyHashType(this.#purpose)));
 				}
 			case "get_current_input":
 				if (this.#purpose == ScriptPurpose.Minting || this.#purpose == ScriptPurpose.Staking) {
-					throw name.referenceError("not available in spending script");
+					throw name.referenceError("not available in minting/staking script");
 				} else {
 					return Instance.new(new FuncType([], new TxInputType()));
 				}
+			case "get_cont_outputs":
+				if (this.#purpose == ScriptPurpose.Minting || this.#purpose == ScriptPurpose.Staking) {
+					throw name.referenceError("not available in minting/staking script");
+				} else {
+					return Instance.new(new FuncType([], new ListType(new TxOutputType())));
+				}
 			case "get_staking_purpose":
 				if (this.#purpose == ScriptPurpose.Minting || this.#purpose == ScriptPurpose.Spending) {
-					throw name.referenceError("not available in staking script");
+					throw name.referenceError("not available in minting/spending script");
 				} else {
 					return Instance.new(new FuncType([], new StakingPurposeType()));
 				}
@@ -16236,10 +16322,14 @@ class TxType extends BuiltinType {
 				return Instance.new(new ListType(new PubKeyHashType()));
 			case "redeemers":
 				return Instance.new(new MapType(new ScriptPurposeType(), new RawDataType()));
+			case "datums":
+				return Instance.new(new MapType(new DatumHashType(), new RawDataType()));
 			case "id":
 				return Instance.new(new TxIdType());
 			case "find_datum_hash":
 				return Instance.new(new FuncType([new AnyDataType()], new DatumHashType()));
+			case "get_datum_data":
+				return Instance.new(new FuncType([new TxOutputType()], new RawDataType()));
 			case "outputs_sent_to":
 				return Instance.new(new FuncType([new PubKeyHashType()], new ListType(new TxOutputType())));
 			case "outputs_sent_to_datum":
@@ -16640,6 +16730,19 @@ class RawDataType extends BuiltinType {
 				throw name.referenceError(`calling Data::from_data(data) is useless`);
 			default:
 				return super.getTypeMember(name);
+		}
+	}
+
+	/**
+	 * @param {Word} name 
+	 * @returns {Instance}
+	 */
+	getInstanceMember(name) {
+		switch (name.value) {
+			case "tag":
+				return Instance.new(new IntType());
+			default:
+				return super.getInstanceMember(name);
 		}
 	}
 
@@ -17402,6 +17505,10 @@ class ValueType extends BuiltinType {
 				return Instance.new(new FuncType([new AssetClassType()], new IntType()));
 			case "get_safe":
 				return Instance.new(new FuncType([new AssetClassType()], new IntType()));
+			case "get_lovelace":
+				return Instance.new(new FuncType([], new IntType()));
+			case "get_assets":
+				return Instance.new(new FuncType([], new ValueType()));
 			case "get_policy":
 				return Instance.new(new FuncType([new MintingPolicyHashType()], new MapType(new ByteArrayType(), new IntType())));
 			case "contains_policy":
@@ -18801,6 +18908,11 @@ class StructLiteralExpr extends ValueExpr {
 		return `${this.#typeExpr.toString()}{${this.#fields.map(f => f.toString()).join(", ")}}`;
 	}
 
+	isNamed() {
+		// the expression builder already checked that all fields are named or all or positional (i.e. not mixed)
+		return this.#fields.length > 0 && this.#fields[0].isNamed();
+	}
+
 	/**
 	 * @param {Scope} scope 
 	 * @returns 
@@ -18815,7 +18927,7 @@ class StructLiteralExpr extends ValueExpr {
 		let instance = Instance.new(type);
 
 		if (instance.nFields(this.site) != this.#fields.length) {
-			throw this.typeError("wrong number of fields");
+			throw this.typeError(`wrong number of fields for ${type.toString()}, expected ${instance.nFields(this.site)}, got ${this.#fields.length}`);
 		}
 
 		for (let i = 0; i < this.#fields.length; i++) {
@@ -18828,18 +18940,14 @@ class StructLiteralExpr extends ValueExpr {
 				let memberType = instance.getInstanceMember(f.name).getType(f.name.site);
 
 				if (!fieldVal.isInstanceOf(f.site, memberType)) {
-					throw f.site.typeError(`wrong field type for '${f.name.toString()}'`);
+					throw f.site.typeError(`wrong field type for '${f.name.toString()}', expected ${memberType.toString()}, got ${fieldVal.getType(Site.dummy()).toString()}`);
 				}
-			}
-			
-			// check the positional type
-			let memberType = instance.getFieldType(f.site, i);
-			
-			if (!fieldVal.isInstanceOf(f.site, memberType)) {
-				if (f.isNamed()) {
-					throw f.site.typeError("wrond field order");
-				} else {
-					throw f.site.typeError("wrong field type");
+			} else {
+				// check the positional type
+				let memberType = instance.getFieldType(f.site, i);
+				
+				if (!fieldVal.isInstanceOf(f.site, memberType)) {
+					throw f.site.typeError(`wrong field type for field ${i.toString()}, expected ${memberType.toString()}, got ${fieldVal.getType(Site.dummy()).toString()}`);
 				}
 			}
 		}
@@ -18862,14 +18970,21 @@ class StructLiteralExpr extends ValueExpr {
 	toIR(indent = "") {
 		let res = new IR("__core__mkNilData(())");
 
-		let fields = this.#fields.slice();
+		const type = this.#typeExpr.type;
 
-		let instance = Instance.new(this.#typeExpr.type);
+		const instance = Instance.new(type);
+
+		const fields = this.#fields.slice();
+
+		// sort fields by correct name
+		if (this.isNamed()) {
+			fields.sort((a, b) => type.getFieldIndex(this.site, a.name.value) - type.getFieldIndex(this.site, b.name.value));
+		}
 
 		for (let i = fields.length - 1; i >= 0; i--) {
-			let f = fields[i];
+			const f = fields[i];
 
-			let isBool = instance.getFieldType(f.site, i) instanceof BoolType;
+			const isBool = instance.getFieldType(f.site, i) instanceof BoolType;
 
 			let fIR = f.toIR(indent);
 
@@ -21474,7 +21589,12 @@ class ConstStatement extends Statement {
 	 * @returns {IR}
 	 */
 	toIRInternal() {
-		return this.#valueExpr.toIR();
+		return new IR([
+			new IR("const(", this.site),
+			this.#valueExpr.toIR(),
+			new IR(")")
+		])
+		
 	}
 
 	/**
@@ -21553,8 +21673,7 @@ class DataDefinition extends Statement {
 	}
 
 	/**
-	 * @param {Scope} scope 
-	 * @returns {Type}
+	 * @param {Scope} scope
 	 */
 	evalInternal(scope) {
 		for (let f of this.#fields) {
@@ -21563,15 +21682,6 @@ class DataDefinition extends Statement {
 			if (fieldType instanceof FuncType) {
 				throw f.site.typeError("field can't be function type");
 			}
-		}
-
-		// the following assertion is needed for vscode typechecking
-		if (this instanceof StructStatement) {
-            return new StructStatementType(this);
-        } else if (this instanceof EnumMember) {
-			return new EnumMemberStatementType(this);
-		} else {
-			throw new Error("unhandled implementations");
 		}
 	}
 
@@ -21590,6 +21700,21 @@ class DataDefinition extends Statement {
 	 */
 	getFieldType(site, i) {
 		return this.#fields[i].type;
+	}
+
+	/**
+	 * @param {Site} site 
+	 * @param {string} name 
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
+		const i = this.findField(new Word(Site.dummy(), name));
+
+		if (i == -1) {
+			throw site.typeError(`field ${name} not find in ${this.toString()}`);
+		} else {
+			return i;
+		}
 	}
 
 	/**
@@ -21751,7 +21876,10 @@ class StructStatement extends DataDefinition {
 			throw this.syntaxError("expected at least 1 struct field");
 		}
 
-		scope.set(this.name, this.evalInternal(scope));
+		// add before so recursive types are possible
+		scope.set(this.name, this.type);
+
+		this.evalInternal(scope);
 
 		// check the types of the member methods
 		this.#impl.eval(scope);
@@ -22007,7 +22135,7 @@ class EnumMember extends DataDefinition {
 			throw new Error("parent should've been registered");
 		}
 
-		void super.evalInternal(scope); // the internally created type isn't be added to the scope. (the parent enum type takes care of that)
+		super.evalInternal(scope); // the internally created type isn't be added to the scope. (the parent enum type takes care of that)
 	}
 
 	/**
@@ -22106,11 +22234,11 @@ class EnumStatement extends Statement {
 	 * @param {Scope} scope 
 	 */
 	eval(scope) {
+		scope.set(this.name, this.type);
+
 		this.#members.forEach(m => {
 			m.eval(scope);
 		});
-
-		scope.set(this.name, this.type);
 
 		this.#impl.eval(scope);
 	}
@@ -22139,6 +22267,15 @@ class EnumStatement extends Statement {
 	 * @returns {Type}
 	 */
 	getFieldType(site, i) {
+		throw site.typeError("enum doesn't have fields");
+	}
+
+	/**f
+	 * @param {Site} site 
+	 * @param {string} name 
+	 * @returns {number}
+	 */
+	getFieldIndex(site, name) {
 		throw site.typeError("enum doesn't have fields");
 	}
 
@@ -23136,7 +23273,7 @@ function buildFuncRetTypeExprs(site, ts, allowInferredRetType = false) {
 			throw site.syntaxError("expected type expression after '->'");
 		}
 	} else {
-		if (ts[0].isGroup("(")) {
+		if (ts[0].isGroup("(") && (ts.length == 1 || !ts[1].isSymbol("->"))) {
 			const group = assertDefined(ts.shift()).assertGroup("(");
 
 			if (group.fields.length == 0) {
@@ -24059,22 +24196,23 @@ function buildStructLiteralExpr(ts) {
 
 	const braces = assertDefined(ts.shift()).assertGroup("{");
 
-	const nFields = braces.fields.length;
+	const fields = braces.fields.map(fts => buildStructLiteralField(braces.site, fts));
 
-	const fields = braces.fields.map(fts => buildStructLiteralField(braces.site, fts, nFields > 1));
-
-	return new StructLiteralExpr(typeExpr, fields);
+	if (fields.every(f => f.isNamed()) || fields.every(f => !f.isNamed())) {
+		return new StructLiteralExpr(typeExpr, fields);
+	} else {
+		throw braces.site.syntaxError("mangled literal struct (hint: specify all fields positionally or all with keys)");
+	}
 }
 
 /**
  * @package
  * @param {Site} bracesSite
- * @param {Token[]} ts 
- * @param {boolean} isNamed
+ * @param {Token[]} ts
  * @returns {StructLiteralField}
  */
-function buildStructLiteralField(bracesSite, ts, isNamed) {
-	if (isNamed) {
+function buildStructLiteralField(bracesSite, ts) {
+	if (ts.length > 2 && ts[0].isWord() && ts[1].isSymbol(":")) {
 		const maybeName = ts.shift();
 		if (maybeName === undefined) {
 			throw bracesSite.syntaxError("empty struct literal field");
@@ -24097,13 +24235,9 @@ function buildStructLiteralField(bracesSite, ts, isNamed) {
 			}
 		}
 	} else {
-		if (ts.length > 1 && ts[0].isWord() && ts[1].isSymbol(":")) {
-			throw ts[0].syntaxError(`unexpected key '${ts[0].toString()}' (struct literals with only 1 field don't use keys)`);
-		} else {
-			const valueExpr = buildValueExpr(ts);
+		const valueExpr = buildValueExpr(ts);
 
-			return new StructLiteralField(null, valueExpr);
-		}
+		return new StructLiteralField(null, valueExpr);
 	}
 }
 
@@ -24258,7 +24392,7 @@ function makeRawFunctions() {
 	 * @param {string} errorExpr 
 	 * @returns {string}
 	 */
-	function unData(dataExpr, iConstr, iField, errorExpr = "__core__error(\"unexpected constructor index\")") {
+	function unData(dataExpr, iConstr, iField, errorExpr = "error(\"unexpected constructor index\")") {
 		let inner = "__core__sndPair(pair)";
 		for (let i = 0; i < iField; i++) {
 			inner = `__core__tailList(${inner})`;
@@ -24311,14 +24445,14 @@ function makeRawFunctions() {
 	// Common builtins
 	add(new RawFunc("__helios__common__verbose_error",
 	`(msg) -> {
-		__core__trace(msg, () -> {__core__error("")})()
+		__core__trace(msg, () -> {error("")})()
 	}`));
 	add(new RawFunc("__helios__common__assert_constr_index",
 	`(data, i) -> {
 		__core__ifThenElse(
 			__core__equalsInteger(__core__fstPair(__core__unConstrData(data)), i),
 			() -> {data},
-			() -> {__core__error("unexpected constructor index")}
+			() -> {error("unexpected constructor index")}
 		)()
 	}`));
 	add(new RawFunc("__helios__common____identity",
@@ -24446,7 +24580,7 @@ function makeRawFunctions() {
 			(recurse, self, fn) -> {
 				__core__ifThenElse(
 					__core__nullList(self), 
-					() -> {__core__error("not found")}, 
+					() -> {error("not found")}, 
 					() -> {
 						__core__ifThenElse(
 							fn(__core__headList(self)), 
@@ -24789,7 +24923,7 @@ function makeRawFunctions() {
 		__core__trace(
 			__helios__common__unStringData(msg), 
 			() -> {
-				__core__error("error thrown by user-code")
+				error("error thrown by user-code")
 			}
 		)()
 	}`));
@@ -24804,7 +24938,7 @@ function makeRawFunctions() {
 				__core__trace(
 					__helios__common__unStringData(msg),
 					() -> {
-						__core__error("assert failed")
+						error("assert failed")
 					}
 				)()
 			}
@@ -24895,6 +25029,40 @@ function makeRawFunctions() {
 			}
 		}(__core__unIData(self))
 	}`));
+	add(new RawFunc("__helios__int__min",
+	`(a, b) -> {
+		__core__ifThenElse(
+			__core__lessThanInteger(__core__unIData(a), __core__unIData(b)),
+			a,
+			b
+		)
+	}`));
+	add(new RawFunc("__helios__int__max",
+	`(a, b) -> {
+		__core__ifThenElse(
+			__core__lessThanInteger(__core__unIData(a), __core__unIData(b)),
+			b,
+			a
+		)
+	}`));
+	add(new RawFunc("__helios__int__bound_min",
+	`(self) -> {
+		(other) -> {
+			__helios__int__max(self, other)
+		}
+	}`));
+	add(new RawFunc("__helios__int__bound_max",
+	`(self) -> {
+		(other) -> {
+			__helios__int__min(self, other)
+		}
+	}`));
+	add(new RawFunc("__helios__int__bound",
+	`(self) -> {
+		(min, max) -> {
+			__helios__int__max(__helios__int__min(self, max), min)
+		}
+	}`));
 	add(new RawFunc("__helios__int__to_bool",
 	`(self) -> {
 		(self) -> {
@@ -24977,12 +25145,12 @@ function makeRawFunctions() {
 						__core__subtractInteger(digit, 48)
 					},
 					() -> {
-						__core__error("not a digit")
+						error("not a digit")
 					}
 				)()
 			},
 			() -> {
-				__core__error("not a digit")
+				error("not a digit")
 			}
 		)()
 	}`));
@@ -25001,7 +25169,7 @@ function makeRawFunctions() {
 										0
 									},
 									() -> {
-										__core__error("zero padded integer can't be parsed")
+										error("zero padded integer can't be parsed")
 									}
 								)()
 							},
@@ -25012,7 +25180,7 @@ function makeRawFunctions() {
 										__core__ifThenElse(
 											__core__equalsInteger(__core__indexByteString(bytes, 1), 48),
 											() -> {
-												__core__error("-0 not allowed")
+												error("-0 not allowed")
 											},
 											() -> {
 												__core__multiplyInteger(
@@ -25386,10 +25554,10 @@ function makeRawFunctions() {
 					(recurse, self, index) -> {
 						__core__ifThenElse(
 							__core__nullList(self), 
-							() -> {__core__error("index out of range")}, 
+							() -> {error("index out of range")}, 
 							() -> {__core__ifThenElse(
 								__core__lessThanInteger(index, 0), 
-								() -> {__core__error("index out of range")}, 
+								() -> {error("index out of range")}, 
 								() -> {
 									__core__ifThenElse(
 										__core__equalsInteger(index, 0), 
@@ -25449,6 +25617,31 @@ function makeRawFunctions() {
 		(self) -> {
 			(fn) -> {
 				__core__listData(__helios__common__filter_list(self, fn))
+			}
+		}(__core__unListData(self))
+	}`));
+	add(new RawFunc("__helios__list__for_each",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(recurse) -> {
+					recurse(recurse, self)
+				}(
+					(recurse, lst) -> {
+						__core__ifThenElse(
+							__core__nullList(lst),
+							() -> {
+								()
+							},
+							() -> {
+								__core__chooseUnit(
+									fn(__core__headList(lst)),
+									recurse(recurse, __core__tailList(lst))
+								)
+							}
+						)()
+					}
+				)
 			}
 		}(__core__unListData(self))
 	}`));
@@ -25583,6 +25776,16 @@ function makeRawFunctions() {
 			)
 		}
 	}`));
+	add(new RawFunc("__helios__boollist__for_each",
+	`(self) -> {
+		(fn) -> {
+			__helios__list__for_each(self)(
+				(item) -> {
+					fn(__helios__common__unBoolData(item))
+				}
+			)
+		}
+	}`));
 	add(new RawFunc("__helios__boollist__fold",
 	`(self) -> {
 		(fn, z) -> {
@@ -25698,7 +25901,7 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__map__get",
 	`(self) -> {
 		(key) -> {
-			__helios__common__map_get(self, key, (x) -> {x}, () -> {__core__error("key not found")})
+			__helios__common__map_get(self, key, (x) -> {x}, () -> {error("key not found")})
 		}
 	}`));
 	add(new RawFunc("__helios__map__get_safe",
@@ -25794,7 +25997,7 @@ function makeRawFunctions() {
 					(recurse, self, fn) -> {
 						__core__ifThenElse(
 							__core__nullList(self), 
-							() -> {__core__error("not found")}, 
+							() -> {error("not found")}, 
 							() -> {
 								(head) -> {
 									__core__ifThenElse(
@@ -25826,7 +26029,7 @@ function makeRawFunctions() {
 							__core__nullList(self), 
 							() -> {
 								(callback) -> {
-									callback(() -> {__core__error("not found")}, false)
+									callback(() -> {error("not found")}, false)
 								}
 							}, 
 							() -> {
@@ -25994,6 +26197,33 @@ function makeRawFunctions() {
 					}
 				)
 				
+			}
+		}(__core__unMapData(self))
+	}`));
+	add(new RawFunc("__helios__map__for_each",
+	`(self) -> {
+		(self) -> {
+			(fn) -> {
+				(recurse) -> {
+					recurse(recurse, self)
+				}(
+					(recurse, map) -> {
+						__core__ifThenElse(
+							__core__nullList(map),
+							() -> {
+								()
+							},
+							() -> {
+								(head) -> {
+									__core__chooseUnit(
+										fn(__core__fstPair(head), __core__sndPair(head)),
+										recurse(recurse, __core__tailList(map))
+									)
+								}(__core__headList(map))
+							}
+						)()
+					}
+				)
 			}
 		}(__core__unMapData(self))
 	}`));
@@ -26267,6 +26497,16 @@ function makeRawFunctions() {
 			)
 		}
 	}`));
+	add(new RawFunc("__helios__boolmap__for_each",
+	`(self) -> {
+		(fn) -> {
+			__helios__map__for_each(self)(
+				(key, value) -> {
+					fn(key, __helios__common__unBoolData(value))
+				}
+			)
+		}
+	}`));
 	add(new RawFunc("__helios__boolmap__set", 
 	`(self) -> {
 		(key, value) -> {
@@ -26289,8 +26529,36 @@ function makeRawFunctions() {
 
 	// Option[T] builtins
 	addDataFuncs("__helios__option");
-	add(new RawFunc("__helios__option__unwrap", `
-	(self) -> {
+	add(new RawFunc("__helios__option__map", 
+	`(self) -> {
+		(fn) -> {
+			(pair) -> {
+				__core__ifThenElse(
+					__core__equalsInteger(__core__fstPair(pair), 0),
+					() -> {
+						__helios__option__some__new(fn(__core__headList(__core__sndPair(pair))))
+					},
+					() -> {
+						__helios__option__none__new()
+					}
+				)()
+			}(__core__unConstrData(self))
+		}
+	}`));
+	add(new RawFunc("__helios__option__map_to_bool",
+	`(self) -> {
+		(fn) -> {
+			(fn) -> {
+				__helios__option__map(self)(fn)
+			}(
+				(data) -> {
+					__helios__common__boolData(fn(data))
+				}
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__option__unwrap", 
+	`(self) -> {
 		() -> {
 			__helios__common__field_0(self)
 		}
@@ -26331,6 +26599,30 @@ function makeRawFunctions() {
 	(self) -> {
 		() -> {
 			__helios__common__unBoolData(__helios__common__field_0(self))
+		}
+	}`));
+	add(new RawFunc("__helios__booloption__map",
+	`(self) -> {
+		(fn) -> {
+			(fn) -> {
+				__helios__option__map(self)(fn)
+			}(
+				(data) -> {
+					fn(__helios__common__unBoolData(data))
+				}
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__booloption__map_to_bool",
+	`(self) -> {
+		(fn) -> {
+			(fn) -> {
+				__helios__option__map(self)(fn)
+			}(
+				(data) -> {
+					__helios__common__boolData(fn(__helios__common__unBoolData(data)))
+				}
+			)
 		}
 	}`));
 
@@ -26428,6 +26720,32 @@ function makeRawFunctions() {
 					}
 				)
 			}(__helios__scriptcontext__get_spending_purpose_output_id(self)())
+		}
+	}`));
+	add(new RawFunc("__helios__scriptcontext__get_cont_outputs",
+	`(self) -> {
+		() -> {
+			(vh) -> {
+				(outputs) -> {
+					__helios__list__filter(outputs)(
+						(output) -> {
+							(credential) -> {
+								(pair) -> {
+									__core__ifThenElse(
+										__core__equalsInteger(__core__fstPair(pair), 0),
+										() -> {
+											false
+										},
+										() -> {
+											__core__equalsData(__core__headList(__core__sndPair(pair)), vh)
+										}
+									)()
+								}(__core__unConstrData(credential))
+							}(__helios__address__credential(__helios__txoutput__address(output)))
+						}
+					)
+				}(__helios__tx__outputs(__helios__scriptcontext__tx(self)))
+			}(__helios__scriptcontext__get_current_validator_hash(self)())
 		}
 	}`));
 	add(new RawFunc("__helios__scriptcontext__get_spending_purpose_output_id",
@@ -26602,7 +26920,7 @@ function makeRawFunctions() {
 	add(new RawFunc("__helios__tx__time_range", "__helios__common__field_7"));
 	add(new RawFunc("__helios__tx__signatories", "__helios__common__field_8"));
 	add(new RawFunc("__helios__tx__redeemers", "__helios__common__field_9"));
-	add(new RawFunc("__helios__tx__datums", "__helios__common__field_10"));// hidden getter, used by __helios__tx__find_datum_hash
+	add(new RawFunc("__helios__tx__datums", "__helios__common__field_10"));
 	add(new RawFunc("__helios__tx__id", "__helios__common__field_11"));
 	add(new RawFunc("__helios__tx__find_datum_hash",
 	`(self) -> {
@@ -26614,6 +26932,30 @@ function makeRawFunctions() {
 				},
 				__helios__common__identity
 			))
+		}
+	}`));
+	add(new RawFunc("__helios__tx__get_datum_data",
+	`(self) -> {
+		(output) -> {
+			(pair) -> {
+				(idx) -> {
+					__core__ifThenElse(
+						__core__equalsInteger(idx, 1),
+						() -> {
+							__helios__map__get(__helios__tx__datums(self))(__core__headList(__core__sndPair(pair)))
+						},
+						() -> {
+							__core__ifThenElse(
+								__core__equalsInteger(idx, 2),
+								() -> {
+									__core__headList(__core__sndPair(pair))
+								},
+								() -> {error("output doesn't have a datum")}
+							)()
+						}
+					)()
+				}(__core__fstPair(pair))
+			}(__core__unConstrData(__helios__txoutput__datum(output)))
 		}
 	}`));
 	add(new RawFunc("__helios__tx__filter_outputs",
@@ -26829,7 +27171,7 @@ function makeRawFunctions() {
 	addDataFuncs("__helios__txoutput");
 	add(new RawFunc("__helios__txoutput__new", 
 	`(address, value, datum) -> {
-		__core__constrData(0, __helios__common__list_3(address, value, datum))
+		__core__constrData(0, __helios__common__list_4(address, value, datum, __helios__option__none__new()))
 	}`));
 	add(new RawFunc("__helios__txoutput__address", "__helios__common__field_0"));
 	add(new RawFunc("__helios__txoutput__value", "__helios__common__field_1"));
@@ -26934,7 +27276,7 @@ function makeRawFunctions() {
 						__core__headList(fields)
 					},
 					() -> {
-						__core__error("not an inline datum")
+						error("not an inline datum")
 					}
 				)()
 			}(__core__fstPair(pair), __core__sndPair(pair))
@@ -26958,6 +27300,10 @@ function makeRawFunctions() {
 
 	// RawData
 	addDataFuncs("__helios__data");
+	add(new RawFunc("__helios__data__tag", 
+	`(self) -> {
+		__core__iData(__core__fstPair(__core__unConstrData(self)))
+	}`));
 
 
 	// TxOutputId
@@ -27729,7 +28075,7 @@ function makeRawFunctions() {
 					(outer, inner, map) -> {
 						__core__ifThenElse(
 							__core__nullList(map), 
-							() -> {__core__error("policy not found")}, 
+							() -> {error("policy not found")}, 
 							() -> {
 								__core__ifThenElse(
 									__core__equalsData(__core__fstPair(__core__headList(map)), mintingPolicyHash), 
@@ -27741,7 +28087,7 @@ function makeRawFunctions() {
 					}, (inner, map) -> {
 						__core__ifThenElse(
 							__core__nullList(map), 
-							() -> {__core__error("tokenName not found")}, 
+							() -> {error("tokenName not found")}, 
 							() -> {
 								__core__ifThenElse(
 									__core__equalsData(__core__fstPair(__core__headList(map)), tokenName),
@@ -27791,6 +28137,22 @@ function makeRawFunctions() {
 			}(__core__unMapData(self), __helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
 		}
 	}`));
+	add(new RawFunc("__helios__value__get_lovelace",
+	`(self) -> {
+		() -> {
+			__helios__value__get_safe(self)(__helios__assetclass__ADA)
+		}
+	}`));
+	add(new RawFunc("__helios__value__get_assets",
+	`(self) -> {
+		() -> {
+			__helios__map__filter(self)(
+				(key, _) -> {
+					__helios__common__not(__core__equalsByteString(__core__unBData(key), #))
+				}
+			)
+		}
+	}`));
 	add(new RawFunc("__helios__value__get_policy", 
 	`(self) -> {
 		(mph) -> {
@@ -27801,7 +28163,7 @@ function makeRawFunctions() {
 					(recurse, map) -> {
 						__core__ifThenElse(
 							__core__nullList(map),
-							() -> {__core__error("policy not found")},
+							() -> {error("policy not found")},
 							() -> {
 								__core__ifThenElse(
 									__core__equalsData(__core__fstPair(__core__headList(map)), mph),
@@ -27887,9 +28249,9 @@ function wrapWithRawFunctions(ir) {
 
 
 
-/////////////////////////////
-// Section 20: IR AST objects
-/////////////////////////////
+/////////////////////////////////
+// Section 20: IR Context objects
+/////////////////////////////////
 
 /**
  * Scope for IR names.
@@ -27967,105 +28329,35 @@ class IRScope {
 }
 
 /**
- * Map of variables to IRExpr
+ * IR class that represents function arguments
  * @package
  */
-class IRExprStack {
-	#throwRTErrors;
-	#map;
+class IRVariable extends Token {
+	#name;
 
 	/**
-	 * @param {boolean} throwRTErrors
-	 * Keeps order
-	 * @param {Map<IRVariable, IRExpr>} map
+	 * @param {Word} name
 	 */
-	constructor(throwRTErrors, map = new Map()) {
-		this.#throwRTErrors = throwRTErrors;
-		this.#map = map;
-	}
-
-	get throwRTErrors() {
-		return this.#throwRTErrors;
+	constructor(name) {
+		super(name.site);
+		this.#name = name;
 	}
 
 	/**
-	 * Doesn't mutate, returns a new stack
-	 * @param {IRVariable} ref 
-	 * @param {IRExpr} value 
-	 * @returns {IRExprStack}
+	 * @type {string}
 	 */
-	set(ref, value) {
-		/**
-		 * @type {Map<IRVariable, IRExpr>}
-		 */
-		let map = new Map();
-
-		for (let [k, v] of this.#map) {
-			map.set(k, v);
-		}
-
-		map.set(ref, value);
-
-		return new IRExprStack(this.#throwRTErrors, map);
+	get name() {
+		return this.#name.toString();
 	}
 
-	/**
-	 * Mutates
-	 * @param {IRVariable} variable
-	 * @param {IRExpr} expr
-	 */
-	setInline(variable, expr) {
-		this.#map.set(variable, expr);
-	}
-
-	/**
-	 * @param {IRVariable} ref
-	 * @returns {boolean}
-	 */
-	has(ref) {
-		return this.#map.has(ref);
-	}
-
-	/**
-	 * Returns null if not found
-	 * @param {IRVariable} ref
-	 * @returns {IRExpr}
-	 */
-	get(ref) {
-		return assertDefined(this.#map.get(ref)).copy();
-	}
-
-	/**
-	 * @returns {IRCallStack}
-	 */
-	initCallStack() {
-		let stack = new IRCallStack(this.#throwRTErrors);
-
-		for (let [variable, expr] of this.#map) {
-			let val = expr.eval(stack);
-			if (val !== null) {
-				stack = stack.set(variable, val);
-			}
-		}
-
-		return stack;
-	}
-
-	/**
-	 * Returns a list of the names in the stack
-	 * @returns {string}
-	 */
-	dump() {
-		let names = [];
-
-		for (let [k, _] of this.#map) {
-			names.push(k.name);
-		}
-
-		return names.join(", ");
+	toString() {
+		return this.name;
 	}
 }
 
+/**
+ * @package
+ */
 class IRValue {
 	constructor() {
 	}
@@ -28079,13 +28371,16 @@ class IRValue {
 	}
 
 	/**
-	 * @type {?IRLiteral}
+	 * @type {UplcValue}
 	 */
 	get value() {
-		return null;
+		throw new Error("not a literal value");
 	}
 }
 
+/**
+ * @package
+ */
 class IRFuncValue extends IRValue {
 	#callback;
 
@@ -28106,25 +28401,83 @@ class IRFuncValue extends IRValue {
 	}
 }
 
+/**
+ * @package
+ */
 class IRLiteralValue extends IRValue {
-	#literal;
+	#value;
 
 	/**
-	 * @param {IRLiteral} literal 
+	 * @param {UplcValue} value 
 	 */
-	constructor(literal) {
+	constructor(value) {
 		super();
-		this.#literal = literal;
+		this.#value = value;
 	}
 
 	/**
-	 * @type {?IRLiteral}
+	 * @type {UplcValue}
 	 */
 	get value() {
-		return this.#literal;
+		return this.#value;
 	}
 }
 
+/**
+ * @package
+ */
+class IRDeferredValue extends IRValue {
+    #deferred;
+
+    /**
+     * @type {undefined | null | IRValue}
+     */
+    #cache;
+
+    /**
+     * @param {() => ?IRValue} deferred
+     */
+    constructor(deferred) {
+        super();
+        this.#deferred = deferred;
+        this.#cache = undefined;
+    }
+    /**
+     * @param {IRValue[]} args 
+     * @returns {?IRValue}
+     */
+    call(args) {
+        if (this.#cache === undefined) {
+            this.#cache = this.#deferred();
+        }
+        
+        if (this.#cache != null) {
+            return this.#cache.call(args);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @type {UplcValue}
+     */
+    get value() {
+        if (this.#cache === undefined) {
+            this.#cache = this.#deferred();
+        }
+        
+        if (this.#cache != null) {
+            return this.#cache.value;
+        } else {
+            throw new Error("not a value");
+        }
+    }
+
+}
+
+/**
+ * @package
+ */
 class IRCallStack {
 	#throwRTErrors;
 	#parent;
@@ -28172,36 +28525,156 @@ class IRCallStack {
 	}
 }
 
+
+/////////////////////////////
+// Section 21: IR AST objects
+/////////////////////////////
+
 /**
- * IR class that represents function arguments
- * @package
+ * @typedef {Map<IRVariable, IRLiteralExpr>} IRLiteralRegistry
  */
-class IRVariable extends Token {
-	#name;
+
+export class IRNameExprRegistry {
+	/**
+	 * @type {Map<IRVariable, Set<IRNameExpr>>}
+	 */
+	#map;
 
 	/**
-	 * @param {Word} name
+	 * @type {Set<IRVariable>}
 	 */
-	constructor(name) {
-		super(name.site);
-		this.#name = name;
+	#maybeInsideLoop;
+
+	/**
+	 * Reset whenever recursion is detected.
+	 * @type {Set<IRVariable>}
+	 */
+	#variables;
+
+	/**
+	 * @param {Map<IRVariable, Set<IRNameExpr>>} map
+	 */
+	constructor(map = new Map(), maybeInsideLoop = new Set()) {
+		this.#map = map;
+		this.#maybeInsideLoop = maybeInsideLoop;
+		this.#variables = new Set();
 	}
 
 	/**
-	 * @type {string}
+	 * @param {IRNameExpr} nameExpr 
 	 */
-	get name() {
-		return this.#name.toString();
+	register(nameExpr) {
+		if (!nameExpr.isCore()) {
+			const variable = nameExpr.variable;
+
+			if (!this.#map.has(variable)) {
+				this.#map.set(variable, new Set([nameExpr]));
+			} else {
+				assertDefined(this.#map.get(variable)).add(nameExpr);
+			}
+
+			// add another reference in case of recursion
+			if (!this.#variables.has(variable)) {
+				this.#maybeInsideLoop.add(variable);
+			}
+		}
 	}
 
-	toString() {
-		return this.name;
+	/**
+	 * Used to prevent inlining upon recursion
+	 * @param {IRVariable} variable
+	 */
+	registerVariable(variable) {
+		this.#variables.add(variable)
+	}
+
+	/**
+	 * @param {IRVariable} variable 
+	 * @returns {number}
+	 */
+	countReferences(variable) {
+		const set = this.#map.get(variable);
+
+		if (set == undefined) {
+			return 0;
+		} else {
+			return set.size;
+		}
+	}
+
+	/**
+	 * @param {IRVariable} variable 
+	 * @returns {boolean}
+	 */
+	maybeInsideLoop(variable) {
+		return this.#maybeInsideLoop.has(variable);
+	}
+
+	/**
+	 * Called whenever recursion is detected
+	 * @returns {IRNameExprRegistry}
+	 */
+	resetVariables() {
+		return new IRNameExprRegistry(this.#map, this.#maybeInsideLoop);
 	}
 }
 
-/**
- * @typedef {(expr: IRExpr) => IRExpr} IRWalkFn
- */
+export class IRExprRegistry {
+	#nameExprs;
+
+	/**
+	 * @type {Map<IRVariable, IRExpr>}
+	 */
+	#inline;
+
+	/**
+	 * @param {IRNameExprRegistry} nameExprs 
+	 */
+	constructor(nameExprs) {
+		this.#nameExprs = nameExprs;
+		this.#inline = new Map();
+	}
+
+	/**
+	 * @param {IRVariable} variable 
+	 * @returns {number}
+	 */
+	countReferences(variable) {
+		return this.#nameExprs.countReferences(variable);
+	}
+
+	/**
+	 * @param {IRVariable} variable 
+	 * @returns {boolean}
+	 */
+	maybeInsideLoop(variable) {
+		return this.#nameExprs.maybeInsideLoop(variable);
+	}
+
+	/**
+	 * @param {IRVariable} variable
+	 * @returns {boolean}
+	 */
+	isInlineable(variable) {
+		return this.#inline.has(variable);
+	}
+
+	/**
+	 * @param {IRVariable} variable
+	 * @returns {IRExpr}
+	 */
+	getInlineable(variable) {
+		return assertDefined(this.#inline.get(variable)).copy();
+	}
+
+	/**
+	 * @param {IRVariable} variable 
+	 * @param {IRExpr} expr 
+	 */
+	addInlineable(variable, expr) {
+		this.#inline.set(variable, expr);
+	}
+}
 
 /**
  * Base class of all Intermediate Representation expressions
@@ -28216,29 +28689,7 @@ class IRExpr extends Token {
 	}
 
 	/**
-	 * Used during inlining/expansion to make sure multiple inlines of IRNameExpr don't interfere when setting the index
-	 * @returns {IRExpr}
-	 */
-	copy() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Score is size of equivalent Plutus-core expression
-	 * Optimizing signifies minimizing score
-	 * @returns {number} - number of bits (not bytes!)
-	 */
-	score() {
-		let term = this.toUplc();
-
-		let bitWriter = new BitWriter(); 
-
-		term.toFlat(bitWriter);
-
-		return bitWriter.length;
-	}
-
-	/**
+	 * For pretty printing the IR
 	 * @param {string} indent 
 	 * @returns {string}
 	 */
@@ -28255,20 +28706,11 @@ class IRExpr extends Token {
 	}
 
 	/**
-	 * Counts the number of times a variable is referenced inside the current expression
-	 * @param {IRVariable} ref
-	 * @returns {number}
-	 */
-	countRefs(ref) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Inline every variable that can be found in the stack.
-	 * @param {IRExprStack} stack
+	 * Turns all IRConstExpr istances into IRLiteralExpr instances
+	 * @param {IRCallStack} stack 
 	 * @returns {IRExpr}
 	 */
-	inline(stack) {
+	evalConstants(stack) {
 		throw new Error("not yet implemented");
 	}
 
@@ -28284,37 +28726,35 @@ class IRExpr extends Token {
 	}
 
 	/**
-	 * @param {IRWalkFn} fn 
+	 * Used to inline literals and to evaluate IRCoreCallExpr instances with only literal args.
+	 * @param {IRLiteralRegistry} literals
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
+	simplifyLiterals(literals) {
 		throw new Error("not yet implemented");
 	}
 
 	/**
-	 * Returns non-null expr if ok
-	 * @param {IRVariable} ref
-	 * @param {string} builtinName
-	 * @returns {?IRExpr}
+	 * Used before simplifyTopology
+	 * @param {IRNameExprRegistry} nameExprs
 	 */
-	wrapCall(ref, builtinName) {
-		throw new Error("not yet implemented")
-	}
-
-	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
-	 */
-	flattenCall(ref) {
+	registerNameExprs(nameExprs) {
 		throw new Error("not yet implemented");
 	}
 
 	/**
-	 * Simplify 'this' by returning something smaller (doesn't mutate)
-	 * @param {IRExprStack} stack - contains some global definitions that might be useful for simplification
+	 * Used during inlining/expansion to make sure multiple inlines of IRNameExpr don't interfere when setting the Debruijn index
 	 * @returns {IRExpr}
 	 */
-	simplify(stack) {
+	copy() {
+		throw new Error("not yet implemented");
+	}
+
+	/**
+	 * @param {IRExprRegistry} registry 
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
 		throw new Error("not yet implemented");
 	}
 
@@ -28369,7 +28809,7 @@ class IRNameExpr extends IRExpr {
 	 */
 	get variable() {
 		if (this.#variable === null) {
-			throw new Error("variable should be set");
+			throw new Error(`variable should be set (name: ${this.name})`);
 		} else {
 			return this.#variable;
 		}
@@ -28397,10 +28837,6 @@ class IRNameExpr extends IRExpr {
 		}
 	}
 
-	copy() {
-		return new IRNameExpr(this.#name, this.#variable);
-	}
-
 	/**
 	 * @param {string} indent 
 	 * @returns {string}
@@ -28423,29 +28859,11 @@ class IRNameExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
-	 */
-	countRefs(ref) {
-		return this.isVariable(ref) ? 1 : 0;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
+	 * @param {IRCallStack} stack 
 	 * @returns {IRExpr}
 	 */
-	inline(stack) {
-		if (this.isCore()) {
-			return this;
-		} else if (this.#variable === null) {
-			throw new Error("variable should be set");
-		} else {
-			if (stack.has(this.#variable)) {
-				return stack.get(this.#variable).inline(stack);
-			} else {
-				return this;
-			}
-		}
+	evalConstants(stack) {
+		return this;
 	}
 
 	/**
@@ -28460,62 +28878,42 @@ class IRNameExpr extends IRExpr {
 		} else if (this.#variable === null) {
 			throw new Error("variable should be set");
 		} else {
-			let v = stack.get(this.#variable);
-			if (v !== null) {
-				return v;
-			} else {
-				return null;
-			}
+			return stack.get(this.#variable);
 		}
 	}
 
 	/**
-	 * @param {IRWalkFn} fn 
+	 * @param {IRLiteralRegistry} literals
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
-		return fn(this);
-	}
-
-	/**
-	 * @param {IRVariable} ref 
-	 * @param {string} builtinName 
-	 * @returns {?IRExpr}
-	 */
-	wrapCall(ref, builtinName) {
-		return this.isVariable(ref) ? null : this;
-	}
-
-	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
-	 */
-	flattenCall(ref) {
-		return this.isVariable(ref) ? null : this;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplify(stack) {
-		if (this.isCore()) {
-			return this;
-		} else if (this.#variable === null) {
-			throw new Error("variable should be set");
+	simplifyLiterals(literals) {
+		if (this.#variable !== null && literals.has(this.#variable)) {
+			return assertDefined(literals.get(this.#variable));
 		} else {
-			// first check if expanded version is smaller
-			if (stack.has(this.#variable)) {
-				let that = stack.get(this.#variable);
+			return this;
+		}
+	}
 
-				if (that.score() <= this.score()) {
-					return that;
-				} else {
-					return this;
-				}
-			} else {
-				return this;
-			}
+	/**
+	 * @param {IRNameExprRegistry} nameExprs
+	 */
+	registerNameExprs(nameExprs) {
+		nameExprs.register(this);
+	}
+
+	copy() {
+		return new IRNameExpr(this.#name, this.#variable);
+	}
+
+	/**
+	 * @param {IRExprRegistry} registry 
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
+		if (!this.isCore() && registry.isInlineable(this.variable)) {
+			return registry.getInlineable(this.variable);
+		} else {
+			return this;
 		}
 	}
 
@@ -28544,7 +28942,7 @@ class IRNameExpr extends IRExpr {
  * IR wrapper for UplcValues, representing literals
  * @package
  */
-class IRLiteral extends IRExpr {
+class IRLiteralExpr extends IRExpr {
 	/**
 	 * @type {UplcValue}
 	 */
@@ -28559,12 +28957,11 @@ class IRLiteral extends IRExpr {
 		this.#value = value;
 	}
 
+	/**
+	 * @type {UplcValue}
+	 */
 	get value() {
 		return this.#value;
-	}
-
-	copy() {
-		return new IRLiteral(this.#value);
 	}
 
 	/**
@@ -28583,72 +28980,43 @@ class IRLiteral extends IRExpr {
 	}
 
 	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
+	 * @param {IRCallStack} stack
 	 */
-	countRefs(ref) {
-		return 0;
-	}
-
-	/**
-	 * Returns 'this' (nothing to inline)
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	inline(stack) {
+	evalConstants(stack) {
 		return this;
 	}
 
-
-	
 	/**
 	 * @param {IRCallStack} stack
 	 * @returns {?IRValue}
 	 */
 	eval(stack) {
-		return new IRLiteralValue(this);
+		return new IRLiteralValue(this.value);
 	}
-	
+
 	/**
-	 * @param {IRVariable} ref 
-	 * @param {string} builtinName 
-	 * @returns {?IRExpr}
+	 * @param {IRLiteralRegistry} literals
+	 * @returns {IRExpr}
 	 */
-	wrapCall(ref, builtinName) {
+	simplifyLiterals(literals) {
 		return this;
 	}
 
 	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
+	 * @param {IRNameExprRegistry} nameExprs
 	 */
-	flattenCall(ref) {
-		return this;
+	registerNameExprs(nameExprs) {
+	}
+
+	copy() {
+		return new IRLiteralExpr(this.#value);
 	}
 
 	/**
-	 * @param {IRWalkFn} fn 
+	 * @param {IRExprRegistry} registry 
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
-		return fn(this);
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @param {IRLiteral[]} args
-	 * @returns {?IRExpr}
-	 */
-	call(stack, args) {
-		throw new Error("can't call literal");
-	}
-
-	/**
-	 * Returns 'this' (nothing to simplify)
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplify(stack) {
+	simplifyTopology(registry) {
 		return this;
 	}
 
@@ -28657,6 +29025,56 @@ class IRLiteral extends IRExpr {
 	 */
 	toUplc() {
 		return new UplcConst(this.#value);
+	}
+}
+
+/**
+ * The IRExpr simplify methods aren't implemented because any IRConstExpr instances should've been eliminated during evalConstants.
+ * @package
+ */
+class IRConstExpr extends IRExpr {
+	#expr;
+
+	/**
+	 * @param {Site} site 
+	 * @param {IRExpr} expr 
+	 */
+	constructor(site, expr) {
+		super(site);
+		this.#expr = expr;
+	}
+
+	toString(indent = "") {
+		return `const(${this.#expr.toString(indent)})`;
+	}
+
+	/**
+	 * @param {IRScope} scope 
+	 */
+	resolveNames(scope) {
+		this.#expr.resolveNames(scope);
+	}
+
+	/**
+	 * @param {IRCallStack} stack
+	 * @returns {IRExpr}
+	 */
+	evalConstants(stack) {
+		const result = this.#expr.eval(stack);
+
+		if (result != null) {
+			return new IRLiteralExpr(result.value);
+		} else {
+			throw new Error("unable to evaluate const");
+		}
+	}
+
+	/**
+	 * @param {IRCallStack} stack 
+	 * @returns {?IRValue}
+	 */
+	eval(stack) {
+		return this.#expr.eval(stack);
 	}
 }
 
@@ -28687,10 +29105,6 @@ class IRFuncExpr extends IRExpr {
 		return this.#body;
 	}
 
-	copy() {
-		return new IRFuncExpr(this.site, this.args, this.#body.copy());
-	}
-
 	/**
 	 * @param {string} indent 
 	 * @returns {string}
@@ -28719,21 +29133,10 @@ class IRFuncExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
+	 * @param {IRCallStack} stack 
 	 */
-	countRefs(ref) {
-		return this.#body.countRefs(ref);
-	}
-
-	/**
-	 * Inline expressions in the body
-	 * Checking of unused args is done by caller
-	 * @param {IRExprStack} stack
-	 * @returns {IRFuncExpr}
-	 */
-	inline(stack) {
-		return new IRFuncExpr(this.site, this.#args, this.#body.inline(stack));
+	evalConstants(stack) {
+		return new IRFuncExpr(this.site, this.args, this.#body.evalConstants(stack));
 	}
 
 	/**
@@ -28747,8 +29150,7 @@ class IRFuncExpr extends IRExpr {
 			}
 
 			for (let i = 0; i < args.length; i++) {
-				let v = this.#args[i];
-				stack = stack.set(v, args[i]);
+				stack = stack.set(this.#args[i], args[i]);
 			}
 
 			return this.#body.eval(stack);
@@ -28756,72 +29158,34 @@ class IRFuncExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRWalkFn} fn
+	 * @param {IRLiteralRegistry} literals 
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
-		let body = this.body.walk(fn);
-
-		return fn(new IRFuncExpr(this.site, this.args, body));
+	simplifyLiterals(literals) {
+		return new IRFuncExpr(this.site, this.args, this.#body.simplifyLiterals(literals));
 	}
-
+	
 	/**
-	 * @param {IRVariable} ref
-	 * @param {string} builtinName 
-	 * @returns {?IRExpr}
+	 * @param {IRNameExprRegistry} nameExprs
 	 */
-	wrapCall(ref, builtinName) {
-		let body = this.body.wrapCall(ref, builtinName);
+	registerNameExprs(nameExprs) {
+		nameExprs = nameExprs.resetVariables();
 
-		if (body !== null) {
-			return new IRFuncExpr(this.site, this.args, body);
-		} else {
-			return null;
-		}
+		this.#args.forEach(a => nameExprs.registerVariable(a));
+
+		this.#body.registerNameExprs(nameExprs);
+	}
+
+	copy() {
+		return new IRFuncExpr(this.site, this.args, this.#body.copy());
 	}
 
 	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
-	 */
-	flattenCall(ref) {
-		let body = this.body.flattenCall(ref);
-
-		if (body !== null) {
-			return new IRFuncExpr(this.site, this.args, body);
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * Simplify body, returning a IRFuncExpr with the same args
-	 * @param {IRExprStack} stack
-	 * @returns {IRFuncExpr}
-	 */
-	simplifyBody(stack) {
-		return new IRFuncExpr(this.site, this.#args, this.#body.simplify(stack));
-	}
-
-	/**
-	 * Simplify body
-	 * (Checking of unused args is done by caller)
-	 * @param {IRExprStack} stack
+	 * @param {IRExprRegistry} registry 
 	 * @returns {IRExpr}
 	 */
-	simplify(stack) {
-		// a IRFuncExpr that wraps a Call with the same arguments, in the same order, can simply return that function
-		if (this.#body instanceof IRCallExpr && this.#body.argExprs.length == this.#args.length && this.#body.argExprs.every((a, i) => {
-			return (a instanceof IRNameExpr) && (!a.isCore()) && (this.#args[i] === a.variable);
-		})) {
-			if (this.#body instanceof IRCoreCallExpr) {
-				return new IRNameExpr(new Word(this.site, `__core__${this.#body.builtinName}`));
-			} else if (this.#body instanceof IRUserCallExpr && this.#body.fnExpr instanceof IRNameExpr) {
-				return this.#body.fnExpr;
-			}
-		}
-
-		return this.simplifyBody(stack);
+	simplifyTopology(registry) {
+		return new IRFuncExpr(this.site, this.args, this.#body.simplifyTopology(registry));
 	}
 
 	/** 
@@ -28842,7 +29206,6 @@ class IRFuncExpr extends IRExpr {
 		return term;
 	}
 }
-
 
 /**
  * Base class of IRUserCallExpr and IRCoreCallExpr
@@ -28883,25 +29246,19 @@ class IRCallExpr extends IRExpr {
 	/**
 	 * @param {IRScope} scope 
 	 */
-	resolveNames(scope) {
+	resolveNamesInArgs(scope) {
 		for (let argExpr of this.#argExprs) {
 			argExpr.resolveNames(scope);
 		}
 	}
 
 	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
+	 * @param {IRCallStack} stack 
+	 * @returns {IRExpr[]}
 	 */
-	countRefs(ref) {
-		let count = 0;
-		for (let argExpr of this.#argExprs) {
-			count += argExpr.countRefs(ref);
-		}
-
-		return count;
+	evalConstantsInArgs(stack) {
+		return this.#argExprs.map(a => a.evalConstants(stack));
 	}
-
 
 	/** 
 	 * @param {IRCallStack} stack
@@ -28926,71 +29283,26 @@ class IRCallExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRWalkFn} fn
+	 * @param {IRLiteralRegistry} literals
 	 * @returns {IRExpr[]}
 	 */
-	walkArgs(fn) {
-		return this.#argExprs.map(expr => expr.walk(fn));
+	simplifyLiteralsInArgs(literals) {
+		return this.#argExprs.map(a => a.simplifyLiterals(literals));
 	}
 
 	/**
-	 * @param {IRVariable} ref 
-	 * @param {string} builtinName 
-	 * @returns {?IRExpr[]}
+	 * @param {IRNameExprRegistry} nameExprs 
 	 */
-	wrapCallArgs(ref, builtinName) {
-		/**
-		 * @type {IRExpr[]}
-		 */
-		let wrapped = [];
-
-		for (let argExpr of this.#argExprs) {
-			let newArgExpr = argExpr.wrapCall(ref, builtinName);
-
-			if (newArgExpr === null) {
-				return null;
-			} else {
-				wrapped.push(newArgExpr);
-			}
-		}
-
-		return wrapped;
+	registerNameExprsInArgs(nameExprs) {
+		this.#argExprs.forEach(a => a.registerNameExprs(nameExprs));
 	}
 
 	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr[]}
-	 */
-	flattenCallArgs(ref) {
-		/**
-		 * @type {IRExpr[]}
-		 */
-		let args = [];
-
-		for (let argExpr of this.#argExprs) {
-			let arg = argExpr.flattenCall(ref);
-
-			if (arg === null) {
-				return null;
-			} else {
-				args.push(arg);
-			}
-		}
-
-		return args;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @param {boolean} inline
+	 * @param {IRExprRegistry} registry 
 	 * @returns {IRExpr[]}
 	 */
-	simplifyArgs(stack, inline = false) {
-		if (inline) {
-			return this.#argExprs.map(argExpr => argExpr.inline(stack));
-		} else {
-			return this.#argExprs.map(argExpr => argExpr.simplify(stack));
-		}
+	simplifyTopologyInArgs(registry) {
+		return this.#argExprs.map(a => a.simplifyTopology(registry));
 	}
 
 	/**
@@ -29012,653 +29324,6 @@ class IRCallExpr extends IRExpr {
 }
 
 /**
- * IR function call of non-core function
- * @package
- */
-class IRUserCallExpr extends IRCallExpr {
-	#fnExpr;
-
-	/**
-	 * @param {IRExpr} fnExpr 
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
-	 */
-	constructor(fnExpr, argExprs, parensSite) {
-		super(fnExpr.site, argExprs, parensSite);
-
-		this.#fnExpr = fnExpr;
-	}
-
-	get fnExpr() {
-		return this.#fnExpr;
-	}
-
-	copy() {
-		return new IRUserCallExpr(this.#fnExpr.copy(), this.argExprs.map(a => a.copy()), this.parensSite);
-	}
-
-	/**
-	 * @param {string} indent
-	 * @returns {string}
-	 */
-	toString(indent = "") {
-		let comment = (this.#fnExpr instanceof IRFuncExpr && this.#fnExpr.args.length == 1 && this.#fnExpr.args[0].name.startsWith("__")) ? `/*${this.#fnExpr.args[0].name}*/` : "";
-
-		return `${this.#fnExpr.toString(indent)}(${comment}${this.argsToString(indent)})`;
-	}
-
-	/**
-	 * @param {IRScope} scope 
-	 */
-	resolveNames(scope) {
-		this.#fnExpr.resolveNames(scope);
-
-		super.resolveNames(scope);
-	}
-
-	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
-	 */
-	countRefs(ref) {
-		return this.#fnExpr.countRefs(ref) + super.countRefs(ref);
-	}
-
-	/**
-	 * @param {IRCallStack} stack 
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		let args = this.evalArgs(stack);
-
-		if (args === null) {
-			return null;
-		} else {
-			let fn = this.#fnExpr.eval(stack);
-
-			if (fn === null) {
-				return null;
-			} else {
-				try {
-					return fn.call(args);
-				} catch (e) {
-					if (e instanceof RuntimeError) {
-						if (!stack.throwRTErrors) {
-							return null;
-						} else {
-							throw e.addTraceSite(this.site);
-						}
-					} else {
-						throw e;
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * @param {IRWalkFn} fn
-	 * @returns {IRExpr}
-	 */
-	walk(fn) {
-		let args = this.walkArgs(fn);
-
-		return fn(new IRUserCallExpr(this.#fnExpr.walk(fn), args, this.parensSite));
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	inline(stack) {
-		return new IRUserCallExpr(this.#fnExpr.inline(stack), super.simplifyArgs(stack, true), this.parensSite);
-	}
-
-	/**
-	 * 
-	 * @param {IRVariable} ref 
-	 * @param {string} builtinName 
-	 * @returns {?IRExpr}
-	 */
-	wrapCall(ref, builtinName) {
-		let args = super.wrapCallArgs(ref, builtinName);
-
-		if (args !== null) {
-			if (this.#fnExpr instanceof IRNameExpr && this.#fnExpr.isVariable(ref)) {
-				let res = new IRCoreCallExpr(
-					new Word(this.parensSite, `__core__${builtinName}`), 
-					[new IRUserCallExpr(this.#fnExpr, args, this.parensSite)], 
-					this.parensSite
-				);
-
-				return res;
-			} else {
-				let fnExpr = this.#fnExpr.wrapCall(ref, builtinName);
-
-				if (fnExpr === null) {
-					return null;
-				} else {
-					return new IRUserCallExpr(fnExpr, args, this.parensSite);
-				}
-			}		
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * @param {IRVariable} ref
-	 * @returns {?IRExpr}
-	 */
-	flattenCall(ref) {
-		if (this.#fnExpr instanceof IRNameExpr && this.#fnExpr.isVariable(ref)) {
-			return null;
-		} else if (this.#fnExpr instanceof IRUserCallExpr && this.#fnExpr.fnExpr instanceof IRNameExpr && this.#fnExpr.fnExpr.isVariable(ref)) {
-			let allArgs = this.#fnExpr.argExprs.concat(this.argExprs);
-
-			let argsf = [];
-
-			for (let arg of allArgs) {
-				let argf = arg.flattenCall(ref);
-
-				if (argf === null) {
-					return null;
-				} else {
-					argsf.push(argf);
-				}
-			}
-			
-			return new IRUserCallExpr(this.#fnExpr.fnExpr, argsf, this.parensSite);
-		} else {
-			let fnExpr = this.#fnExpr.flattenCall(ref);
-
-			if (fnExpr !== null) {
-				let args = this.flattenCallArgs(ref);
-
-				if (args !== null) {
-					return new IRUserCallExpr(fnExpr, args, this.parensSite);
-				} else {
-					return null;
-				}
-			} else {
-				return null;
-			}
-		}
-	}
-
-	/**
-	 * Inlines arguments that are only used once in fnExpr.
-	 * Also eliminates unused arguments
-	 * @param {IRExprStack} stack
-	 * @param {IRExpr} fnExpr - already simplified
-	 * @param {IRExpr[]} argExprs - already simplified
-	 * @returns {?IRExpr} - returns null if it isn't simpler
-	 */
-	inlineArgs(stack, fnExpr, argExprs) {
-		// inline single use vars, and eliminate unused vars
-		if (fnExpr instanceof IRFuncExpr) {
-			/**
-			 * @type {IRVariable[]}
-			 */
-			let remVars = [];
-
-			/**
-			 * @type {IRExpr[]}
-			 */
-			let remArgExprs = [];
-
-			let inlineStack = new IRExprStack(stack.throwRTErrors);
-
-			for (let i = 0; i < fnExpr.args.length; i++) {
-				let variable = fnExpr.args[i];
-				let nRefs = fnExpr.countRefs(variable);
-				let argExpr = argExprs[i];
-
-				if (nRefs == 0) {
-					// don't add
-				} else if (nRefs == 1 || argExpr instanceof IRNameExpr) {
-					// inline for sure
-					inlineStack.setInline(variable, argExpr);
-				} else {
-					remVars.push(variable);
-					remArgExprs.push(argExpr);
-				}
-			}
-
-			if (remArgExprs.length < argExprs.length || remArgExprs.length == 0) {
-				if (remArgExprs.length == 0) {
-					return fnExpr.inline(inlineStack).body;
-				} else {
-					return new IRUserCallExpr(new IRFuncExpr(fnExpr.site, remVars, fnExpr.inline(inlineStack).body), remArgExprs, this.parensSite);
-				}
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Inline all literal args if the resulting expression is an improvement over the current expression
-	 * @param {IRExprStack} stack
-	 * @param {IRExpr} fnExpr - already simplified
-	 * @param {IRExpr[]} argExprs - already simplified
-	 * @returns {?IRExpr} - returns null if it isn't simpler
-	 */
-	inlineLiteralArgs(stack, fnExpr, argExprs) {
-		if (fnExpr instanceof IRFuncExpr) {
-			let inlineStack = new IRExprStack(stack.throwRTErrors);
-
-			/**
-			 * @type {IRVariable[]}
-			 */
-			let remVars = [];
-
-			/**
-			 * @type {IRExpr[]}
-			 */
-			let remArgs = [];
-
-			let argVariables = fnExpr.args;
-
-			for (let i = 0; i < argVariables.length; i++) {
-				let v = argVariables[i];
-				let argExpr = argExprs[i];
-				if (argExpr instanceof IRLiteral) {
-					inlineStack.setInline(v, argExpr);
-				} else {
-					remVars.push(v);
-					remArgs.push(argExpr);
-				}
-			}
-
-			if (remVars.length < argVariables.length) {
-				let that = new IRUserCallExpr(new IRFuncExpr(fnExpr.site, remVars, fnExpr.body.inline(inlineStack)), remArgs, this.parensSite);
-
-				if (that.score() <= this.score()) {
-					return that;
-				}
-			}
-		}
-		
-		return null;
-	}
-
-	/**
-	 * Simplify some specific builtin functions
-	 * @param {IRExprStack} stack
-	 * @param {IRExpr} fnExpr
-	 * @param {IRExpr[]} argExprs
-	 * @returns {?IRExpr}
-	 */
-	simplifyTopology(stack, fnExpr, argExprs) {
-		if (fnExpr instanceof IRNameExpr) {
-			switch (fnExpr.name) {
-				case "__helios__common__boolData": {
-						// check if arg is a call to __helios__common__unBoolData
-						let argExpr = argExprs[0];
-						if (argExpr instanceof IRUserCallExpr && argExpr.fnExpr instanceof IRNameExpr && argExpr.fnExpr.name == "__helios__common__unBoolData") {
-							return argExpr.argExprs[0];
-						}
-					}
-					break;
-				case "__helios__common__unBoolData": {
-						// check if arg is a call to __helios__common__boolData
-						let argExpr = argExprs[0];
-						if (argExpr instanceof IRUserCallExpr && argExpr.fnExpr instanceof IRNameExpr && argExpr.fnExpr.name == "__helios__common__boolData") {
-							return argExpr.argExprs[0];
-						}
-					}
-					break;
-				case "__helios__common__concat": {
-						// check if either 1st or 2nd arg is the empty list
-						let a = argExprs[0];
-						if (a instanceof IRLiteral && a.value instanceof UplcList && a.value.list.length == 0) {
-							return argExprs[1];
-						} else if (a instanceof IRLiteral && a.value instanceof UplcMap && a.value.map.length == 0) {
-							return argExprs[1];
-						} else {
-							let b = argExprs[1];
-							if (b instanceof IRLiteral && b.value instanceof UplcList && b.value.list.length == 0) {
-								return argExprs[0];
-							} else if (b instanceof IRLiteral && b.value instanceof UplcMap && b.value.map.length == 0) {
-								return argExprs[0];
-							}
-						}
-					}
-					break;
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Evaluates fnExpr if all args are literals
-	 * Otherwise returns null
-	 * @param {IRExprStack} stack
-	 * @param {IRExpr} fnExpr
-	 * @param {IRExpr[]} argExprs
-	 * @returns {?IRExpr}
-	 */
-	simplifyLiteral(stack, fnExpr, argExprs) {
-		let callExpr = new IRUserCallExpr(fnExpr, argExprs, this.parensSite);
-		
-		let callStack = stack.initCallStack();
-		
-		let res = callExpr.eval(callStack);
-
-		if (res === null) {
-			return null;
-		} else {
-			return res.value;
-		}
-	}
-
-	simplifyFlatten() {
-		if (this.fnExpr instanceof IRFuncExpr && this.argExprs.some(e => e instanceof IRFuncExpr)) {
-			/** @type {IRExpr[]} */
-			let args = [];
-
-			/** @type {IRFuncExpr} */
-			let that = this.fnExpr;
-			let someFlattened = false;
-
-			for (let i = 0; i < this.argExprs.length; i++) {
-				let a = this.argExprs[i];
-
-				if (a instanceof IRFuncExpr && a.body instanceof IRFuncExpr) {
-					// try to flatten
-					let aBetter = new IRFuncExpr(a.site, a.args.concat(a.body.args), a.body.body);
-
-					let maybeThat = that.flattenCall(this.fnExpr.args[i]);
-
-					if (maybeThat !== null && maybeThat instanceof IRFuncExpr) {
-						args.push(aBetter);
-						that = maybeThat;
-						someFlattened = true;
-					} else {
-						args.push(a);
-					}
-				} else {
-					args.push(a);
-				}
-			}
-
-			if (someFlattened) {
-				return new IRUserCallExpr(that, args, this.parensSite);
-			}
-		}
-
-		return this;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplifyWithoutExtractingCasts(stack) {
-		let argExprs = this.simplifyArgs(stack);
-
-		{
-			let maybeBetter = this.simplifyLiteral(stack, this.#fnExpr, this.argExprs);
-			if (maybeBetter !== null && maybeBetter.score() <= this.score()) {
-				return maybeBetter;
-			}
-		}
-
-		let innerStack = stack;
-
-		if (this.#fnExpr instanceof IRFuncExpr) {
-			assert(argExprs.length == this.#fnExpr.args.length);
-			for (let i = 0; i < argExprs.length; i++) {
-				let v = this.#fnExpr.args[i];
-				innerStack = innerStack.set(v, argExprs[i]);
-			}
-		}
-
-		let fnExpr = this.#fnExpr.simplify(innerStack);
-
-		if (fnExpr instanceof IRNameExpr && fnExpr.name.startsWith("__core")) {
-			return new IRCoreCallExpr(new Word(fnExpr.site, fnExpr.name), argExprs, this.parensSite);
-		}
-
-		{
-			let maybeBetter = this.simplifyLiteral(stack, fnExpr, argExprs);
-			if (maybeBetter !== null && maybeBetter.score() <= this.score()) {
-				return maybeBetter;
-			}
-		}
-
-		{
-			let maybeBetter = this.inlineArgs(stack, fnExpr, argExprs);
-			if (maybeBetter !== null) {
-				return maybeBetter;
-			}
-		}
-
-		{
-			let maybeBetter = this.inlineLiteralArgs(stack, fnExpr, argExprs);
-			if (maybeBetter !== null) {
-				return maybeBetter;
-			}
-		}
-
-		{
-			let maybeBetter = this.simplifyTopology(stack, fnExpr, argExprs);
-			if (maybeBetter !== null) {
-				return maybeBetter;
-			}
-		}
-
-
-		return new IRUserCallExpr(fnExpr, argExprs, this.parensSite);
-	}
-
-	/**
-	 * Extract functions like __core__iData from IRFuncExpr args, and inserting it in IRFuncExpr fnExpr, and then run inner simplify methods
-	 * @returns {IRExpr}
-	 */
-	extractDownstreamCasts() {
-		if (this.fnExpr instanceof IRFuncExpr && this.argExprs.some(e => e instanceof IRFuncExpr)) {
-			/** @type {IRExpr[]} */
-			let args = [];
-
-			let fnExpr = this.fnExpr;
-
-			let someExtracted = false;
-
-			for (let i = 0; i < this.argExprs.length; i++) {
-				let a = this.argExprs[i];
-
-				if (a instanceof IRFuncExpr) {
-					
-					if (a.body instanceof IRCoreCallExpr) {
-						if (a.body.isCast()) {
-							// unwrap the inner expr core call
-							let argWithInline = new IRFuncExpr(a.site, a.args, a.body.argExprs[0]);
-
-							// and add the core call the wherever the variable is called
-							let maybeFnExpr = this.fnExpr.wrapCall(this.fnExpr.args[i], a.body.builtinName);
-
-							if (maybeFnExpr !== null && maybeFnExpr instanceof IRFuncExpr) {
-								fnExpr = maybeFnExpr;
-								args.push(argWithInline);
-								someExtracted = true;
-							} else {
-								args.push(a);	
-							}
-						} else {
-							args.push(a);
-						}
-					} else {
-						args.push(a);
-					}
-				} else {
-					args.push(a);
-				}
-			}
-
-			if (someExtracted) {
-				assert(args.length == this.argExprs.length);
-				
-				let result = new IRUserCallExpr(fnExpr, args, this.parensSite)
-
-				return result;
-			}
-		}
-
-		return this;
-	}
-
-	/**
-	 * @returns {IRExpr}
-	 */
-	extractUpstreamCasts() {
-		if (this.fnExpr instanceof IRFuncExpr && this.argExprs.some(e => e instanceof IRFuncExpr)) {
-			/** @type {IRExpr[]} */
-			let args = [];
-
-			let refs = this.fnExpr.args;
-
-			/** @type {IRExpr} */
-			let fnExpr = this.fnExpr;
-
-			for (let i = 0; i < this.argExprs.length; i++) {
-				let fn = this.argExprs[i];
-
-				if (fn instanceof IRFuncExpr) {
-					// for each of the inner args, walk the body to see what changes
-
-					let fnBody = fn.body;
-
-					for (let j = 0; j < fn.args.length; j++) {
-						let a = fn.args[j];
-
-						let ok = true;
-						let castName = "";
-
-						/** 
-						 * Make sure eahc relevant IRNameExpr is actually wrapped by a cast call and doesn't appear by itself
-						 * This is done like this to circumvent the limitations of 'walk'
-						 * @type {Set<IRNameExpr>} */
-						let okList = new Set();
-						/** @type {IRNameExpr[]} */
-						let verify = [];
-
-						let fnBody_ = fnBody.walk((expr) => {
-							if (expr instanceof IRCoreCallExpr && expr.isCast() && expr.argExprs[0] instanceof IRNameExpr && expr.argExprs[0].isVariable(a)) {
-								if (castName == "" || castName == expr.builtinName) {
-									castName = expr.builtinName;
-									okList.add(expr.argExprs[0]);
-									return expr.argExprs[0];
-								} else {
-									ok = false; // different casts, don't extract  anything for this arg
-									return expr;
-								}
-							} else if (expr instanceof IRNameExpr && expr.isVariable(a)) {
-								// make sure that expr is surrounded by IRCoreCallExpr
-								verify.push(expr);
-
-								return expr;
-							} else {
-								return expr;
-							}
-						});
-
-						ok = ok && verify.every(v => okList.has(v));
-
-						// wrap the call args in the current body
-						if (ok && castName != "") {
-							/**
-							 * Make sure each relevant IRNameExpr is actually part of IRUserCallExpr and doesn't appear by itself
-							 * This is done like this to circumvent the limitations of 'walk' 
-							 * @type {Set<IRNameExpr>} */
-							let okList = new Set();
-							/** @type {IRNameExpr[]} */
-							let verify = [];
-
-							// now try to replace every jth arg of a call to fn
-							let fnExpr_ = fnExpr.walk((expr) => {
-								if (expr instanceof IRUserCallExpr && expr.fnExpr instanceof IRNameExpr && expr.fnExpr.isVariable(refs[i])) {
-									// replace the j arg with castName(...)
-									let callArgs = expr.argExprs.slice();
-									callArgs[j] = new IRCoreCallExpr(new Word(callArgs[j].site, `__core__${castName}`), [callArgs[j]], callArgs[j].site);
-
-									okList.add(expr.fnExpr);
-
-									return new IRUserCallExpr(expr.fnExpr, callArgs, expr.parensSite);
-								} else if (expr instanceof IRNameExpr && expr.isVariable(refs[i])) {
-									verify.push(expr);
-									return expr;
-								} else {
-									return expr;
-								}
-							});
-
-							ok = ok && verify.every(v => okList.has(v));
-
-							if (ok) {
-								fnBody = fnBody_;
-								fnExpr = fnExpr_;
-							}
-						}
-					}
-
-					args.push(new IRFuncExpr(fn.site, fn.args, fnBody));
-				} else {
-					args.push(fn);
-				}
-			}
-
-			return new IRUserCallExpr(fnExpr, args, this.parensSite);
-		} else {
-			return this;
-		}
-	}
-
-	/**
-	 * @returns {IRExpr}
-	 */
-	extractCasts() {
-		let better = this.extractDownstreamCasts();
-
-		if (better instanceof IRUserCallExpr) {
-			return better.extractUpstreamCasts();
-		} else {
-			return better;
-		}
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplify(stack) {
-		/**
-		 * @type {IRExpr}
-		 */
-		let better = this.simplifyFlatten();
-
-		if (better instanceof IRUserCallExpr) {
-			better = better.simplifyWithoutExtractingCasts(stack);
-		}
-
-		if (better instanceof IRUserCallExpr) {
-			better = better.extractCasts();
-		}
-
-		return better;
-	}
-
-	/**
-	 * @returns {UplcTerm}
-	 */
-	toUplc() {
-		return super.toUplcCall(this.#fnExpr.toUplc());
-	}
-}
-
-/**
  * IR function call of core functions
  * @package
  */
@@ -29672,7 +29337,7 @@ class IRCoreCallExpr extends IRCallExpr {
 	 */
 	constructor(name, argExprs, parensSite) {
 		super(name.site, argExprs, parensSite);
-		assert(name.value !== "");
+		assert(name.value !== "" && name.value !== "error");
 		this.#name = name;
 
 		assert(this.builtinName !== "", name.value);
@@ -29691,10 +29356,6 @@ class IRCoreCallExpr extends IRCallExpr {
 		return name == "iData" || name == "bData" || name == "unIData" || name == "unBData" || name == "mapData" || name == "unMapData" || name == "listData" || name == "unListData";
 	}
 
-	copy() {
-		return new IRCoreCallExpr(this.#name, this.argExprs.map(a => a.copy()), this.parensSite);
-	}
-
 	/**
 	 * @param {string} indent
 	 * @returns {string}
@@ -29711,7 +29372,7 @@ class IRCoreCallExpr extends IRCallExpr {
 	 * @param {IRScope} scope 
 	 */
 	resolveNames(scope) {
-		super.resolveNames(scope);
+		this.resolveNamesInArgs(scope);
 	}
 
 	/**
@@ -29724,8 +29385,8 @@ class IRCoreCallExpr extends IRCallExpr {
 	static evalValues(site, throwRTErrors, builtinName, args) {
 		if (builtinName == "ifThenElse") {
 			let cond = args[0].value;
-			if (cond !== null && cond.value instanceof UplcBool) {
-				if (cond.value.bool) {
+			if (cond !== null && cond instanceof UplcBool) {
+				if (cond.bool) {
 					return args[1];
 				} else {
 					return args[2];
@@ -29743,7 +29404,7 @@ class IRCoreCallExpr extends IRCallExpr {
 
 			for (let arg of args) {
 				if (arg.value !== null) {
-					argValues.push(arg.value.value);
+					argValues.push(arg.value);
 				} else {
 					return null;
 				}
@@ -29752,7 +29413,7 @@ class IRCoreCallExpr extends IRCallExpr {
 			try {
 				let result = UplcBuiltin.evalStatic(new Word(Site.dummy(), builtinName), argValues);
 
-				return new IRLiteralValue(new IRLiteral(result));
+				return new IRLiteralValue(result);
 			} catch(e) {
 				// runtime errors like division by zero are allowed if throwRTErrors is false
 				if (e instanceof RuntimeError) {
@@ -29769,45 +29430,13 @@ class IRCoreCallExpr extends IRCallExpr {
 	}
 
 	/**
-	 * @param {IRWalkFn} fn 
+	 * @param {IRCallStack} stack 
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
-		let args = this.walkArgs(fn);
-
-		return fn(new IRCoreCallExpr(this.#name, args, this.parensSite));
+	evalConstants(stack) {
+		return new IRCoreCallExpr(this.#name, this.evalConstantsInArgs(stack), this.parensSite);
 	}
-
-	/**
-	 * @param {IRVariable} ref 
-	 * @param {string} builtinName
-	 * @returns {?IRExpr}
-	 */
-	wrapCall(ref, builtinName) {
-		let args = this.wrapCallArgs(ref, builtinName);
-
-		if (args !== null) {
-			return new IRCoreCallExpr(this.#name, args, this.parensSite);
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * 
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
-	 */
-	flattenCall(ref) {
-		let args = this.flattenCallArgs(ref);
-
-		if (args !== null) {
-			return new IRCoreCallExpr(this.#name, args, this.parensSite);
-		} else {
-			return null
-		}
-	}
-
+	
 	/**
 	 * @param {IRCallStack} stack
 	 * @returns {?IRValue}
@@ -29823,181 +29452,161 @@ class IRCoreCallExpr extends IRCallExpr {
 	}
 
 	/**
-	 * @param {boolean} throwRTErrors
-	 * @param {IRExpr[]} argExprs
-	 * @returns {?IRExpr}
+	 * @param {IRLiteralRegistry} literals
+	 * @returns {IRExpr}
 	 */
-	simplifyLiteralArgs(throwRTErrors, argExprs) {
-		if (this.builtinName == "ifThenElse") {
-			assert(argExprs.length == 3);
-			let cond = argExprs[0];
-			let a = argExprs[1];
-			let b = argExprs[2];
+	simplifyLiterals(literals) {
+		const args = this.simplifyLiteralsInArgs(literals);
 
-			if (cond instanceof IRLiteral && cond.value instanceof UplcBool) {
-				if (cond.value.bool) {
-					return a;
-				} else {
-					return b;
-				}
-			} else if (a instanceof IRLiteral && a.value instanceof UplcBool && b instanceof IRLiteral && b.value instanceof UplcBool) {
-				if (a.value.bool && !b.value.bool) {
-					return cond;
-				} else if (cond instanceof IRUserCallExpr && cond.fnExpr instanceof IRNameExpr && cond.fnExpr.name === "__helios__common__not") {
-					return cond.argExprs[0];
-				}	
-			}
-		} else if (this.builtinName == "trace") {
-			assert(argExprs.length == 2);
-			return argExprs[1];
-		} else {
-			// if all the args are literals -> return the result
+		switch(this.builtinName) {
+			case "addInteger": {
+					// check if first or second arg evaluates to 0
+					const [a, b] = args;
 
-			/**
-			 * @type {UplcValue[]}
-			 */
-			let argValues = [];
-
-			for (let arg of argExprs) {
-				if (arg instanceof IRLiteral) {
-					argValues.push(arg.value);
-				} else {
-					return null;
-				}
-			}
-
-			try {
-				let result = UplcBuiltin.evalStatic(new Word(this.#name.site, this.builtinName), argValues);
-
-				return new IRLiteral(result);
-			} catch(e) {
-				if (e instanceof RuntimeError) {
-					if (!throwRTErrors) {
-						return null;
-					} else {
-						throw e.addTraceSite(this.site);
+					if (a instanceof IRLiteralExpr && a.value instanceof UplcInt && a.value.int == 0n) {
+						return b;
+					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 0n) {
+						return a;
 					}
-				} else {
-					throw e;
 				}
-			}
-		}
-		
-		return null;
-	}
-
-	/**
-	 * @param {IRExpr[]} argExprs
-	 * @returns {?IRExpr}
-	 */
-	simplifyTopology(argExprs) {
-		switch (this.builtinName) {			
-			case "encodeUtf8":
-				// we can't eliminate a call to decodeUtf8, as it might throw some errors
 				break;
-			case "decodeUtf8": {
-					// check if arg is a call to encodeUtf8
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "encodeUtf8") {
-						return argExpr.argExprs[0];
+			case "appendByteString": {
+					// check if either 1st or 2nd arg is the empty bytearray
+					const [a, b] = args;
+					if (a instanceof IRLiteralExpr && a.value instanceof UplcByteArray && a.value.bytes.length == 0) {
+						return b;
+					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcByteArray && b.value.bytes.length == 0) {
+						return a;
+					}
+				}
+				break;
+			case "appendString": {
+					// check if either 1st or 2nd arg is the empty string
+					const [a, b] = args;
+					if (a instanceof IRLiteralExpr && a.value instanceof UplcString && a.value.string.length == 0) {
+						return b;
+					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcString && b.value.string.length == 0) {
+						return a;
+					}
+				}
+				break;
+			case "divideInteger": {
+					// check if second arg is 1
+					const [a, b] = args;
+					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt) {
+						if (b.value.int == 1n) {
+							return a;
+						} else if (b.value.int == 0n) {
+							return new IRCoreCallExpr(this.#name, args, this.parensSite);
+						}
 					}
 				}
 				break;
 			case "ifThenElse": {
-					// check if first arg evaluates to constant condition
-					let cond = argExprs[0];
-					if (cond instanceof IRLiteral && cond.value instanceof UplcBool) {
-						return cond.value.bool ? argExprs[1] : argExprs[2];
+					const [cond, a, b] = args;
+
+					if (cond instanceof IRLiteralExpr && cond.value instanceof UplcBool) {
+						// if the condition is a literal, one the branches can be returned
+						if (cond.value.bool) {
+							return a;
+						} else {
+							return b;
+						}
+					} else if (a instanceof IRLiteralExpr && a.value instanceof UplcBool && b instanceof IRLiteralExpr && b.value instanceof UplcBool) {
+						if (a.value.bool && !b.value.bool) {
+							return cond;
+						} else if (
+							!a.value.bool && 
+							b.value.bool && 
+							cond instanceof IRUserCallExpr && 
+							cond.fnExpr instanceof IRNameExpr && 
+							cond.fnExpr.name === "__helios__common__not"
+						) {
+							return cond.argExprs[0];
+						}	
 					}
 				}
 				break;
-			case "addInteger": {
-					// check if first or second arg evaluates to 0
-					let a = argExprs[0];
-					if (a instanceof IRLiteral && a.value instanceof UplcInt && a.value.int == 0n) {
-						return argExprs[1];
-					} else {
-						let b = argExprs[1];
-						if (b instanceof IRLiteral && b.value instanceof UplcInt && b.value.int == 0n) {
-							return argExprs[0];
+			case "modInteger": {
+					// check if second arg is 1
+					const [a, b] = args;
+					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 1n) {
+						return new IRLiteralExpr(new UplcInt(this.site, 0n));
+					}
+				}
+				break;
+			case "multiplyInteger": {
+					// check if first arg is 0 or 1
+					const [a, b] = args;
+					if (a instanceof IRLiteralExpr && a.value instanceof UplcInt) {
+						if (a.value.int == 0n) {
+							return a;
+						} else if (a.value.int == 1n) {
+							return b;
+						}
+					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcInt) {
+						if (b.value.int == 0n) {
+							return b;
+						} else if (b.value.int == 1n) {
+							return a;
 						}
 					}
 				}
 				break;
 			case "subtractInteger": {
 					// check if second arg evaluates to 0
-					let b = argExprs[1];
-					if (b instanceof IRLiteral && b.value instanceof UplcInt && b.value.int == 0n) {
-						return argExprs[0];
+					const [a, b] = args;
+					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 0n) {
+						return a;
 					}
 				}
 				break;
-			case "multiplyInteger": {
-					// check if first arg is 0 or 1
-					let a = argExprs[0];
-					if (a instanceof IRLiteral && a.value instanceof UplcInt) {
-						if (a.value.int == 0n) {
-							return a;
-						} else if (a.value.int == 1n) {
-							return argExprs[1];
-						}
-					} else {
-						let b = argExprs[1];
-						if (b instanceof IRLiteral && b.value instanceof UplcInt) {
-							if (b.value.int == 0n) {
-								return b;
-							} else if (b.value.int == 1n) {
-								return argExprs[0];
-							}
-						}
+		}
+
+		if (args.every(a => a instanceof IRLiteralExpr)) {
+			return new IRLiteralExpr(
+				UplcBuiltin.evalStatic(
+					new Word(this.#name.site, this.builtinName),
+					args.map(a => assertClass(a, IRLiteralExpr).value)
+				)
+			);
+		} else {
+			return new IRCoreCallExpr(this.#name, args, this.parensSite);
+		}
+	}
+
+	/**
+	 * @param {IRNameExprRegistry} nameExprs
+	 */
+	registerNameExprs(nameExprs) {
+		this.registerNameExprsInArgs(nameExprs);
+	}
+
+	copy() {
+		return new IRCoreCallExpr(this.#name, this.argExprs.map(a => a.copy()), this.parensSite);
+	}
+
+	/**
+	 * @param {IRExprRegistry} registry 
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
+		const args = this.simplifyTopologyInArgs(registry);
+
+		switch(this.builtinName) {
+			case "encodeUtf8":
+				// we can't eliminate a call to decodeUtf8, as it might throw some errors
+				break;
+			case "decodeUtf8": {
+					// check if arg is a call to encodeUtf8
+					const [arg] = args;
+					if (arg instanceof IRCoreCallExpr && arg.builtinName == "encodeUtf8") {
+						return arg.argExprs[0];
 					}
 				}
-				break;
-			case "divideInteger": {
-					// check if second arg is 1
-					let b = argExprs[1];
-					if (b instanceof IRLiteral && b.value instanceof UplcInt && b.value.int == 1n) {
-						return argExprs[0];
-					}
-				}
-				break;
-			case "modInteger": {
-					// check if second arg is 1
-					let b = argExprs[1];
-					if (b instanceof IRLiteral && b.value instanceof UplcInt && b.value.int == 1n) {
-						return new IRLiteral(new UplcInt(this.site, 0n));
-					}
-				}
-				break;
-			case "appendByteString": {
-					// check if either 1st or 2nd arg is the empty bytearray
-					let a = argExprs[0];
-					if (a instanceof IRLiteral && a.value instanceof UplcByteArray && a.value.bytes.length == 0) {
-						return argExprs[1];
-					} else {
-						let b = argExprs[1];
-						if (b instanceof IRLiteral && b.value instanceof UplcByteArray && b.value.bytes.length == 0) {
-							return argExprs[0];
-						}
-					}
-				}
-				break;
-			case "appendString": {
-					// check if either 1st or 2nd arg is the empty string
-					let a = argExprs[0];
-					if (a instanceof IRLiteral && a.value instanceof UplcString && a.value.string.length == 0) {
-						return argExprs[1];
-					} else {
-						let b = argExprs[1];
-						if (b instanceof IRLiteral && b.value instanceof UplcString && b.value.string.length == 0) {
-							return argExprs[0];
-						}
-					}
-				}
-				break;
+				break;			
 			case "equalsData": {
-				let a = argExprs[0];
-				let b = argExprs[1];
+				const [a, b] = args;
 
 				if (a instanceof IRCoreCallExpr && b instanceof IRCoreCallExpr) {
 					if (a.builtinName === "iData" && b.builtinName === "iData") {
@@ -30012,106 +29621,74 @@ class IRCoreCallExpr extends IRCallExpr {
 				break;
 			}
 			case "trace":
-				return argExprs[1];
+				return args[1];
 			case "unIData": {
 					// check if arg is a call to iData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "iData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "iData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "iData": {
 					// check if arg is a call to unIData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "unIData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "unIData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "unBData": {
 					// check if arg is a call to bData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "bData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "bData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "bData": {
 					// check if arg is a call to unBData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "unBData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "unBData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "unMapData": {
 					// check if arg is call to mapData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "mapData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "mapData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "mapData": {
 					// check if arg is call to unMapData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "unMapData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "unMapData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "listData": {
 					// check if arg is call to unListData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "unListData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "unListData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 			case "unListData": {
 					// check if arg is call to listData
-					let argExpr = argExprs[0];
-					if (argExpr instanceof IRCoreCallExpr && argExpr.builtinName == "listData") {
-						return argExpr.argExprs[0];
+					const a = args[0];
+					if (a instanceof IRCoreCallExpr && a.builtinName == "listData") {
+						return a.argExprs[0];
 					}
 				}
 				break;
 		}
 
-		return null;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	inline(stack) {
-		return new IRCoreCallExpr(this.#name, super.simplifyArgs(stack, true), this.parensSite);
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplify(stack) {
-		let argExprs = super.simplifyArgs(stack);
-
-		{
-			let maybeBetter = this.simplifyLiteralArgs(stack.throwRTErrors, argExprs);
-			if (maybeBetter !== null) {
-				return maybeBetter;
-			}
-		}
-
-		{
-			let maybeBetter = this.simplifyTopology(argExprs);
-			if (maybeBetter !== null) {
-				return maybeBetter;
-			}
-		}
-		
-		return new IRCoreCallExpr(this.#name, argExprs, this.parensSite);
+		return new IRCoreCallExpr(this.#name, args, this.parensSite);
 	}
 
 	/**
@@ -30148,6 +29725,418 @@ class IRCoreCallExpr extends IRCallExpr {
 }
 
 /**
+ * IR function call of non-core function
+ * @package
+ */
+class IRUserCallExpr extends IRCallExpr {
+	#fnExpr;
+
+	/**
+	 * @param {IRExpr} fnExpr 
+	 * @param {IRExpr[]} argExprs 
+	 * @param {Site} parensSite 
+	 */
+	constructor(fnExpr, argExprs, parensSite) {
+		super(fnExpr.site, argExprs, parensSite);
+
+		this.#fnExpr = fnExpr;
+	}
+
+	/**
+	 * @param {IRExpr} fnExpr 
+	 * @param {IRExpr[]} argExprs 
+	 * @param {Site} parensSite 
+	 * @returns {IRUserCallExpr}
+	 */
+	static new(fnExpr, argExprs, parensSite) {
+		if (fnExpr instanceof IRAnonCallExpr) {
+			return new IRNestedAnonCallExpr(fnExpr, argExprs, parensSite);
+		} else if (fnExpr instanceof IRFuncExpr) {
+			if (argExprs.length == 1 && argExprs[0] instanceof IRFuncExpr) {
+				const argExpr = argExprs[0];
+
+				if (argExpr instanceof IRFuncExpr) {
+					return new IRFuncDefExpr(fnExpr, argExpr, parensSite);
+				}
+			}
+
+			return new IRAnonCallExpr(fnExpr, argExprs, parensSite);
+		} else {
+			return new IRUserCallExpr(fnExpr, argExprs, parensSite);
+		}
+	}
+
+	get fnExpr() {
+		return this.#fnExpr;
+	}
+
+	/**
+	 * @param {string} indent
+	 * @returns {string}
+	 */
+	toString(indent = "") {
+		let comment = (this.#fnExpr instanceof IRFuncExpr && this.#fnExpr.args.length == 1 && this.#fnExpr.args[0].name.startsWith("__")) ? `/*${this.#fnExpr.args[0].name}*/` : "";
+
+		return `${this.#fnExpr.toString(indent)}(${comment}${this.argsToString(indent)})`;
+	}
+
+	/**
+	 * @param {IRScope} scope 
+	 */
+	resolveNames(scope) {
+		this.#fnExpr.resolveNames(scope);
+
+		super.resolveNamesInArgs(scope);
+	}
+
+	/**
+	 * @param {IRCallStack} stack
+	 * @returns {IRExpr}
+	 */
+	evalConstants(stack) {
+		return IRUserCallExpr.new(
+			this.#fnExpr.evalConstants(stack),
+			this.evalConstantsInArgs(stack),
+			this.parensSite
+		);
+	}
+
+	/**
+	 * @param {IRCallStack} stack 
+	 * @returns {?IRValue}
+	 */
+	eval(stack) {
+		let args = this.evalArgs(stack);
+
+		if (args === null) {
+			return null;
+		} else {
+			let fn = this.#fnExpr.eval(stack);
+
+			if (fn === null) {
+				return null;
+			} else {
+				try {
+					return fn.call(args);
+				} catch (e) {
+					if (e instanceof RuntimeError) {
+						if (!stack.throwRTErrors) {
+							return null;
+						} else {
+							throw e.addTraceSite(this.site);
+						}
+					} else {
+						throw e;
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param {IRLiteralRegistry} literals
+	 * @returns {IRExpr}
+	 */
+	simplifyLiterals(literals) {
+		const args = this.simplifyLiteralsInArgs(literals);
+
+		return IRUserCallExpr.new(
+			this.#fnExpr.simplifyLiterals(literals),
+			args, 
+			this.parensSite
+		);
+	}
+
+	/**
+	 * @param {IRNameExprRegistry} nameExprs 
+	 */
+	registerNameExprs(nameExprs) {
+		this.registerNameExprsInArgs(nameExprs);
+		
+		this.#fnExpr.registerNameExprs(nameExprs);
+	}
+
+	copy() {
+		return new IRUserCallExpr(this.#fnExpr.copy(), this.argExprs.map(a => a.copy()), this.parensSite);
+	}
+
+	/**
+	 * @param {IRExprRegistry} registry 
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
+		const args = this.simplifyTopologyInArgs(registry);
+
+		if (this.#fnExpr instanceof IRNameExpr) {
+			if (this.#fnExpr.isCore()) {
+				return new IRCoreCallExpr(new Word(this.#fnExpr.site, this.#fnExpr.name), args, this.parensSite);
+			} else {
+				switch (this.#fnExpr.name) {
+					case "__helios__common__boolData": {
+							// check if arg is a call to __helios__common__unBoolData
+							const a = args[0];
+							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__common__unBoolData") {
+								return a.argExprs[0];
+							}
+						}
+						break;
+					case "__helios__common__unBoolData": {
+							// check if arg is a call to __helios__common__boolData
+							const a = args[0];
+							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__common__boolData") {
+								return a.argExprs[0];
+							}
+						}
+						break;
+					case "__helios__common__not": {
+							const a = args[0];
+							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__common__not") {
+								return a.argExprs[0];
+							}
+						}
+						break;
+					case "__helios__common__concat": {
+							// check if either 1st or 2nd arg is the empty list
+							const [a, b] = args;
+							if (a instanceof IRLiteralExpr && a.value instanceof UplcList && a.value.length == 0) {
+								return b;
+							} else {
+								if (b instanceof IRLiteralExpr && b.value instanceof UplcList && b.value.length == 0) {
+									return a;
+								}
+							}
+						}
+						break;
+				}
+			}
+		}
+
+		return IRUserCallExpr.new(
+			this.#fnExpr.simplifyTopology(registry),
+			args,
+			this.parensSite
+		);
+	}
+
+	/**
+	 * @returns {UplcTerm}
+	 */
+	toUplc() {
+		return super.toUplcCall(this.#fnExpr.toUplc());
+	}
+}
+
+export class IRAnonCallExpr extends IRUserCallExpr {
+	#anon;
+
+	/**
+	 * @param {IRFuncExpr} fnExpr 
+	 * @param {IRExpr[]} argExprs 
+	 * @param {Site} parensSite 
+	 */
+	constructor(fnExpr, argExprs, parensSite) {
+		super(fnExpr, argExprs, parensSite)
+
+		this.#anon = fnExpr;
+	}
+
+	/**
+	 * Internal function
+	 * @type {IRFuncExpr}
+	 */
+	get anon() {
+		return this.#anon;
+	}
+
+	/**
+	 * @type {IRVariable[]}
+	 */
+	get argVariables() {
+		return this.#anon.args;
+	}
+
+	/**
+	 * Add args to the stack as IRDeferredValue instances
+	 * @param {IRCallStack} stack
+	 */
+	evalConstants(stack) {
+		const argExprs = this.evalConstantsInArgs(stack);
+
+		const parentStack = stack;
+
+		argExprs.forEach((argExpr, i) => {
+			stack = stack.set(this.argVariables[i], new IRDeferredValue(() => argExpr.eval(parentStack)));
+		});
+
+		const anonBody = this.#anon.body.evalConstants(stack);
+
+		if (anonBody instanceof IRLiteralExpr) {
+			return anonBody;
+		} else {
+			return IRUserCallExpr.new(
+				new IRFuncExpr(
+					this.#anon.site,
+					this.#anon.args,
+					anonBody
+				),
+				argExprs,
+				this.parensSite
+			);
+		}
+	}
+
+	/**
+	 * Add literal args to the map
+	 * @param {IRLiteralRegistry} literals
+	 * @returns {IRExpr}
+	 */
+	simplifyLiterals(literals) {
+		const args = this.simplifyLiteralsInArgs(literals);
+
+		args.forEach((arg, i) => {
+			if (arg instanceof IRLiteralExpr) {
+				literals.set(this.argVariables[i], arg);
+			}
+		});
+
+		const anonBody = this.#anon.body.simplifyLiterals(literals);
+
+		if (anonBody instanceof IRLiteralExpr) {
+			return anonBody;
+		} else {
+			return new IRAnonCallExpr(
+				new IRFuncExpr(
+					this.#anon.site,
+					this.#anon.args,
+					anonBody
+				),
+				args,
+				this.parensSite
+			);
+		}
+	}
+
+	/**
+	 * @param {IRNameExprRegistry} nameExprs 
+	 */
+	registerNameExprs(nameExprs) {
+		this.registerNameExprsInArgs(nameExprs);
+
+		this.argVariables.forEach(a => nameExprs.registerVariable(a));
+
+		this.#anon.body.registerNameExprs(nameExprs);
+	}
+	
+	/**
+	 * @param {IRExprRegistry} registry 
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
+		const args = this.simplifyTopologyInArgs(registry);
+
+		// remove unused args, inline args that are only referenced once
+		const remainingIds = this.argVariables.map((variable, i) => {
+			const n = registry.countReferences(variable);
+
+			if (n == 0 || (n == 1 && (!registry.maybeInsideLoop(variable) || args[i] instanceof IRFuncExpr)) || args[i] instanceof IRNameExpr) {
+				if (n > 0) {
+					// inline
+					registry.addInlineable(variable, args[i]);
+				}
+
+				return -1;
+			} else {
+				return i;
+			}
+		}).filter(i => i != -1);
+
+		const remainingVars = remainingIds.map(i => this.argVariables[i]);
+		const remainingExprs = remainingIds.map(i => args[i]);
+
+		const anonBody = this.#anon.body.simplifyTopology(registry);
+
+		if (anonBody instanceof IRLiteralExpr || remainingExprs.length == 0) {
+			return anonBody;
+		} else {
+			return new IRAnonCallExpr(
+				new IRFuncExpr(
+					this.#anon.site,
+					remainingVars,
+					anonBody
+				),
+				remainingExprs,
+				this.parensSite
+			);
+		}
+	}
+}
+
+export class IRNestedAnonCallExpr extends IRUserCallExpr {
+	#anon;
+
+	/**
+	 * @param {IRAnonCallExpr} anon
+	 * @param {IRExpr[]} outerArgExprs
+	 * @param {Site} parensSite
+	 */
+	constructor(anon, outerArgExprs, parensSite) {
+		super(anon, outerArgExprs, parensSite);
+
+		this.#anon = anon;
+	}
+
+	/**
+	 * Flattens consecutive nested calls
+	 * @param {IRExprRegistry} registry
+	 * @returns {IRExpr}
+	 */
+	simplifyTopology(registry) {
+		const anon = this.#anon.simplifyTopology(registry);
+
+		const args = this.simplifyTopologyInArgs(registry);
+
+		if (anon instanceof IRAnonCallExpr && anon.anon.body instanceof IRFuncExpr) {
+			// flatten
+			const allArgs = anon.argExprs.slice().concat(args);
+			const allVars = anon.argVariables.slice().concat(anon.anon.body.args.slice());
+
+			assert(allArgs.length == allVars.length);
+
+			return IRUserCallExpr.new(
+				new IRFuncExpr(
+					anon.anon.body.site,
+					allVars,
+					anon.anon.body.body
+				),
+				allArgs,
+				this.parensSite
+			);
+		} else {
+			return IRUserCallExpr.new(
+				anon,
+				args,
+				this.parensSite
+			);
+		}
+	}
+}
+
+export class IRFuncDefExpr extends IRAnonCallExpr {
+	#def;
+
+	/**
+	 * @param {IRFuncExpr} fnExpr 
+	 * @param {IRFuncExpr} defExpr 
+	 * @param {Site} parensSite
+	 */
+	constructor(fnExpr, defExpr, parensSite) {
+		super(fnExpr, [defExpr], parensSite);
+
+		this.#def = defExpr;
+	}
+}
+
+/**
  * Intermediate Representation error call (with optional literal error message)
  * @package
  */
@@ -30161,10 +30150,6 @@ class IRErrorCallExpr extends IRExpr {
 	constructor(site, msg = "") {
 		super(site);
 		this.#msg = msg;
-	}
-
-	copy() {
-		return new IRErrorCallExpr(this.site, this.#msg);
 	}
 
 	/**
@@ -30182,11 +30167,11 @@ class IRErrorCallExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRVariable} ref
-	 * @returns {number}
+	 * @param {IRCallStack} stack
+	 * @returns {IRExpr}
 	 */
-	countRefs(ref) {
-		return 0;
+	evalConstants(stack) {
+		return this;
 	}
 
 	/**
@@ -30202,43 +30187,28 @@ class IRErrorCallExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRWalkFn} fn 
+	 * @param {IRLiteralRegistry} literals 
 	 * @returns {IRExpr}
 	 */
-	walk(fn) {
-		return fn(this);
-	}
-
-	/**
-	 * @param {IRVariable} ref
-	 * @param {string} builtinName
-	 * @returns {?IRExpr}
-	 */
-	wrapCall(ref, builtinName) {
+	simplifyLiterals(literals) {
 		return this;
 	}
 
 	/**
-	 * @param {IRVariable} ref 
-	 * @returns {?IRExpr}
+	 * @param {IRNameExprRegistry} nameExprs
 	 */
-	flattenCall(ref) {
-		return this;
+	registerNameExprs(nameExprs) {
+	}
+
+	copy() {
+		return new IRErrorCallExpr(this.site, this.#msg);
 	}
 
 	/**
-	 * @param {IRExprStack} stack
+	 * @param {IRExprRegistry} registry
 	 * @returns {IRExpr}
 	 */
-	inline(stack) {
-		return this;
-	}
-
-	/**
-	 * @param {IRExprStack} stack
-	 * @returns {IRExpr}
-	 */
-	simplify(stack) {
+	simplifyTopology(registry) {
 		return this;
 	}
 
@@ -30252,7 +30222,7 @@ class IRErrorCallExpr extends IRExpr {
 
 
 /////////////////////////////////////
-// Section 21: IR AST build functions
+// Section 22: IR AST build functions
 /////////////////////////////////////
 
 /**
@@ -30284,7 +30254,7 @@ function buildIRExpr(ts) {
 					if (group.fields.length == 1) {
 						expr = buildIRExpr(group.fields[0])
 					} else if (group.fields.length == 0) {
-						expr = new IRLiteral(new UplcUnit(t.site));
+						expr = new IRLiteralExpr(new UplcUnit(t.site));
 					} else {
 						group.syntaxError("unexpected parentheses with multiple fields");
 					}
@@ -30301,23 +30271,23 @@ function buildIRExpr(ts) {
 
 						expr = new IRCoreCallExpr(new Word(expr.site, expr.name), args, t.site);
 					} else {
-						expr = new IRUserCallExpr(expr, args, t.site);
+						expr = IRUserCallExpr.new(expr, args, t.site);
 					}
 				}
 			} else if (t.isSymbol("-")) {
 				// only makes sense next to IntegerLiterals
 				let int = assertDefined(ts.shift());
 				if (int instanceof IntLiteral) {
-					expr = new IRLiteral(new UplcInt(int.site, int.value * (-1n)));
+					expr = new IRLiteralExpr(new UplcInt(int.site, int.value * (-1n)));
 				} else {
 					throw int.site.typeError(`expected literal int, got ${int}`);
 				}
 			} else if (t instanceof BoolLiteral) {
 				assert(expr === null);
-				expr = new IRLiteral(new UplcBool(t.site, t.value));
+				expr = new IRLiteralExpr(new UplcBool(t.site, t.value));
 			} else if (t instanceof IntLiteral) {
 				assert(expr === null);
-				expr = new IRLiteral(new UplcInt(t.site, t.value));
+				expr = new IRLiteralExpr(new UplcInt(t.site, t.value));
 			} else if (t instanceof ByteArrayLiteral) {
 				assert(expr === null);
 				if (t.bytes.length == 0 && ts[0] != undefined && ts[0] instanceof ByteArrayLiteral) {
@@ -30325,22 +30295,34 @@ function buildIRExpr(ts) {
 					const next = assertDefined(ts.shift());
 
 					if (next instanceof ByteArrayLiteral) {
-						expr = new IRLiteral(new UplcDataValue(next.site, UplcData.fromCbor(next.bytes)));
+						expr = new IRLiteralExpr(new UplcDataValue(next.site, UplcData.fromCbor(next.bytes)));
 					} else {
 						throw new Error("unexpected");
 					}
 				} else {
-					expr = new IRLiteral(new UplcByteArray(t.site, t.bytes));
+					expr = new IRLiteralExpr(new UplcByteArray(t.site, t.bytes));
 				}
 			} else if (t instanceof StringLiteral) {
 				assert(expr === null);
-				expr = new IRLiteral(new UplcString(t.site, t.value));
-			} else if (t.isWord("__core__error")) {
+				expr = new IRLiteralExpr(new UplcString(t.site, t.value));
+			} else if (t.isWord("const")) {
 				assert(expr === null);
 
 				let maybeGroup = ts.shift();
 				if (maybeGroup === undefined) {
-					throw t.site.syntaxError("expected parens after __core__error");
+					throw t.site.syntaxError("expected parens after const");
+				} else {
+					let parens = maybeGroup.assertGroup("(", 1);
+					let pts = parens.fields[0];
+
+					expr = new IRConstExpr(t.site, buildIRExpr(pts));
+				}
+			} else if (t.isWord("error")) {
+				assert(expr === null);
+
+				let maybeGroup = ts.shift();
+				if (maybeGroup === undefined) {
+					throw t.site.syntaxError("expected parens after error");
 				} else {
 					let parens = maybeGroup.assertGroup("(", 1);
 					let pts = parens.fields[0];
@@ -30410,12 +30392,12 @@ function buildIRFuncExpr(ts) {
 
 
 /////////////////////////
-// Section 22: IR Program
+// Section 23: IR Program
 /////////////////////////
 
 
 /**
- * Wrapper for IRFuncExpr, IRCallExpr or IRLiteral
+ * Wrapper for IRFuncExpr, IRCallExpr or IRLiteralExpr
  * @package
  */
 class IRProgram {
@@ -30423,12 +30405,24 @@ class IRProgram {
 	#purpose;
 
 	/**
-	 * @param {IRFuncExpr | IRCallExpr | IRLiteral} expr
+	 * @param {IRFuncExpr | IRCallExpr | IRLiteralExpr} expr
 	 * @param {?number} purpose
 	 */
 	constructor(expr, purpose) {
 		this.#expr = expr;
 		this.#purpose = purpose;
+	}
+
+	/**
+	 * @param {IRExpr} expr 
+	 * @returns {IRFuncExpr | IRCallExpr | IRLiteralExpr}
+	 */
+	static assertValidRoot(expr) {
+		if (expr instanceof IRFuncExpr || expr instanceof IRCallExpr || expr instanceof IRLiteralExpr) {
+			return expr;
+		} else {
+			throw new Error("invalid IRExpr type for IRProgram");
+		}
 	}
 
 	/**
@@ -30447,29 +30441,55 @@ class IRProgram {
 
 		let expr = buildIRExpr(irTokens);
 		
-		/**
-		 * @type {IRProgram}
-		 */
-		if (expr instanceof IRFuncExpr || expr instanceof IRCallExpr || expr instanceof IRLiteral) {
-			if (expr instanceof IRFuncExpr || expr instanceof IRUserCallExpr || expr instanceof IRCoreCallExpr) {
-				expr.resolveNames(scope);
-			}
+		expr.resolveNames(scope);
 
-			let program = new IRProgram(expr, purpose);
+		expr = expr.evalConstants(new IRCallStack(throwSimplifyRTErrors));
 
-			if (simplify) {
-				program.simplify(throwSimplifyRTErrors, scope);
-			}
+		if (simplify) {
+			// inline literals and evaluate core expressions with only literal args (some can be evaluated with only partial literal args)
+			expr = this.simplify(expr);
 
-			return program;
-		} else {
-			throw new Error("expected IRFuncExpr or IRUserCallExpr or IRLiteral as result of IRProgram.new");
+			// make sure the debruijn indices are correct
+			expr.resolveNames(scope);
 		}
+
+		const program = new IRProgram(IRProgram.assertValidRoot(expr), purpose);
+
+		return program;
+	}
+
+	/**
+	 * @param {IRExpr} expr 
+	 * @returns {IRExpr}
+	 */
+	static simplify(expr) {
+		let dirty = true;
+		let oldState = expr.toString();
+
+		while (dirty) {
+			dirty = false;
+
+			expr = expr.simplifyLiterals(new Map());
+
+			const nameExprs = new IRNameExprRegistry();
+
+			expr.registerNameExprs(nameExprs);
+
+			expr = expr.simplifyTopology(new IRExprRegistry(nameExprs));
+
+			const newState = expr.toString();
+			if (newState != oldState) {
+				dirty = true;
+				oldState = newState;
+			}
+		}
+
+		return expr;
 	}
 
 	/**
 	 * @package
-	 * @type {IRFuncExpr | IRCallExpr | IRLiteral}
+	 * @type {IRFuncExpr | IRCallExpr | IRLiteralExpr}
 	 */
 	get expr() {
 		return this.#expr;
@@ -30495,7 +30515,7 @@ class IRProgram {
 	 * @type {UplcData}
 	 */
 	get data() {
-		if (this.#expr instanceof IRLiteral) {
+		if (this.#expr instanceof IRLiteralExpr) {
 			let v = this.#expr.value;
 
 			return v.data;
@@ -30507,29 +30527,6 @@ class IRProgram {
 
 	toString() {
 		return this.#expr.toString();
-	}
-
-	/**
-	 * @param {boolean} throwSimplifyRTErrors
-	 * @param {IRScope} scope
-	 */
-	simplify(throwSimplifyRTErrors = false, scope = new IRScope(null, null)) {
-		let dirty = true;
-	
-		while(dirty && (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr)) {
-			dirty = false;
-			let newExpr = this.#expr.simplify(new IRExprStack(throwSimplifyRTErrors));
-	
-			if (newExpr instanceof IRFuncExpr || newExpr instanceof IRUserCallExpr || newExpr instanceof IRCoreCallExpr || newExpr instanceof IRLiteral) {
-				dirty = newExpr.toString() != this.#expr.toString();
-				this.#expr = newExpr;
-			}
-		}
-	
-		if (this.#expr instanceof IRFuncExpr || this.#expr instanceof IRUserCallExpr || this.#expr instanceof IRCoreCallExpr) {
-			// recalculate the Debruijn indices
-			this.#expr.resolveNames(scope);
-		}
 	}
 
 	/**
@@ -30597,8 +30594,9 @@ export class IRParametricProgram {
 }
 
 
+
 /////////////////////////////
-// Section 23: Helios program
+// Section 24: Helios program
 /////////////////////////////
 
 /**
@@ -31384,7 +31382,7 @@ class MainModule extends Module {
 	 * @param {string[]}  parameters
 	 * @returns {IR}
 	 */
-	toIR(parameters) {
+	toIR(parameters = []) {
 		throw new Error("not yet implemented");
 	}
 
@@ -31525,7 +31523,7 @@ class RedeemerProgram extends Program {
 			new IR(`) -> {\n${TAB}${TAB}`),
 			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
 			new IR(innerArgs).join(", "),
-			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
+			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {error("transaction rejected")}\n${TAB}${TAB})()`),
 			new IR(`\n${TAB}}`),
 		]);
 
@@ -31645,7 +31643,7 @@ class DatumRedeemerProgram extends Program {
 			new IR(`) -> {\n${TAB}${TAB}`),
 			new IR(`__core__ifThenElse(\n${TAB}${TAB}${TAB}${this.mainPath}(`),
 			new IR(innerArgs).join(", "),
-			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {__core__error("transaction rejected")}\n${TAB}${TAB})()`),
+			new IR(`),\n${TAB}${TAB}${TAB}() -> {()},\n${TAB}${TAB}${TAB}() -> {error("transaction rejected")}\n${TAB}${TAB})()`),
 			new IR(`\n${TAB}}`),
 		]);
 
@@ -31784,15 +31782,28 @@ class StakingProgram extends RedeemerProgram {
 
 
 ///////////////////////
-// Section 24: Tx types
+// Section 25: Tx types
 ///////////////////////
 
 export class Tx extends CborData {
+	/**
+	 * @type {TxBody}
+	 */
 	#body;
+
+	/**
+	 * @type {TxWitnesses}
+	 */
 	#witnesses;
+
+	/**
+	 * @type {boolean}
+	 */
 	#valid;
 
-	/** @type {?TxMetadata} */
+	/** 
+	 * @type {?TxMetadata} 
+	 */
 	#metadata;
 
 	// the following field(s) aren't used by the serialization (only for building)
@@ -31826,10 +31837,30 @@ export class Tx extends CborData {
 	}
 
 	/**
+	 * @type {number[]}
+	 */
+	get bodyHash() {
+		return Crypto.blake2b(this.#body.toCbor());
+	}
+
+	/**
 	 * @type {TxWitnesses}
 	 */
 	get witnesses() {
 		return this.#witnesses;
+	}
+
+	/**
+	 * Used by emulator to check if tx is valid.
+	 * @param {bigint} slot
+	 * @returns {boolean}
+	 */
+	isValid(slot) {
+		if (!this.#valid) {
+			return false;
+		} else {
+			return this.#body.isValid(slot);
+		}
 	}
 
 	/** 
@@ -31954,12 +31985,12 @@ export class Tx extends CborData {
 		if (input.origOutput === null) {
 			throw new Error("TxInput.origOutput must be set when building transaction");
 		} else {
-			void this.#body.addInput(input);
+			void this.#body.addInput(input.asTxInput);
 
 			if (redeemer !== null) {
 				assert(input.origOutput.address.validatorHash !== null, "input isn't locked by a script");
 
-				this.#witnesses.addSpendingRedeemer(input, UplcDataValue.unwrap(redeemer));
+				this.#witnesses.addSpendingRedeemer(input.asTxInput, UplcDataValue.unwrap(redeemer));
 
 				if (input.origOutput.datum === null) {
 					throw new Error("expected non-null datum");
@@ -32085,7 +32116,7 @@ export class Tx extends CborData {
 	addCollateral(input) {
 		assert(!this.#valid);
 
-		this.#body.addCollateral(input);
+		this.#body.addCollateral(input.asTxInput);
 
 		return this;
 	}
@@ -32109,6 +32140,7 @@ export class Tx extends CborData {
 		let size = this.toCbor().length;
 
 		if (!this.#valid) {
+			// clean up the dummy signatures
 			this.#witnesses.removeDummySignatures();
 		}
 
@@ -32165,11 +32197,145 @@ export class Tx extends CborData {
 
 	/**
 	 * @param {NetworkParams} networkParams 
-	 * @param {RedeemerCostTracker} redeemerCostTracker
+	 * @param {Address} changeAddress
 	 * @returns {Promise<void>}
 	 */
-	async executeRedeemers(networkParams, redeemerCostTracker) {
-		await this.#witnesses.executeRedeemers(networkParams, this.#body, redeemerCostTracker);
+	async executeRedeemers(networkParams, changeAddress) {
+		await this.#witnesses.executeRedeemers(networkParams, this.#body, changeAddress);
+	}
+
+	/**
+	 * @param {NetworkParams} networkParams 
+	 * @returns {Promise<void>}
+	 */
+	async checkExecutionBudgets(networkParams) {
+		await this.#witnesses.checkExecutionBudgets(networkParams, this.#body);
+	}
+
+	/**
+	 * @param {Address} changeAddress 
+	 */
+	balanceAssets(changeAddress) {
+		const inputAssets = this.#body.sumInputAndMintedAssets();
+
+		const outputAssets = this.#body.sumOutputAssets();
+
+		if (inputAssets.eq(outputAssets)) {
+			return;
+		} else if (outputAssets.ge(inputAssets)) {
+			throw new Error("not enough input assets");
+		} else {
+			const diff = inputAssets.sub(outputAssets);
+
+			const changeOutput = new TxOutput(changeAddress, new Value(0n, diff));
+
+			this.#body.addOutput(changeOutput);
+		}
+	}
+
+	/**
+	 * Calculate the base fee which will be multiplied by the required min collateral percentage 
+	 * @param {NetworkParams} networkParams 
+	 * @param {Address} changeAddress 
+	 * @param {UTxO[]} spareUtxos 
+	 */
+	estimateCollateralBaseFee(networkParams, changeAddress, spareUtxos) {
+		// create the collateral return output (might not actually be added if there isn't enough lovelace)
+		const dummyOutput = new TxOutput(changeAddress, new Value(0n));
+		dummyOutput.correctLovelace(networkParams);
+
+		// some dummy UTxOs on to be able to correctly calculate the collateral (assuming it uses full body fee)
+		const dummyInputs = spareUtxos.map(spare => spare.asTxInput).concat(this.#body.inputs).slice(0, 3);
+		dummyInputs.forEach(input => {
+			this.#body.collateral.push(input);
+		});
+		this.#body.setCollateralReturn(dummyOutput);
+		this.#body.addInput(dummyInputs[0], false);
+		this.#body.addOutput(dummyOutput);
+
+		const baseFee = this.estimateFee(networkParams);
+
+		// remove the dummy inputs and outputs
+		while(this.#body.collateral.length) {
+			this.#body.collateral.pop();
+		}
+		this.#body.setCollateralReturn(null);
+		this.#body.inputs.pop();
+		this.#body.outputs.pop();
+
+		return baseFee;
+	}
+	
+	/**
+	 * @param {NetworkParams} networkParams
+	 * @param {Address} changeAddress
+	 * @param {UTxO[]} spareUtxos
+	 */
+	balanceCollateral(networkParams, changeAddress, spareUtxos) {
+		// don't do this step if collateral was already added explicitly
+		if (this.#body.collateral.length > 0 || !this.isSmart()) {
+			return;
+		}
+
+		const baseFee = this.estimateCollateralBaseFee(networkParams, changeAddress, spareUtxos);
+
+		const minCollateral = ((baseFee*BigInt(networkParams.minCollateralPct)) + 100n)/100n; // integer division that rounds up
+
+		let collateral = 0n;
+		/**
+		 * @type {TxInput[]}
+		 */
+		const collateralInputs = [];
+
+		/**
+		 * @param {TxInput[]} inputs 
+		 */
+		function addInputs(inputs) {
+			// first try using the UTxOs that already form the inputs
+			const cleanInputs = inputs.filter(utxo => utxo.value.assets.isZero()).sort((a, b) => Number(a.value.lovelace - b.value.lovelace));
+
+			for (let input of cleanInputs) {
+				if (collateral > minCollateral) {
+					break;
+				}
+
+				while (collateralInputs.length >= networkParams.maxCollateralInputs) {
+					collateralInputs.shift();
+				}
+	
+				collateralInputs.push(input);
+				collateral += input.value.lovelace;
+			}
+		}
+		
+		addInputs(this.#body.inputs.slice());
+
+		addInputs(spareUtxos.map(utxo => utxo.asTxInput));
+
+		// create the collateral return output if there is enough lovelace
+		const changeOutput = new TxOutput(changeAddress, new Value(0n));
+		changeOutput.correctLovelace(networkParams);
+
+		if (collateral < minCollateral) {
+			throw new Error("unable to find enough collateral input");
+		} else {
+			if (collateral > minCollateral + changeOutput.value.lovelace) {
+				changeOutput.setValue(new Value(0n));
+
+				changeOutput.correctLovelace(networkParams);
+
+				if (collateral > minCollateral + changeOutput.value.lovelace) {
+					changeOutput.setValue(new Value(collateral - minCollateral));
+					this.#body.setCollateralReturn(changeOutput);
+				} else {
+					console.log(`not setting collateral return: collateral input too low (${collateral})`);
+				}
+			}
+		}
+
+		collateralInputs.forEach(utxo => {
+			this.#body.addCollateral(utxo);
+		});
 	}
 
 	/**
@@ -32182,50 +32348,50 @@ export class Tx extends CborData {
 	 * @param {Address} changeAddress
 	 * @param {UTxO[]} spareUtxos - used when there are yet enough inputs to cover everything (eg. due to min output lovelace requirements, or fees)
 	 */
-	balance(networkParams, changeAddress, spareUtxos) {
-		// remove any pre-existing ChangeTxOutput
-		this.#body.removeChangeOutputs();
+	balanceLovelace(networkParams, changeAddress, spareUtxos) {
+		// don't include the changeOutput in this value
+		let nonChangeOutputValue = this.#body.sumOutputValue();
+
+		// assume a change output is always needed
+		const changeOutput = new TxOutput(changeAddress, new Value(0n));
+
+		changeOutput.correctLovelace(networkParams);
+
+		this.#body.addOutput(changeOutput);
+		
+		const minLovelace = changeOutput.value.lovelace;
 
 		let fee = this.setFee(networkParams, this.estimateFee(networkParams));
 		
 		let inputValue = this.#body.sumInputAndMintedValue();
 
-		let outputValue = this.#body.sumOutputValue();
-
 		let feeValue = new Value(fee);
 
-		let totalOutputValue = feeValue.add(outputValue);
+		nonChangeOutputValue = feeValue.add(nonChangeOutputValue);
 
-
-		// check if transaction is already perfectly balanced (very unlikely though)
-		if (totalOutputValue.eq(inputValue)) {
-			return;
-		}
+		spareUtxos = spareUtxos.filter(utxo => utxo.value.assets.isZero());
 		
-		// if transaction isn't balanced there must be a change address
-		if (changeAddress === null) {
-			throw new Error("change address not specified");
-		}
-
 		// use some spareUtxos if the inputValue doesn't cover the outputs and fees
-		while (!inputValue.ge(totalOutputValue)) {
+
+		while (!inputValue.ge(nonChangeOutputValue.add(changeOutput.value))) {
 			let spare = spareUtxos.pop();
 
 			if (spare === undefined) {
-				throw new Error("transaction outputs more than it inputs");
+				throw new Error("transaction doesn't have enough inputs to cover the outputs + fees + minLovelace");
 			} else {
-				this.#body.addInput(spare);
+				this.#body.addInput(spare.asTxInput);
 
 				inputValue = inputValue.add(spare.value);
 			}
 		}
 
-		// use the change address to create a change utxo
-		let diff = inputValue.sub(totalOutputValue);
+		// use to the exact diff, which is >= minLovelace
+		let diff = inputValue.sub(nonChangeOutputValue);
 
-		let changeOutput = new ChangeTxOutput(changeAddress, diff); // also includes any minted change
+		assert(diff.assets.isZero(), "unexpected unbalanced assets");
+		assert(diff.lovelace >= minLovelace);
 
-		this.#body.addOutput(changeOutput);
+		changeOutput.setValue(diff);
 
 		// we can mutate the lovelace value of 'changeOutput' until we have a balanced transaction with precisely the right fee
 
@@ -32238,13 +32404,13 @@ export class Tx extends CborData {
 			let diffFee = fee - oldFee;
 
 			// use some more spareUtxos
-			while (diffFee  > changeOutput.value.lovelace) {
+			while (diffFee  > (changeOutput.value.lovelace - minLovelace)) {
 				let spare = spareUtxos.pop();
 
 				if (spare === undefined) {
-					throw new Error("not enough inputs to cover fees");
+					throw new Error("not enough clean inputs to cover fees");
 				} else {
-					this.#body.addInput(spare);
+					this.#body.addInput(spare.asTxInput);
 
 					inputValue = inputValue.add(spare.value);
 
@@ -32255,6 +32421,8 @@ export class Tx extends CborData {
 			}
 
 			changeOutput.value.setLovelace(changeOutput.value.lovelace - diffFee);
+
+			// changeOutput.value.lovelace should still be >= minLovelace at this point
 
 			oldFee = fee;
 
@@ -32275,16 +32443,27 @@ export class Tx extends CborData {
 	}
 
 	/**
+	 * @returns {boolean}
+	 */
+	isSmart() {
+		return this.#witnesses.scripts.length > 0;
+	}
+
+	/**
 	 * Throws an error if there isn't enough collateral
 	 * Also throws an error if the script doesn't require collateral, but collateral was actually included
 	 * Shouldn't be used directly
 	 * @param {NetworkParams} networkParams 
 	 */
 	checkCollateral(networkParams) {
-		if (this.#witnesses.scripts.length > 0) {
+		if (this.isSmart()) {
 			let minCollateralPct = networkParams.minCollateralPct;
 
-			this.#body.checkCollateral(networkParams, BigInt(Math.ceil(minCollateralPct*Number(this.#body.fee)/100.0)));
+			// only use the exBudget 
+
+			const fee = this.#body.fee;
+
+			this.#body.checkCollateral(networkParams, BigInt(Math.ceil(minCollateralPct*Number(fee)/100.0)));
 		} else {
 			this.#body.checkCollateral(networkParams, null);
 		}
@@ -32301,6 +32480,14 @@ export class Tx extends CborData {
 		if (size > networkParams.maxTxSize) {
 			throw new Error("tx too big");
 		}
+	}
+
+	/**
+	 * Final check that fee is big enough
+	 * @param {NetworkParams} networkParams 
+	 */
+	checkFee(networkParams) {
+		assert(this.estimateFee(networkParams) <= this.#body.fee, "fee too small");
 	}
 
 	/**
@@ -32340,34 +32527,36 @@ export class Tx extends CborData {
 
 		this.checkScripts();
 
-		// now do everything that might increase the size of the transaction	
+		// balance the non-ada assets
+		this.balanceAssets(changeAddress)
+
+		// make sure that each output contains the necessary minimum amount of lovelace	
 		this.#body.correctOutputs(networkParams);
 
-		// dummy scriptDataHash, but at least this way the tx has correct size
+		// the scripts executed at this point will not see the correct txHash nor the correct fee
+		await this.executeRedeemers(networkParams, changeAddress);
+
+		// we can only sync scriptDataHash after the redeemer execution costs have been estimated
 		this.syncScriptDataHash(networkParams);
 
-		// the scripts executed at this point will not see the correct txHash, but they should at least see a properly balanced tx
-		let redeemerCostTracker = new RedeemerCostTracker();
+		// balance collateral (if collateral wasn't already set manually)
+		this.balanceCollateral(networkParams, changeAddress, spareUtxos.slice());
 
-		while (redeemerCostTracker.dirty) {
-			redeemerCostTracker.clean();
-
-			this.balance(networkParams, changeAddress, spareUtxos.slice());
-
-			await this.executeRedeemers(networkParams, redeemerCostTracker);
-
-			// we can only sync scriptDataHash after the redeemer execution costs have been estimated
-			this.syncScriptDataHash(networkParams);
-		}
+		// balance the lovelace
+		this.balanceLovelace(networkParams, changeAddress, spareUtxos.slice());
 
 		// a bunch of checks
 		this.#body.checkOutputs(networkParams);
 
 		this.checkCollateral(networkParams);
 
-		this.#witnesses.checkExecutionBudget(networkParams);
+		await this.checkExecutionBudgets(networkParams);
+
+		this.#witnesses.checkExecutionBudgetLimits(networkParams);
 
 		this.checkSize(networkParams);
+
+		this.checkFee(networkParams);
 
 		this.#valid = true;
 
@@ -32385,7 +32574,7 @@ export class Tx extends CborData {
 		assert(this.#valid);
 
 		if (verify) {
-			signature.verify(Crypto.blake2b(this.#body.toCbor()));
+			signature.verify(this.bodyHash);
 		}
 
 		this.#witnesses.addSignature(signature);
@@ -32428,7 +32617,7 @@ export class Tx extends CborData {
 	 */
 	id() {
 		assert(this.#valid, "can't get TxId of unfinalized Tx");
-		return new TxId(Crypto.blake2b(this.#body.toCbor(), 32));
+		return new TxId(this.bodyHash);
 	}
 }
 
@@ -32507,14 +32696,24 @@ class TxBody extends CborData {
 		this.#scriptDataHash = null; // calculated upon finalization
 		this.#collateral = [];
 		this.#signers = [];
-		this.#collateralReturn = null; // doesn't seem to be used anymore
+		this.#collateralReturn = null;
 		this.#totalCollateral = 0n; // doesn't seem to be used anymore
 		this.#refInputs = [];
 		this.#metadataHash = null;
 	}
 
+	/**
+	 * @type {TxInput[]}
+	 */
 	get inputs() {
-		return this.#inputs.slice();
+		return this.#inputs;
+	}
+
+	/**
+	 * @type {TxOutput[]}
+	 */
+	get outputs() {
+		return this.#outputs;
 	}
 
 	get fee() {
@@ -32533,6 +32732,13 @@ class TxBody extends CborData {
 	 */
 	get minted() {
 		return this.#minted;
+	}
+
+	/**
+	 * @type {TxInput[]}
+	 */
+	get collateral() {
+		return this.#collateral;
 	}
 
 	/**
@@ -32701,7 +32907,7 @@ class TxBody extends CborData {
 			scriptDataHash: this.#scriptDataHash === null ? null : this.#scriptDataHash.dump(),
 			collateral: this.#collateral.length == 0 ? null : this.#collateral.map(c => c.dump()),
 			signers: this.#signers.length == 0 ? null : this.#signers.map(rs => rs.dump()),
-			//collateralReturn: this.#collateralReturn === null ? null : this.#collateralReturn.dump(), // doesn't seem to be used anymore
+			collateralReturn: this.#collateralReturn === null ? null : this.#collateralReturn.dump(),
 			//totalCollateral: this.#totalCollateral.toString(), // doesn't seem to be used anymore
 			refInputs: this.#refInputs.map(ri => ri.dump()),
 		};
@@ -32750,7 +32956,7 @@ class TxBody extends CborData {
 				d
 			])),
 			// DEBUG extra data to see if it influences the ex budget
-			new ConstrData(0, [new ByteArrayData(txId.bytes)]),
+			new ConstrData(0, [new ByteArrayData(txId.bytes)])
 		]);
 	}
 
@@ -32786,9 +32992,17 @@ class TxBody extends CborData {
 
 	/**
 	 * Throws error if any part of the sum is negative (i.e. more is burned than input)
+	 * @returns {Value}
 	 */
 	sumInputAndMintedValue() {
 		return this.sumInputValue().add(new Value(0n, this.#minted)).assertAllPositive();
+	}
+
+	/**
+	 * @returns {Assets}
+	 */
+	sumInputAndMintedAssets() {
+		return this.sumInputAndMintedValue().assets;
 	}
 
 	/**
@@ -32802,6 +33016,13 @@ class TxBody extends CborData {
 		}
 
 		return sum;
+	}
+
+	/**
+	 * @returns {Assets}
+	 */
+	sumOutputAssets() {
+		return this.sumOutputValue().assets;
 	}
 
 	/**
@@ -32829,12 +33050,19 @@ class TxBody extends CborData {
 
 	/**
 	 * @param {TxInput} input 
+	 * @param {boolean} checkUniqueness
 	 */
-	addInput(input) {
+	addInput(input, checkUniqueness = true) {
 		if (input.origOutput === null) {
 			throw new Error("TxInput.origOutput must be set when building transaction");
 		} else {
 			input.origOutput.value.assertAllPositive();
+
+			if (checkUniqueness) {
+				assert(this.#inputs.every(prevInput => {
+					return  !prevInput.txId.eq(input.txId) || prevInput.utxoIdx != input.utxoIdx
+				}), "input already added before");
+			}
 		}
 
 		this.#inputs.push(input);
@@ -32854,10 +33082,6 @@ class TxBody extends CborData {
 		output.value.assertAllPositive();
 
 		this.#outputs.push(output);
-	}
-
-	removeChangeOutputs() {
-		this.#outputs = this.#outputs.filter(output => !output.isChange());
 	}
 
 	/**
@@ -32889,6 +33113,13 @@ class TxBody extends CborData {
 	}
 
 	/**
+	 * @param {TxOutput | null} output 
+	 */
+	setCollateralReturn(output) {
+		this.#collateralReturn = output;
+	}
+
+	/**
 	 * Calculates the number of dummy signatures needed to get precisely the right tx size
 	 * @returns {number}
 	 */
@@ -32896,7 +33127,9 @@ class TxBody extends CborData {
 		/** @type {Set<PubKeyHash>} */
 		let set = new Set();
 
-		for (let input of this.#inputs) {
+		const inputs = this.#inputs.concat(this.#collateral);
+
+		for (let input of inputs) {
 			let origOutput = input.origOutput;
 
 			if (origOutput !== null) {
@@ -32981,6 +33214,10 @@ class TxBody extends CborData {
 				}
 			}
 
+			if (this.#collateralReturn != null) {
+				sum = sum.sub(this.#collateralReturn.value);
+			}
+
 			assert(sum.lovelace >= minCollateral, "not enough collateral");
 
 			if (sum.lovelace > minCollateral*5n){
@@ -33001,6 +33238,26 @@ class TxBody extends CborData {
 		}));
 
 		this.#minted.sort();
+	}
+
+	/**
+	 * Used by (indirectly) by emulator to check if slot range is valid.
+	 * @param {bigint} slot
+	 */
+	isValid(slot) {
+		if (this.#lastValidSlot != null) {
+			if (slot > this.#lastValidSlot) {
+				return false;
+			}
+		}
+
+		if (this.#firstValidSlot != null) {
+			if (slot < this.#firstValidSlot) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }
 
@@ -33270,75 +33527,133 @@ export class TxWitnesses extends CborData {
 	}
 
 	/**
+	 * 
+	 * @param {NetworkParams} networkParams 
+	 * @param {TxBody} body
+	 * @param {Redeemer} redeemer 
+	 * @param {UplcData} scriptContext
+	 * @returns {Promise<Cost>} 
+	 */
+	async executeRedeemer(networkParams, body, redeemer, scriptContext) {
+		if (redeemer instanceof SpendingRedeemer) {
+			const idx = redeemer.inputIndex;
+
+			const origOutput = body.inputs[idx].origOutput;
+
+			if (origOutput === null) {
+				throw new Error("expected origOutput to be non-null");
+			} else {
+				const datumData = origOutput.getDatumData();
+
+				const validatorHash = origOutput.address.validatorHash;
+
+				if (validatorHash === null || validatorHash === undefined) {
+					throw new Error("expected validatorHash to be non-null");
+				} else {
+					const script = this.getScript(validatorHash);
+
+					const args = [
+						new UplcDataValue(Site.dummy(), datumData), 
+						new UplcDataValue(Site.dummy(), redeemer.data), 
+						new UplcDataValue(Site.dummy(), scriptContext),
+					];
+
+					const profile = await script.profile(args, networkParams);
+
+					profile.messages.forEach(m => console.log(m));
+
+					if (profile.result instanceof UserError) {	
+						throw profile.result;
+					} else {
+						return {mem: profile.mem, cpu: profile.cpu};
+					}
+				}
+			}
+		} else if (redeemer instanceof MintingRedeemer) {
+			const mph = body.minted.mintingPolicies[redeemer.mphIndex];
+
+			const script = this.getScript(mph);
+
+			const args = [
+				new UplcDataValue(Site.dummy(), redeemer.data),
+				new UplcDataValue(Site.dummy(), scriptContext),
+			];
+
+			const profile = await script.profile(args, networkParams);
+
+			profile.messages.forEach(m => console.log(m));
+
+			if (profile.result instanceof UserError) {	
+				throw profile.result;
+			} else {
+				return {mem: profile.mem, cpu: profile.cpu};
+			}
+		} else {
+			throw new Error("unhandled redeemer type");
+		}
+	}
+
+	/**
 	 * Executes the redeemers in order to calculate the necessary ex units
 	 * @param {NetworkParams} networkParams 
 	 * @param {TxBody} body - needed in order to create correct ScriptContexts
-	 * @param {RedeemerCostTracker} redeemerCostTracker
+	 * @param {Address} changeAddress - needed for dummy input and dummy output
 	 * @returns {Promise<void>}
 	 */
-	async executeRedeemers(networkParams, body, redeemerCostTracker) {
+	async executeRedeemers(networkParams, body, changeAddress) {
+		// additional dummy input and dummy output to compensate for balancing inputs and outputs that might be added later
+		const fee = networkParams.maxTxFee;
+
+		// 1000 ADA should be enough as a dummy input/output
+		const dummyInput = new TxInput(
+			TxId.dummy(),
+			0n,
+			new TxOutput(
+				changeAddress,
+				new Value(fee + 1000000000n)
+			)
+		);
+
+		const dummyOutput = new TxOutput(
+			changeAddress,
+			new Value(1000000000n)
+		);
+
+		body.setFee(fee);
+		body.inputs.push(dummyInput);
+		body.outputs.push(dummyOutput);
+
 		for (let i = 0; i < this.#redeemers.length; i++) {
-			let redeemer = this.#redeemers[i];
+			const redeemer = this.#redeemers[i];
 
-			let scriptContext = body.toScriptContextData(networkParams, this.#redeemers, this.#datums, i);
+			const scriptContext = body.toScriptContextData(networkParams, this.#redeemers, this.#datums, i);
 
-			if (redeemer instanceof SpendingRedeemer) {
-				let idx = redeemer.inputIndex;
+			const cost = await this.executeRedeemer(networkParams, body, redeemer, scriptContext);
 
-				let origOutput = body.inputs[idx].origOutput;
+			redeemer.setCost(cost);
+		}
 
-				if (origOutput === null) {
-					throw new Error("expected origOutput to be non-null");
-				} else {
-					let datumData = origOutput.getDatumData();
+		body.inputs.pop();
+		body.outputs.pop();
+	}
 
-					let validatorHash = origOutput.address.validatorHash;
+	/**
+	 * Reruns all the redeemers to make sure the ex budgets are still correct (can change due to outputs added during rebalancing)
+	 * @param {NetworkParams} networkParams 
+	 * @param {TxBody} body 
+	 */
+	async checkExecutionBudgets(networkParams, body) {
+		for (let i = 0; i < this.#redeemers.length; i++) {
+			const redeemer = this.#redeemers[i];
 
-					if (validatorHash === null || validatorHash === undefined) {
-						throw new Error("expected validatorHash to be non-null");
-					} else {
-						let script = this.getScript(validatorHash);
+			const scriptContext = body.toScriptContextData(networkParams, this.#redeemers, this.#datums, i);
 
-						let args = [
-							new UplcDataValue(Site.dummy(), datumData), 
-							new UplcDataValue(Site.dummy(), redeemer.data), 
-							new UplcDataValue(Site.dummy(), scriptContext),
-						];
+			const cost = await this.executeRedeemer(networkParams, body, redeemer, scriptContext);
 
-						let profile = await script.profile(args, networkParams);
-
-						if (profile.result instanceof UserError) {
-							profile.messages.forEach(m => console.log(m));
-							throw profile.result;
-						} else {
-							const cost = {mem: profile.mem, cpu: profile.cpu};
-							redeemer.setCost({mem: profile.mem, cpu: profile.cpu});
-							redeemerCostTracker.setCost(i, cost);
-						}
-					}
-				}
-			} else if (redeemer instanceof MintingRedeemer) {
-				let mph = body.minted.mintingPolicies[redeemer.mphIndex];
-
-				let script = this.getScript(mph);
-
-				let args = [
-					new UplcDataValue(Site.dummy(), redeemer.data),
-					new UplcDataValue(Site.dummy(), scriptContext),
-				];
-
-				let profile = await script.profile(args, networkParams);
-
-				if (profile.result instanceof UserError) {
-					profile.messages.forEach(m => console.log(m));
-					throw profile.result;
-				} else {
-					const cost = {mem: profile.mem, cpu: profile.cpu};
-					redeemer.setCost(cost);
-					redeemerCostTracker.setCost(i, cost);
-				}
-			} else {
-				throw new Error("unhandled redeemer type");
+			if (redeemer.memCost < cost.mem) {
+				throw new Error("internal finalization error, redeemer mem budget too low");
+			} else if (redeemer.cpuCost < cost.cpu) {
+				throw new Error("internal finalization error, redeemer cpu budget too low");
 			}
 		}
 	}
@@ -33347,7 +33662,7 @@ export class TxWitnesses extends CborData {
 	 * Throws error if execution budget is exceeded
 	 * @param {NetworkParams} networkParams
 	 */
-	checkExecutionBudget(networkParams) {
+	checkExecutionBudgetLimits(networkParams) {
 		let totalMem = 0n;
 		let totalCpu = 0n;
 
@@ -33356,7 +33671,7 @@ export class TxWitnesses extends CborData {
 			totalCpu += redeemer.cpuCost;
 		}
 
-		let [maxMem, maxCpu] = networkParams.txExecutionBudget;
+		let [maxMem, maxCpu] = networkParams.maxTxExecutionBudget;
 
 		if (totalMem >= BigInt(maxMem)) {
 			throw new Error("execution budget exceeded for mem");
@@ -33368,6 +33683,9 @@ export class TxWitnesses extends CborData {
 	}
 }
 
+/**
+ * @package
+ */
 class TxInput extends CborData {
 	/** @type {TxId} */
 	#txId;
@@ -33526,22 +33844,59 @@ class TxInput extends CborData {
 }
 
 /**
- * UTxO is an alias for TxInput
+ * UTxO wraps TxInput
  */
-export class UTxO extends TxInput {
+export class UTxO {
+	#input;
+
 	/**
 	 * @param {TxId} txId 
 	 * @param {bigint} utxoIdx 
 	 * @param {TxOutput} origOutput
 	 */
 	constructor(txId, utxoIdx, origOutput) {
-		super(txId, utxoIdx, origOutput);
+		this.#input = new TxInput(txId, utxoIdx, origOutput);
+	}
+
+	/**
+	 * @type {TxId}
+	 */
+	get txId() {
+		return this.#input.txId;
+	}
+
+	/**
+	 * @type {bigint}
+	 */
+	get utxoIdx() {
+		return this.#input.utxoIdx;
+	}
+
+	/**
+	 * @type {TxInput}
+	 */
+	get asTxInput() {
+		return this.#input;
+	}
+
+	/**
+	 * @type {Value}
+	 */
+	get value() {
+		return this.#input.value;
+	}
+
+	/**
+	 * @type {TxOutput}
+	 */
+	get origOutput() {
+		return this.#input.origOutput;
 	}
 
 	/**
 	 * Deserializes UTxO format used by wallet connector
 	 * @param {number[]} bytes
-	 * @returns {TxInput}
+	 * @returns {UTxO}
 	 */
 	static fromCbor(bytes) {
 		/** @type {?TxInput} */
@@ -33567,10 +33922,20 @@ export class UTxO extends TxInput {
             /** @type {TxInput} */
             const txInput = maybeTxInput;
             
-			return new TxInput(txInput.txId, txInput.utxoIdx, origOutput);
+			return new UTxO(txInput.txId, txInput.utxoIdx, origOutput);
 		} else {
 			throw new Error("unexpected");
 		}
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeTuple([
+			this.#input.toCbor(),
+			this.#input.origOutput.toCbor()
+		]);
 	}
 
 	/**
@@ -33625,13 +33990,6 @@ export class TxOutput extends CborData {
 		this.#value = value;
 		this.#datum = datum;
 		this.#refScript = refScript;
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isChange() {
-		return false;
 	}
 
 	get address() {
@@ -33877,23 +34235,6 @@ export class TxOutput extends CborData {
 	}
 }
 
-class ChangeTxOutput extends TxOutput {
-	/**
-	 * @param {Address} address 
-	 * @param {Value} value
-	 */
-	constructor(address, value) {
-		super(address, value, null, null);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isChange() {
-		return true;
-	}
-}
-
 // TODO: enum members
 class DCert extends CborData {
 	constructor() {
@@ -33919,13 +34260,72 @@ class DCert extends CborData {
 /**
  * Convenience address that is used to query all assets controlled by a given StakeHash (can be scriptHash or regular stakeHash)
  */
-export class StakeAddress extends Address {
+export class StakeAddress {
+	#bytes;
+
+	/**
+	 * @param {number[]} bytes 
+	 */
+	constructor(bytes) {
+		assert(bytes.length == 29);
+
+		this.#bytes = bytes;
+	}
+
+	/**
+	 * @type {number[]}
+	 */
+	get bytes() {
+		return this.#bytes;
+	}
+
+	/**
+	 * @param {StakeAddress} sa
+	 * @returns {boolean}
+	 */
+	static isForTestnet(sa) {
+		return Address.isForTestnet(new Address(sa.bytes));
+	}
+
+	/**
+	 * Convert regular Address into StakeAddress.
+	 * Throws an error if the given Address doesn't have a staking part.
+	 * @param {Address} addr 
+	 * @returns {StakeAddress}
+	 */
+	static fromAddress(addr) {
+		const sh = addr.stakingHash;
+
+		if (sh === null) {
+			throw new Error("address doesn't have a staking part");
+		} else {
+			return StakeAddress.fromHash(Address.isForTestnet(addr), sh);
+		}
+	}
+
+	/**
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return CborData.encodeBytes(this.#bytes);
+	}
+
 	/**
 	 * @param {number[]} bytes
 	 * @returns {StakeAddress}
 	 */
 	static fromCbor(bytes) {
 		return new StakeAddress(CborData.decodeBytes(bytes));
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toBech32() {
+		return Crypto.encodeBech32(
+			StakeAddress.isForTestnet(this) ? "stake_test" : "stake",
+			this.bytes
+		);
 	}
 
 	/**
@@ -33937,9 +34337,17 @@ export class StakeAddress extends Address {
 
 		let result = new StakeAddress(bytes);
 
-		assert(prefix == (result.isForTestnet() ? "stake_test" : "stake"), "invalid StakeAddress prefix");
+		assert(prefix == (StakeAddress.isForTestnet(result) ? "stake_test" : "stake"), "invalid StakeAddress prefix");
 
 		return result;
+	}
+
+	/**
+	 * Returns the raw StakeAddress bytes as a hex encoded string
+	 * @returns {string}
+	 */
+	toHex() {
+		return bytesToHex(this.#bytes);
 	}
 
 	/**
@@ -33976,13 +34384,31 @@ export class StakeAddress extends Address {
 	}
 
 	/**
-	 * @returns {string}
+	 * @param {boolean} isTestnet
+	 * @param {StakeKeyHash | StakingValidatorHash} hash
+	 * @returns {StakeAddress}
 	 */
-	toBech32() {
-		return Crypto.encodeBech32(
-			this.isForTestnet() ? "stake_test" : "stake",
-			this.bytes
-		);
+	static fromHash(isTestnet, hash) {
+		if (hash instanceof StakeKeyHash) {
+			return StakeAddress.fromStakeKeyHash(isTestnet, hash);
+		} else {
+			return StakeAddress.fromStakingValidatorHash(isTestnet, hash);
+		}
+	}
+
+	/**
+	 * @returns {StakeKeyHash | StakingValidatorHash}
+	 */
+	get stakingHash() {
+		const type = this.bytes[0];
+
+		if (type == 0xe0 || type == 0xe1) {
+			return new StakeKeyHash(this.bytes.slice(1));
+		} else if (type == 0xf0 || type == 0xf1) {
+			return new StakingValidatorHash(this.bytes.slice(1));
+		} else {
+			throw new Error("bad StakeAddress header");
+		}
 	}
 }
 
@@ -34084,38 +34510,6 @@ export class Signature extends CborData {
 				}
 			}
 		}
-	}
-}
-
-/**
- * Used during the transaction balance iterations
- */
-class RedeemerCostTracker {
-	constructor() {
-		/** @type {Cost[]} */
-		this.costs = [];
-		this.dirty = true;
-	}
-
-	clean() {
-		this.dirty = false;
-	}
-
-	/**
-	 * 
-	 * @param {number} i 
-	 * @param {Cost} cost 
-	 */
-	setCost(i, cost) {
-		let cur = this.costs[i];
-
-		if (cur === undefined || cur === null) {
-			this.dirty = true;
-		} else if (cur.mem !== cost.mem || cur.cpu !== cost.cpu) {
-			this.dirty = true;
-		}
-
-		this.costs[i] = cost;
 	}
 }
 
@@ -34504,19 +34898,27 @@ export class Datum extends CborData {
 	}
 
 	/**
-	 * @param {UplcDataValue | UplcData} data
+	 * @param {UplcDataValue | UplcData | HeliosData} data
 	 * @returns {HashedDatum}
 	 */
 	static hashed(data) {
-		return HashedDatum.fromData(UplcDataValue.unwrap(data));
+		if (data instanceof HeliosData) {
+			return HashedDatum.fromData(data._toUplcData());
+		} else {
+			return HashedDatum.fromData(UplcDataValue.unwrap(data));
+		}
 	}
 
 	/**
-	 * @param {UplcDataValue | UplcData} data
+	 * @param {UplcDataValue | UplcData | HeliosData} data
 	 * @returns {InlineDatum}
 	 */
 	static inline(data) {
-		return new InlineDatum(UplcDataValue.unwrap(data))
+		if (data instanceof HeliosData) {
+			return new InlineDatum(data._toUplcData());
+		} else {
+			return new InlineDatum(UplcDataValue.unwrap(data));
+		}
 	}
 
 	/**
@@ -34566,7 +34968,7 @@ export class Datum extends CborData {
  * Inside helios this type is named OutputDatum::Hash in order to distinguish it from the user defined Datum,
  * but outside helios scripts there isn't much sense to keep using the name 'OutputDatum' instead of Datum
  */
-class HashedDatum extends Datum {
+export class HashedDatum extends Datum {
 	/** @type {DatumHash} */
 	#hash;
 
@@ -34879,8 +35281,9 @@ class TxMetadata {
 }
 
 
+
 ////////////////////////////////////
-// Section 25: Highlighting function
+// Section 26: Highlighting function
 ////////////////////////////////////
 
 /**
@@ -35206,7 +35609,7 @@ export function highlight(src) {
 
 
 //////////////////////////////////////
-// Section 26: Fuzzy testing framework
+// Section 27: Fuzzy testing framework
 //////////////////////////////////////
 
 /**
@@ -35538,15 +35941,17 @@ export class FuzzyTest {
 
 	/**
 	 * Returns a generator for tagged constr
-	 * @param {number} tag
+	 * @param {number | NumberGenerator} tag
 	 * @param {...ValueGenerator} fieldGenerators
 	 * @returns {ValueGenerator}
 	 */
 	constr(tag, ...fieldGenerators) {
 		return function() {
-			let fields = fieldGenerators.map(g => g().data);
+			const fields = fieldGenerators.map(g => g().data);
 
-			return new UplcDataValue(Site.dummy(), new ConstrData(tag, fields));
+			const finalTag = (typeof tag == "number") ? tag : Math.round(tag()*100);
+			
+			return new UplcDataValue(Site.dummy(), new ConstrData(finalTag, fields));
 		}
 	}
 
@@ -35658,8 +36063,10 @@ export class FuzzyTest {
 
 
 ////////////////////////////
-// Section 27: CoinSelection
+// Section 28: CoinSelection
 ////////////////////////////
+
+
 
 /**
  * Collection of coin selection algorithms
@@ -35688,14 +36095,37 @@ export class CoinSelection {
         function select(neededQuantity, getQuantity) {
             // first sort notYetPicked in ascending order when picking smallest first,
             // and in descending order when picking largest first
+            // sort UTxOs that contain more assets last
             notSelected.sort((a, b) => {
-                return Number(getQuantity(a) - getQuantity(b)) * (largestFirst ? -1 : 1);
+                const qa = getQuantity(a);
+                const qb = getQuantity(b);
+
+                const sign = largestFirst ? -1 : 1;
+
+                if (qa != 0n && qb == 0n) {
+                    return sign;
+                } else if (qa == 0n && qb != 0n) {
+                    return -sign;
+                } else if (qa == 0n && qb == 0n) {
+                    return 0;
+                } else {
+                    const na = a.value.assets.nTokenTypes;
+                    const nb = b.value.assets.nTokenTypes;
+
+                    if (na == nb) {
+                        return Number(qa - qb)*sign;
+                    } else if (na < nb) {
+                        return sign;
+                    } else {
+                        return -sign
+                    }
+                }
             });
 
             let count = 0n;
             const remaining = [];
 
-            while (count < neededQuantity) {
+            while (count < neededQuantity || count == 0n) { // must select at least one utxo if neededQuantity == 0n
                 const utxo = notSelected.shift();
 
                 if (utxo === undefined) {
@@ -35713,7 +36143,7 @@ export class CoinSelection {
                 }
             }
 
-            notSelected = remaining;
+            notSelected = notSelected.concat(remaining);
         }
 
         /**
@@ -35746,6 +36176,8 @@ export class CoinSelection {
             select(diff, (utxo) => utxo.value.lovelace);
         }
 
+        assert(selected.length + notSelected.length == utxos.length, "internal error: select algorithm doesn't conserve utxos");
+
         return [selected, notSelected];
     }
 
@@ -35770,28 +36202,29 @@ export class CoinSelection {
 
 
 //////////////////////
-// Section 28: Wallets
+// Section 29: Wallets
 //////////////////////
 
 
 /**
  * @typedef {{
- *   usedAddresses: Promise<Address[]>,
- *   unusedAddresses: Promise<Address[]>,
- *   utxos: Promise<UTxO[]>,
- *   signTx(tx: Tx): Promise<Signature[]>,
- *   submitTx(tx: Tx): Promise<TxId>
+ *     isMainnet(): Promise<boolean>,
+ *     usedAddresses: Promise<Address[]>,
+ *     unusedAddresses: Promise<Address[]>,
+ *     utxos: Promise<UTxO[]>,
+ *     signTx(tx: Tx): Promise<Signature[]>,
+ *     submitTx(tx: Tx): Promise<TxId>
  * }} Wallet
  */
 
 /**
  * @typedef {{
- *   getNetworkId(): Promise<number>,
- *   getUsedAddresses(): Promise<string[]>,
- *   getUnusedAddresses(): Promise<string[]>,
- *   getUtxos(): Promise<string[]>,
- *   signTx(txHex: string, partialSign: boolean): Promise<string>,
- *   submitTx(txHex: string): Promise<string>
+ *     getNetworkId(): Promise<number>,
+ *     getUsedAddresses(): Promise<string[]>,
+ *     getUnusedAddresses(): Promise<string[]>,
+ *     getUtxos(): Promise<string[]>,
+ *     signTx(txHex: string, partialSign: boolean): Promise<string>,
+ *     submitTx(txHex: string): Promise<string>
  * }} Cip30Handle
  */
 
@@ -35806,6 +36239,13 @@ export class Cip30Wallet {
      */
     constructor(handle) {
         this.#handle = handle;
+    }
+
+    /**
+     * @returns {Promise<boolean>}
+     */
+    async isMainnet() {
+        return (await this.#handle.getNetworkId()) == 1;
     }
 
     /**
@@ -35924,10 +36364,11 @@ export class WalletHelper {
 
     /**
      * @param {Value} amount 
+     * @param {(allUtxos: UTxO[], anount: Value) => [UTxO[], UTxO[]]} algorithm
      * @returns {Promise<[UTxO[], UTxO[]]>} - [picked, not picked that can be used as spares]
      */ 
-    async pickUtxos(amount) {
-        return CoinSelection.selectSmallestFirst(await this.#wallet.utxos, amount);
+    async pickUtxos(amount, algorithm = CoinSelection.selectSmallestFirst) {
+        return algorithm(await this.#wallet.utxos, amount);
     }
 
     /**
@@ -35989,12 +36430,13 @@ export class WalletHelper {
 
 
 //////////////////////
-// Section 29: Network
+// Section 30: Network
 //////////////////////
 
 /**
  * @typedef {{
- *   submitTx(tx: Tx): Promise<TxId>
+ *     getUtxos(address: Address): Promise<UTxO[]>,
+ *     submitTx(tx: Tx): Promise<TxId>
  * }} Network
  */
 
@@ -36013,6 +36455,143 @@ export class BlockfrostV0 {
         this.#networkName = networkName;
         this.#projectId = projectId
     }
+
+    /**
+     * Determine the network which the wallet is connected to.
+     * @param {Wallet} wallet 
+     * @param {{
+     *     preview?: string,
+     *     preprod?: string,
+     *     mainnet?: string
+     * }} projectIds 
+     * @returns {Promise<BlockfrostV0>}
+     */
+    static async resolve(wallet, projectIds) {
+        if (await wallet.isMainnet()) {
+            return new BlockfrostV0("mainnet", assertDefined(projectIds["mainnet"]));
+        } else {
+            const helper = new WalletHelper(wallet);
+
+            const refUtxo = await helper.refUtxo;
+
+            if (refUtxo === null) {
+                throw new Error("empty wallet, can't determine which testnet you are connecting to");
+            } else {
+                const preprodProjectId = projectIds["preprod"];
+                const previewProjectId = projectIds["preview"];
+
+                if (preprodProjectId !== undefined) {
+                    const preprodNetwork = new BlockfrostV0("preprod", preprodProjectId);
+
+                    if (await preprodNetwork.hasUtxo(refUtxo)) {
+                        return preprodNetwork;
+                    }
+                } 
+                
+                if (previewProjectId !== undefined) {
+                    const previewNetwork = new BlockfrostV0("preview", previewProjectId);
+
+                    if (!(await previewNetwork.hasUtxo(refUtxo))) {
+                        throw new Error("not preview network (hint: provide project id for preprod");
+                    } else {
+                        return previewNetwork;
+                    }
+                } else {
+                    if (preprodProjectId === undefined) {
+                        throw new Error("no project ids for testnets");
+                    } else {
+                        throw new Error("no project id for preview testnet");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {any} obj 
+     * @returns 
+     */
+    static parseValue(obj) {
+        let value = new Value();
+
+        for (let item of obj) {
+            let qty = BigInt(item.quantity);
+
+            if (item.unit == "lovelace") {
+                value = value.add(new Value(qty));
+            } else {
+                let policyID = item.unit.substring(0, 56);
+                let mph = MintingPolicyHash.fromHex(policyID);
+
+                let token = hexToBytes(item.unit.substring(56));
+
+                value = value.add(new Value(0n, new Assets([
+                    [mph, [
+                        [token, qty]
+                    ]]
+                ])));
+            }
+        }
+
+        return value;
+    }
+
+    /**
+     * Used by BlockfrostV0.resolve()
+     * @param {UTxO} utxo
+     * @returns {Promise<boolean>}
+     */
+    async hasUtxo(utxo) {
+        const txId = utxo.txId;
+
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/txs/${txId.hex}/utxos`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        return response.ok;
+    }
+
+    /**
+     * Returns oldest UTxOs first, newest last.
+     * TODO: pagination
+     * @param {Address} address 
+     * @returns {Promise<UTxO[]>}
+     */
+    async getUtxos(address) {
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/addresses/${address.toBech32()}/utxos?order=asc`;
+
+        const response = await fetch(url, {
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        /** 
+         * @type {any} 
+         */
+        let all = await response.json();
+
+        if (all?.status_code >= 300) {
+            all = []; 
+        }
+
+        return all.map(obj => {
+            return new UTxO(
+                TxId.fromHex(obj.tx_hash),
+                BigInt(obj.output_index),
+                new TxOutput(
+                    address,
+                    BlockfrostV0.parseValue(obj.amount),
+                    Datum.inline(ConstrData.fromCbor(hexToBytes(obj.inline_datum)))
+                )
+            );
+        });
+    }  
 
     /** 
      * @param {Tx} tx 
@@ -36044,12 +36623,385 @@ export class BlockfrostV0 {
     }   
 }
 
+
+///////////////////////
+// Section 31: Emulator
+///////////////////////
+/**
+ * Single address wallet emulator.
+ * @implements {Wallet}
+ */
+export class WalletEmulator {
+    #network;
+    #privateKey;
+    #publicKey;
+
+    /** 
+     * @param {Network} network
+     * @param {NumberGenerator} random - used to generate the private key
+     */
+    constructor(network, random) {
+        this.#network = network;
+        this.#privateKey = WalletEmulator.genPrivateKey(random);
+        this.#publicKey = Crypto.Ed25519.derivePublicKey(this.#privateKey);
+
+        // TODO: staking credentials
+    }
+
+    /**
+     * Generate a private key from a random number generator (not cryptographically secure!)
+     * @param {NumberGenerator} random 
+     * @returns {number[]} - Ed25519 private key is 32 bytes long
+     */
+    static genPrivateKey(random) {
+        return (new Array(32)).map(() => random()%256);
+    }
+
+    /**
+     * @type {PubKeyHash}
+     */
+    get pubKeyHash() {
+        return new PubKeyHash(Crypto.blake2b(this.#publicKey, 28));
+    }
+
+    get address() {
+        return Address.fromPubKeyHash(this.pubKeyHash);
+    }
+
+    /**
+     * @returns {Promise<boolean>}
+     */
+    async isMainnet() {
+        return false;
+    }
+
+    /**
+     * Assumed wallet was initiated with at least 1 UTxO at the pubkeyhash address.
+     * @returns {Promise<Address[]>}
+     */
+    get usedAddresses() {
+        return new Promise((resolve, _) => {
+            resolve([this.address])
+        });
+    }
+
+    get unusedAddresses() {
+        return new Promise((resolve, _) => {
+            resolve([])
+        });
+    }
+
+    get utxos() {
+        return new Promise((resolve, _) => {
+            resolve(this.#network.getUtxos(this.address));
+        });
+    }
+
+    /**
+     * Simply assumed the tx needs to by signed by this wallet without checking.
+     * @param {Tx} tx
+     * @returns {Promise<Signature[]>}
+     */
+    async signTx(tx) {
+        return [
+            new Signature(
+                this.#publicKey,
+                Crypto.Ed25519.sign(tx.bodyHash, this.#privateKey)
+            )
+        ];
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        return await this.#network.submitTx(tx);
+    }
+}
+
+/**
+ * collectUtxos removes tx inputs from the list, and appends txoutputs sent to the address to the end.
+ * @typedef {{
+ *     id(): TxId,
+ *     consumes(txId: TxId, utxoIdx: bigint): boolean,
+ *     collectUtxos(address: Address, utxos: UTxO[]): UTxO[]
+ * }} EmulatorTx
+ */
+
+/**
+ * @implements {EmulatorTx}
+ */
+class GenesisTx {
+    #id;
+    #address;
+    #lovelace;
+    #assets;
+
+    /**
+     * @param {number} id
+     * @param {Address} address 
+     * @param {bigint} lovelace
+     * @param {Assets} assets 
+     */
+    constructor(id, address, lovelace, assets) {
+        this.#id = id;
+        this.#address = address;
+        this.#lovelace = lovelace;
+        this.#assets = assets;
+    }
+
+    /**
+     * Simple incremental txId for genesis transactions.
+     * It's very unlikely that regular transactions have the same hash.
+     * @return {TxId}
+     */
+    id() {
+        let bytes = bigIntToBytes(BigInt(this.#id));
+
+        if (bytes.length < 32) {
+            bytes = (new Array(32 - bytes.length)).fill(0).concat(bytes);
+        }
+
+        return new TxId(bytes);
+    }
+
+    /**
+     * @param {TxId} txId 
+     * @param {bigint} utxoIdx 
+     * @returns 
+     */
+    consumes(txId, utxoIdx) {
+        return false;
+    }
+
+    /**
+     * @param {Address} address
+     * @param {UTxO[]} utxos
+     * @returns {UTxO[]}
+     */
+    collectUtxos(address, utxos) {
+        if (eq(this.#address.bytes, address.bytes)) {
+            utxos = utxos.slice();
+
+            utxos.push(new UTxO(
+                this.id(),
+                0n,
+                new TxOutput(
+                    this.#address,
+                    new Value(this.#lovelace, this.#assets)
+                )
+            ));
+
+            return utxos;
+        } else {
+            return utxos;
+        }
+    }
+}
+
+/**
+ * @implements {EmulatorTx}
+ */
+class RegularTx {
+    #tx;
+
+    /**
+     * @param {Tx} tx 
+     */
+    constructor(tx) {
+        this.#tx = tx;
+    }
+
+    /**
+     * @returns {TxId}
+     */
+    id() {
+        return this.#tx.id();
+    }
+
+    /**
+     * @param {TxId} txId
+     * @param {bigint} utxoIdx
+     * @returns {boolean}
+     */
+    consumes(txId, utxoIdx) {
+        const txInputs = this.#tx.body.inputs;
+
+        return txInputs.some(txInput => {
+            return txInput.txId.hex == txId.hex && txInput.utxoIdx == utxoIdx;
+        });
+    }
+
+    /**
+     * @param {Address} address 
+     * @param {UTxO[]} utxos 
+     * @returns {UTxO[]}
+     */
+    collectUtxos(address, utxos) {
+        utxos = utxos.filter(utxo => !this.consumes(utxo.txId, utxo.utxoIdx));
+
+        const txOutputs = this.#tx.body.outputs;
+
+        txOutputs.forEach((txOutput, utxoId) => {
+            if (eq(txOutput.address.bytes, address.bytes)) {
+                utxos.push(new UTxO(
+                    this.id(),
+                    BigInt(utxoId),
+                    txOutput
+                ));
+            }
+        });
+
+        return utxos;
+    }
+}
+
+/**
+ * @implements {Network}
+ */
+export class NetworkEmulator {
+    /**
+     * @type {bigint}
+     */
+    #slot;
+
+    /**
+     * @type {NumberGenerator}
+     */
+    #random;
+
+    /**
+     * @type {GenesisTx[]}
+     */
+    #genesis;
+
+    /**
+     * @type {EmulatorTx[]}
+     */
+    #mempool;
+
+    /**
+     * @type {EmulatorTx[][]}
+     */
+    #blocks;
+
+    /**
+     * @param {number} seed 
+     */
+    constructor(seed = 0) {
+        this.#slot = 0n;
+        this.#random = Crypto.mulberry32(seed);
+        this.#genesis = [];
+        this.#mempool = [];
+        this.#blocks = [];
+    }
+
+    /**
+     * Creates a WalletEmulator and adds a block with a single fake unbalanced Tx
+     * @param {bigint} lovelace
+     * @param {Assets} assets
+     * @returns {WalletEmulator}
+     */
+    createWallet(lovelace = 0n, assets = new Assets([])) {
+        const wallet = new WalletEmulator(this, this.#random);
+
+        this.createUtxo(wallet, lovelace, assets);
+
+        return wallet;
+    }
+
+    /**
+     * Creates a UTxO using a GenesisTx.
+     * @param {WalletEmulator} wallet 
+     * @param {bigint} lovelace 
+     * @param {Assets} assets 
+     */
+    createUtxo(wallet, lovelace, assets = new Assets([])) {
+        if (lovelace != 0n || !assets.isZero()) {
+            const tx = new GenesisTx(
+                this.#genesis.length,
+                wallet.address,
+                lovelace,
+                assets
+            );
+
+            this.#genesis.push(tx);
+            this.#mempool.push(tx);
+        }
+    }
+
+    /**
+     * Mint a block with the current mempool, and advance the slot.
+     * @param {bigint} nSlots 
+     */
+    tick(nSlots) {
+        if (this.#mempool.length > 0) {
+            this.#blocks.push(this.#mempool);
+
+            this.#mempool = [];
+        }
+
+        this.#slot += nSlots;
+    }
+
+    /**
+     * @param {Address} address
+     * @returns {Promise<UTxO[]>}
+     */
+    async getUtxos(address) {
+        /**
+         * @type {UTxO[]}
+         */
+        let utxos = [];
+
+        for (let block of this.#blocks) {
+            for (let tx of block) {
+                utxos = tx.collectUtxos(address, utxos);
+            }
+        }
+
+        return utxos;
+    }
+
+    /**
+     * @param {TxId} txId 
+     * @param {bigint} utxoIdx 
+     * @returns {boolean}
+     */
+    isConsumed(txId, utxoIdx) {
+        return this.#blocks.some(b => {
+            return b.some(tx => {
+                return tx.consumes(txId, utxoIdx)
+            })
+        }) || this.#mempool.some(tx => {
+            return tx.consumes(txId, utxoIdx);
+        })
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        assert(tx.isValid(this.#slot), "tx invalid (not finalized or slot out of range)");
+
+        // make sure that none of the inputs have been consumed before
+        assert(tx.body.inputs.every(input => !this.isConsumed(input.txId, input.utxoIdx)), "input already consumed before");
+
+        this.#mempool.push(new RegularTx(tx));
+
+        return tx.id();
+    }
+}
+
 /**
  * The following functions are used in ./test-suite.js and ./test-script-addr.js and aren't (yet) 
  * intended to be used by regular users of this library.
  */
 export const exportedForTesting = {
 	assert: assert,
+	assertClass: assertClass,
 	setRawUsageNotifier: setRawUsageNotifier,
 	debug: debug,
 	setBlake2bDigestSize: setBlake2bDigestSize,

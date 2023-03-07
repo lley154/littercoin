@@ -29,6 +29,7 @@ import {
   PubKeyHash,
   Value, 
   TxOutput,
+  TxRefInput,
   Tx, 
   UTxO,
   WalletHelper, 
@@ -408,6 +409,7 @@ const Home: NextPage = (props: any) => {
 
   const setLCValRefUtxo = async () => {
 
+    /*
     const valRefUTXO = new UTxO (
       TxId.fromHex(lcValRefTxId),
       BigInt(lcValRefTxIdx),
@@ -418,6 +420,19 @@ const Home: NextPage = (props: any) => {
         compiledValScript
       )
     )
+    */
+
+    const valRefUTXO = new TxRefInput(
+      TxId.fromHex(lcValRefTxId),
+      BigInt(lcValRefTxIdx),
+      new TxOutput(
+        lcValAddr,
+        new Value(BigInt(lcValAdaAmt)),
+        null,
+        compiledValScript
+      )
+    )
+
     setRefUTXO(valRefUTXO);
   }
   
@@ -508,7 +523,7 @@ const Home: NextPage = (props: any) => {
     const changeAddr = await walletHelper.changeAddress;
 
     // Determine the UTXO used for collateral
-    const colatUtxo = await walletHelper.pickCollateral();
+    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Check the total number of littercoin already in the utxos.
     // We will then add this number to the minted amount
@@ -566,7 +581,7 @@ const Home: NextPage = (props: any) => {
       new Value(minAda, new Assets([[lcTokenMPH, lcTokens]]))
     ));
 
-    tx.addCollateral(colatUtxo);
+    //tx.addCollateral(colatUtxo);
 
     // Add owner pkh as a signer which is required to mint littercoin
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
@@ -574,7 +589,7 @@ const Home: NextPage = (props: any) => {
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
-    await tx.finalize(networkParams, changeAddr);
+    await tx.finalize(networkParams, changeAddr, utxos[1]);
     console.log("tx after final", tx.dump());
 
     console.log("Verifying signature...");
@@ -645,7 +660,7 @@ const Home: NextPage = (props: any) => {
     }
 
     // Determine the UTXO used for collateral
-    const colatUtxo = await walletHelper.pickCollateral();
+    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Check the total number of littercoin in the utxos.
     // We will then decrement the number of tokens being burned
@@ -719,12 +734,12 @@ const Home: NextPage = (props: any) => {
       ));
     } 
 
-    tx.addCollateral(colatUtxo);
+    //tx.addCollateral(colatUtxo);
 
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
-    await tx.finalize(networkParams, changeAddr);
+    await tx.finalize(networkParams, changeAddr, utxos[1]);
     console.log("tx after final", tx.dump());
 
     console.log("Verifying signature...");
@@ -756,7 +771,7 @@ const Home: NextPage = (props: any) => {
     const changeAddr = await walletHelper.changeAddress;
 
     // Determine the UTXO used for collateral
-    const colatUtxo = await walletHelper.pickCollateral();
+    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
@@ -783,13 +798,13 @@ const Home: NextPage = (props: any) => {
       new Value(minAda, new Assets([[merchTokenMPH, tokens]]))
     ));
 
-    tx.addCollateral(colatUtxo);
+    //tx.addCollateral(colatUtxo);
     tx.addSigner(PubKeyHash.fromHex(ownerPkh));
     console.log("tx before final", tx.dump());
     console.log("network", networkParams);
 
     // Send any change back to the wallet
-    await tx.finalize(networkParams, changeAddr);
+    await tx.finalize(networkParams, changeAddr, utxos[1]);
     console.log("tx after final", tx.dump());
 
     console.log("Verifying signature...");
@@ -807,8 +822,6 @@ const Home: NextPage = (props: any) => {
 
     setIsLoading(true);
     // re-enable wallet api if the wallet account has been changed
-    //const api = await enableWallet();
-    //setWalletAPI(api);
     try {
       await enableWallet();
     } catch (err) {
@@ -828,6 +841,7 @@ const Home: NextPage = (props: any) => {
     // Get wallet UTXOs
     //const walletHelper = new WalletHelper(walletAPI);
     const utxos = await walletHelper.pickUtxos(minUTXOVal);
+    console.log("utxos", utxos);
 
     // See if there are any previous rewards tokens already minted
     // in the utxos. If so, then they need to be added to the
@@ -847,7 +861,7 @@ const Home: NextPage = (props: any) => {
     }
 
     // Determine the UTXO used for collateral
-    const colatUtxo = await walletHelper.pickCollateral();
+    //const colatUtxo = await walletHelper.pickCollateral();
 
     // Start building the transaction
     const tx = new Tx();
@@ -860,6 +874,7 @@ const Home: NextPage = (props: any) => {
     tx.addInput(valUtxo, valRedeemer);
 
     //const valRefUtxo = await getLCValRefUtxo();
+    console.log("valRefUtxo", valRefUtxo);
     tx.addRefInput(
         valRefUtxo,
         compiledValScript
@@ -897,11 +912,13 @@ const Home: NextPage = (props: any) => {
       new Value(minAda, new Assets([[rewardsTokenMPH, tokens]]))
     ));
 
-    tx.addCollateral(colatUtxo);
+    //tx.addCollateral(colatUtxo);
+    // Adding spare UTXOs to be used for collateral
+
     console.log("tx before final", await tx.dump());
 
     // Send any change back to the wallet
-    await tx.finalize(networkParams, changeAddr);
+    await tx.finalize(networkParams, changeAddr, utxos[1]);
     console.log("tx after final", await tx.dump());
 
     console.log("Verifying signature...");
