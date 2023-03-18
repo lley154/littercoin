@@ -7,7 +7,7 @@
 # Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
 # Step 2.   update src/threadtoken.hl with admin UTXO
 # Step 3.   deno run --allow-read --allow-write src/deploy-init.js
-# Step 4.   update src/mint.hl with thread token value
+# Step 4.   update src/mint.hl and src/rewardsToken.hl with thread token value
 # Step 5.   deno run --allow-read --allow-write src/deploy-mint.js
 # Step 6.   update src/validator.hl with threadtoken, littercoin, rewards and merchant mph values
 # Step 7.   deno run --allow-read --allow-write src/deploy-val.js

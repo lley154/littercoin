@@ -218,7 +218,6 @@ const Home: NextPage = (props: any) => {
   const minAda = BigInt(process.env.NEXT_PUBLIC_MIN_ADA as string);
   const maxTxFee = BigInt(process.env.NEXT_PUBLIC_MAX_TX_FEE as string);
   const minChangeAmt = BigInt(process.env.NEXT_PUBLIC_MIN_CHANGE_AMT as string);
-  //const serviceFee = BigInt(process.env.NEXT_PUBLIC_MAX_SERVICE_FEE as string);
 
   const [lcInfo, setLCInfo] = useState(
     {
@@ -640,7 +639,8 @@ const Home: NextPage = (props: any) => {
     tx.addInputs(utxos[0]);
 
     // Construct the burn littercoin validator redeemer
-    const valRedeemer = new ConstrData(2, [new ByteArrayData(unusedAddr.pubKeyHash.bytes)])
+    const valRedeemer = new ConstrData(2, [new ByteArrayData(unusedAddr.pubKeyHash.bytes),
+                                           new ByteArrayData(hexToBytes(merchTokenName))])
     tx.addInput(valUtxo, valRedeemer);
 
     tx.addRefInput(
@@ -701,6 +701,9 @@ const Home: NextPage = (props: any) => {
       ));
     } 
 
+    // Add owner pkh as a signer to allow merchant token verification 
+    tx.addSigner(PubKeyHash.fromHex(ownerPkh));
+
     console.log("tx before final", tx.dump());
 
     // Send any change back to the buyer
@@ -711,11 +714,17 @@ const Home: NextPage = (props: any) => {
     const signatures = await walletAPI.signTx(tx);
     tx.addSignatures(signatures);
 
+    // Get back-end signature of owner private key and submit tx
     console.log("Submitting transaction...");
-    const txHash = await submitTx(tx);
-    setIsLoading(false); 
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
+    try {
+      const txHash = await signSubmitTx(tx);
+      setIsLoading(false); 
+      console.log("txHash", txHash);
+      setTx({ txId: txHash });
+    } catch (error) {
+      setIsLoading(false); 
+      console.error("Burn Littercoin Failed: " + error);
+    }
    } 
 
 
@@ -771,11 +780,17 @@ const Home: NextPage = (props: any) => {
     const signatures = await walletAPI.signTx(tx);
     tx.addSignatures(signatures);
 
+    // Get back-end signature of owner private key and submit tx
     console.log("Submitting transaction...");
-    const txHash = await submitTx(tx);
-    setIsLoading(false); 
-    console.log("txHash", txHash);
-    setTx({ txId: txHash });
+    try {
+      const txHash = await signSubmitTx(tx);
+      setIsLoading(false); 
+      console.log("txHash", txHash);
+      setTx({ txId: txHash });
+    } catch (error) {
+      setIsLoading(false); 
+      console.error("Mint Merchant Token Failed: " + error);
+    }
   }   
 
   const addAda = async (adaQty : any) => {
