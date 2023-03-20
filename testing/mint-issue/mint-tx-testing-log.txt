@@ -1,0 +1,437 @@
+mint-tx issue testing - 2022-12-22
+
+#########################################################
+cardano-cli
+#########################################################
+
+
+lawrence@lawrence-MacBookAir:~/src/littercoin/scripts$ ./mint-tx.sh preprod
++ '[' -z preprod ']'
++ ENV=preprod
++++ readlink -f ./mint-tx.sh
+++ dirname /home/lawrence/src/littercoin/scripts/mint-tx.sh
++ MY_DIR=/home/lawrence/src/littercoin/scripts
++ source /home/lawrence/src/littercoin/scripts/preprod/global-export-variables.sh
+++ set -e
+++ set -o pipefail
+++ export BASE=/home/lawrence/src/littercoin
+++ BASE=/home/lawrence/src/littercoin
+++ export WORK=/home/lawrence/src/littercoin/work
+++ WORK=/home/lawrence/src/littercoin/work
+++ export CARDANO_CLI=/usr/local/bin/cardano-cli
+++ CARDANO_CLI=/usr/local/bin/cardano-cli
+++ export CARDANO_NODE_SOCKET_PATH=/home/lawrence/preprod/node.socket
+++ CARDANO_NODE_SOCKET_PATH=/home/lawrence/preprod/node.socket
+++ export TESTNET_MAGIC=1
+++ TESTNET_MAGIC=1
+++ export ADMIN_VKEY=/home/lawrence/.local/keys/testnet/admin/key.vkey
+++ ADMIN_VKEY=/home/lawrence/.local/keys/testnet/admin/key.vkey
+++ export ADMIN_SKEY=/home/lawrence/.local/keys/testnet/admin/key.skey
+++ ADMIN_SKEY=/home/lawrence/.local/keys/testnet/admin/key.skey
+++ export ADMIN_PKH=/home/lawrence/.local/keys/testnet/admin/key.pkh
+++ ADMIN_PKH=/home/lawrence/.local/keys/testnet/admin/key.pkh
+++ export USER_VKEY=/home/lawrence/.local/keys/testnet/user/user.vkey
+++ USER_VKEY=/home/lawrence/.local/keys/testnet/user/user.vkey
+++ export USER_SKEY=/home/lawrence/.local/keys/testnet/user/user.skey
+++ USER_SKEY=/home/lawrence/.local/keys/testnet/user/user.skey
+++ export USER_PKH=/home/lawrence/.local/keys/testnet/user/user.pkh
+++ USER_PKH=/home/lawrence/.local/keys/testnet/user/user.pkh
+++ export MIN_ADA_OUTPUT_TX=2000000
+++ MIN_ADA_OUTPUT_TX=2000000
+++ export MIN_ADA_OUTPUT_TX_REF=30000000
+++ MIN_ADA_OUTPUT_TX_REF=30000000
+++ export COLLATERAL_ADA=5000000
+++ COLLATERAL_ADA=5000000
+++ export LC_VAL_REF_SCRIPT=c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#2
+++ LC_VAL_REF_SCRIPT=c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#2
+++ export LC_MINT_REF_SCRIPT=c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#3
+++ LC_MINT_REF_SCRIPT=c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#3
+++ export MERCHANT_TOKEN_MPH=e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
+++ MERCHANT_TOKEN_MPH=e57b84e97afe75117f906e57e66ca0718e25c9db3c4076f2bf78555b
+++ export MERCHANT_TOKEN_NAME=4d65726368616e7420546f6b656e204c6974746572636f696e
+++ MERCHANT_TOKEN_NAME=4d65726368616e7420546f6b656e204c6974746572636f696e
+++ export BECH32=/usr/local/bin/bech32
+++ BECH32=/usr/local/bin/bech32
+++ export ADDR_PREFIX=addr_test
+++ ADDR_PREFIX=addr_test
+++ export BECH32_NETWORK=00
+++ BECH32_NETWORK=00
++ '[' preprod == mainnet ']'
++ network='--testnet-magic 1'
++ echo 'Socket path: /home/lawrence/preprod/node.socket'
+Socket path: /home/lawrence/preprod/node.socket
++ ls -al /home/lawrence/preprod/node.socket
+srw------- 1 lawrence lawrence 0 Dec 22 08:26 /home/lawrence/preprod/node.socket
++ mkdir -p /home/lawrence/src/littercoin/work
++ mkdir -p /home/lawrence/src/littercoin/work-backup
++ rm -f /home/lawrence/src/littercoin/work/add-ada-tx-alonzo.body /home/lawrence/src/littercoin/work/add-ada-tx-alonzo.tx /home/lawrence/src/littercoin/work/admin-utxo-collateral-valid.json /home/lawrence/src/littercoin/work/admin-utxo-valid.json /home/lawrence/src/littercoin/work/admin-utxo.json /home/lawrence/src/littercoin/work/lc-datum-in.json /home/lawrence/src/littercoin/work/lc-datum-out.json /home/lawrence/src/littercoin/work/lc-validator-utxo.json /home/lawrence/src/littercoin/work/pparms.json
++ rm -f '/home/lawrence/src/littercoin/work-backup/*'
++ /usr/local/bin/cardano-cli query protocol-parameters --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/pparms.json
++ thread_token_script=/home/lawrence/src/littercoin/scripts/preprod/data/tt-minting-policy.plutus
+++ cat /home/lawrence/src/littercoin/scripts/preprod/data/tt-minting-policy.hash
++ thread_token_mph=1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565
+++ cat /home/lawrence/src/littercoin/scripts/preprod/data/tt-token-name.json
+++ jq -r .bytes
++ thread_token_name=54687265616420546f6b656e204c6974746572636f696e
++ lc_validator_script=/home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.plutus
+++ /usr/local/bin/cardano-cli address build --payment-script-file /home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.plutus --testnet-magic 1
++ lc_validator_script_addr=addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq
+++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-validator.hash
++ lc_validator_hash=20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed
++ lc_mint_script=/home/lawrence/src/littercoin/scripts/preprod/data/lc-minting-policy.plutus
+++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-minting-policy.hash
++ lc_mint_mph=6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65
+++ cat /home/lawrence/src/littercoin/scripts/preprod/data/lc-token-name.json
+++ jq -r .bytes
++ lc_token_name=4c6974746572636f696e
++ redeemer_mint_file_path=/home/lawrence/src/littercoin/scripts/preprod/data/redeemer-mint.json
++ redeemer_val_file_path=/home/lawrence/src/littercoin/scripts/preprod/data/redeemer-val-mint.json
++ metadata_file_path=/home/lawrence/src/littercoin/scripts/preprod/data/lc-token-metadata.json
+++ cat /home/lawrence/.local/keys/testnet/admin/key.pkh
++ admin_pkh=b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
++ echo 'starting littercoin mint-tx.sh'
+starting littercoin mint-tx.sh
++ lc_amount=25
+++ /usr/local/bin/cardano-cli address build --testnet-magic 1 --payment-verification-key-file /home/lawrence/.local/keys/testnet/admin/key.vkey
++ admin_utxo_addr=addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7
++ /usr/local/bin/cardano-cli query utxo --address addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7 --cardano-mode --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/admin-utxo.json
++ cat /home/lawrence/src/littercoin/work/admin-utxo.json
++ jq -r 'to_entries[] | select(.value.value.lovelace > 5000000 ) | .key'
++ readarray admin_utxo_valid_array
+++ echo 05a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792#0
+++ tr -d '\n'
++ admin_utxo_in=05a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792#0
++ cat /home/lawrence/src/littercoin/work/admin-utxo.json
++ jq -r 'to_entries[] | select(.value.value.lovelace == 5000000 ) | .key'
++ readarray admin_utxo_valid_array
+++ tr -d '\n'
+++ echo ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382#0
++ admin_utxo_collateral_in=ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382#0
++ /usr/local/bin/cardano-cli query utxo --address addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq --testnet-magic 1 --out-file /home/lawrence/src/littercoin/work/lc-validator-utxo.json
+++ jq -r 'to_entries[] 
+| select(.value.value."1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565"."54687265616420546f6b656e204c6974746572636f696e") 
+| .key' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
++ lc_validator_utxo_tx_in=05a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792#1
+++ jq -r 'to_entries[] 
+| select(.value.value."1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565"."54687265616420546f6b656e204c6974746572636f696e") 
+| .value.inlineDatum' /home/lawrence/src/littercoin/work/lc-validator-utxo.json
++ lc_validator_datum_in='{
+  "list": [
+    {
+      "int": 10000000
+    },
+    {
+      "int": 0
+    }
+  ]
+}'
++ echo -n '{
+  "list": [
+    {
+      "int": 10000000
+    },
+    {
+      "int": 0
+    }
+  ]
+}'
+++ jq -r '.list[0].int' /home/lawrence/src/littercoin/work/lc-datum-in.json
++ total_ada=10000000
+++ jq -r '.list[1].int' /home/lawrence/src/littercoin/work/lc-datum-in.json
++ total_lc=0
++ new_total_lc=25
++ cat /home/lawrence/src/littercoin/work/lc-datum-in.json
++ jq -c '
+  .list[1].int   |= 25'
++ cat /home/lawrence/src/littercoin/scripts/preprod/data/redeemer-mint.json
++ jq -c '
+  .fields[0].bytes         |= "20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed"'
+++ /usr/local/bin/cardano-cli address build --testnet-magic 1 --payment-verification-key-file /home/lawrence/.local/keys/testnet/user/user.vkey
++ user_addr=addr_test1vq5s7k4kwqz4rrfe8mm9jz9tpm7c5u93yfwwsaw708yxs5sm70qjg
++ /usr/local/bin/cardano-cli transaction build --babbage-era --cardano-mode --testnet-magic 1 --change-address addr_test1vzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqspgdxn7 --tx-in-collateral ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382#0 --tx-in 05a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792#0 --tx-in 05a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792#1 --spending-tx-in-reference c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#2 --spending-plutus-script-v2 --spending-reference-tx-in-inline-datum-present --spending-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/scripts/preprod/data/redeemer-val-mint.json --mint '25 6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65.4c6974746572636f696e' --mint-tx-in-reference c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5#3 --mint-plutus-script-v2 --mint-reference-tx-in-redeemer-file /home/lawrence/src/littercoin/work/redeemer-mint.json --policy-id 6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65 --tx-out 'addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq+10000000 + 1 1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565.54687265616420546f6b656e204c6974746572636f696e' --tx-out-inline-datum-file /home/lawrence/src/littercoin/work/lc-datum-out.json --tx-out 'addr_test1vq5s7k4kwqz4rrfe8mm9jz9tpm7c5u93yfwwsaw708yxs5sm70qjg+2000000 + 25 6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65.4c6974746572636f696e' --required-signer-hash b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 --protocol-params-file /home/lawrence/src/littercoin/work/pparms.json --out-file /home/lawrence/src/littercoin/work/mint-tx-alonzo.body
+Estimated transaction fee: Lovelace 318173
++ echo 'tx has been built'
+tx has been built
++ /usr/local/bin/cardano-cli transaction sign --tx-body-file /home/lawrence/src/littercoin/work/mint-tx-alonzo.body --testnet-magic 1 --signing-key-file /home/lawrence/.local/keys/testnet/admin/key.skey --out-file /home/lawrence/src/littercoin/work/mint-tx-alonzo.tx
++ echo 'tx has been signed'
+tx has been signed
++ echo 'Submit the tx with plutus script and wait 5 seconds...'
+Submit the tx with plutus script and wait 5 seconds...
++ /usr/local/bin/cardano-cli transaction submit --tx-file /home/lawrence/src/littercoin/work/mint-tx-alonzo.tx --testnet-magic 1
+Transaction successfully submitted.
+
+lawrence@lawrence-MacBookAir:~/src/littercoin/work$ cat mint-tx-alonzo.tx 
+{
+    "type": "Tx BabbageEra",
+    "description": "",
+    "cborHex": "84a8008282582005a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a77920082582005a46de88fef7af97309f1ca9fa283097c2acefbd7f6855ec48bb5d9a16a7792010d81825820ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382001282825820c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba502825820c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5030183a200581d60b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682011a153cd0e2a300581d7020d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed01821a00989680a1581c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565a15754687265616420546f6b656e204c6974746572636f696e01028201d818499f1a009896801819ffa200581d60290f5ab67005518d393ef65908ab0efd8a70b1225ce875de79c8685201821a001e8480a1581c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65a14a4c6974746572636f696e1819021a0004dadd0e81581cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c2768209a1581c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65a14a4c6974746572636f696e18190b5820dcb576d20fe6d4c9d10400db2fca6c24d2d5c2f60239fa27a387fdbd9b001c8da200818258207afdf742e52fc46d9a6f2183204c3d5ca3533450b2674f61adff33172d6d9ad65840322ac61c3d4d53bd06ae8ba0d854a9d1d0f0cd6d731bf7350a7a1d32d2927f8f5ab679d14e00f58cb78797e267f19fb93975db2e201e39876cb10bcfcd1ad20e0582840001d87a80821a000fe3301a16f39c6a840100d8799f581c20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0edff821a00064bec1a08b444a0f5f6"
+}
+
+
+lawrence@lawrence-iMac:~$ cardano-cli query utxo --address addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq --cardano-mode --testnet-magic 1
+                           TxHash                                 TxIx        Amount
+--------------------------------------------------------------------------------------
+c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5     2        30000000 lovelace + TxOutDatumNone
+fadaf62ad1d54ca219a6fe3846eab50a8fd7d20e236d2a1d82ee653baccc23fa     1        10000000 lovelace + 1 1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565.54687265616420546f6b656e204c6974746572636f696e + TxOutDatumInline ReferenceTxInsScriptsInlineDatumsInBabbageEra (ScriptDataList [ScriptDataNumber 10000000,ScriptDataNumber 25])
+
+
+
+###############################################################################
+Helios Tx Builder (with Nami Wallet)
+###############################################################################
+
+
+{
+    "code": 2,
+    "info": "Wallet could not send the tx.",
+    "message": "\"transaction submit error ShelleyTxValidationError ShelleyBasedEraBabbage (ApplyTxError [UtxowFailure (UtxoFailure (FromAlonzoUtxoFail (UtxosFailure (ValidationTagMismatch (IsValid True) (FailedUnexpectedly (PlutusFailure \\\"\\\\nThe 3 arg plutus script (PlutusScript PlutusV2 ScriptHash \\\\\\\"20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed\\\\\\\") fails.\\\\nCekError An error has occurred:  User error:\\\\nThe machine terminated part way through evaluation due to overspending the budget.\\\\nThe budget when the machine terminated was:\\\\n({ cpu: 1701730\\\\n| mem: -4885\\\\n})\\\\nNegative numbers indicate the overspent budget; note that this only indicatessthe budget that was needed for the next step, not to run the program to completion.\\\\nThe protocol version is: ProtVer {pvMajor = 7, pvMinor = 0}\\\\nThe data is: List [I 10000000,I 25]\\\\nThe redeemer is: Constr 1 []\\\\nThe third data argument, does not decode to a context\\\\nConstr 0 [Constr 0 [List [Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\164\\\\\\\\\\\\\\\"\\\\\\\\230u\\\\\\\\229\\\\\\\\ENQ\\\\\\\\151\\\\\\\\174\\\\\\\\ETX\\\\\\\\a$W\\\\\\\\158z\\\\\\\\186\\\\\\\\SUB\\\\\\\\144\\\\\\\\&0-9\\\\\\\\231\\\\\\\\169\\\\\\\\142\\\\\\\\138\\\\\\\\174L\\\\\\\\SOH\\\\\\\\172\\\\\\\\235V\\\\\\\\216/\\\\\\\"],I 1],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\185\\\\\\\\171\\\\\\\\207hgQ\\\\\\\\158(\\\\\\\\EOT H\\\\\\\\170\\\\\\\\DC1 r\\\\\\\\DC4\\\\\\\\165.m]2\\\\\\\\136\\\\\\\\183R\\\\\\\\209\\\\\\\\194v\\\\\\\\130\\\\\\\"],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\241{\\\\\\\\ETB\\\\\\\\241Q\\\\\\\\CAN\\\\\\\\222\\\\\\\\198\\\\\\\\227L\\\\\\\\FS\\\\\\\\DC2t\\\\\\\\136\\\\\\\\180\\\\\\\\253\\\\\\\\RSk\\\\\\\\159\\\\\\\\155i\\\\\\\\v\\\\\\\\130\\\\\\\\195\\\\\\\\197;\\\\\\\\164\\\\\\\\214\\\\\\\"]]]],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 2380809312)])],Constr 0 [],Constr 1 []]],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\250\\\\\\\\218\\\\\\\\246*\\\\\\\\209\\\\\\\\213L\\\\\\\\162\\\\\\\\EM\\\\\\\\166\\\\\\\\254\\\\\\\\&8F\\\\\\\\234\\\\\\\\181\\\\\\\\n\\\\\\\\143\\\\\\\\215\\\\\\\\210\\\\\\\\SO#m*\\\\\\\\GS\\\\\\\\130\\\\\\\\238e;\\\\\\\\172\\\\\\\\204#\\\\\\\\250\\\\\\\"],I 0],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\185\\\\\\\\171\\\\\\\\207hgQ\\\\\\\\158(\\\\\\\\EOT H\\\\\\\\170\\\\\\\\DC1 r\\\\\\\\DC4\\\\\\\\165.m]2\\\\\\\\136\\\\\\\\183R\\\\\\\\209\\\\\\\\194v\\\\\\\\130\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 356307170)])],Constr 0 [],Constr 1 []]],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\250\\\\\\\\218\\\\\\\\246*\\\\\\\\209\\\\\\\\213L\\\\\\\\162\\\\\\\\EM\\\\\\\\166\\\\\\\\254\\\\\\\\&8F\\\\\\\\234\\\\\\\\181\\\\\\\\n\\\\\\\\143\\\\\\\\215\\\\\\\\210\\\\\\\\SO#m*\\\\\\\\GS\\\\\\\\130\\\\\\\\238e;\\\\\\\\172\\\\\\\\204#\\\\\\\\250\\\\\\\"],I 1],Constr 0 [Constr 0 [Constr 1 [B \\\\\\\" \\\\\\\\213?^j2mQ\\\\\\\\250\\\\\\\\135\\\\\\\\SOH\\\\\\\\182,p6\\\\\\\\ACK\\\\\\\\167\\\\\\\\132\\\\\\\\139k\\\\\\\\230\\\\\\\\235\\\\\\\\&6/\\\\\\\\189\\\\\\\\193\\\\\\\\176\\\\\\\\237\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 10000000)]),(B \\\\\\\"\\\\\\\\US\\\\\\\\180\\\\\\\\203\\\\\\\\186\\\\\\\\175\\\\\\\\201\\\\\\\\228M\\\\\\\\ETB\\\\\\\\234Q\\\\\\\\202'\\\\\\\\177\\\\\\\\160]P\\\\\\\\169#\\\\\\\\253^4\\\\\\\\220\\\\\\\\223Y\\\\\\\\bee\\\\\\\",Map [(B \\\\\\\"Thread Token Littercoin\\\\\\\",I 1)])],Constr 2 [List [I 10000000,I 25]],Constr 1 []]],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\255QA\\\\\\\\254%5(G\\\\\\\\EM\\\\\\\\178&\\\\\\\\RSx\\\\\\\\169{,>q\\\\\\\\DC1!\\\\\\\\vj\\\\\\\\245k_a\\\\\\\\a\\\\\\\\162\\\\\\\\147\\\\\\\\142\\\\\\\\227\\\\\\\\130\\\\\\\"],I 0],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\185\\\\\\\\171\\\\\\\\207hgQ\\\\\\\\158(\\\\\\\\EOT H\\\\\\\\170\\\\\\\\DC1 r\\\\\\\\DC4\\\\\\\\165.m]2\\\\\\\\136\\\\\\\\183R\\\\\\\\209\\\\\\\\194v\\\\\\\\130\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 5000000)])],Constr 0 [],Constr 1 []]]],List [Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\197\\\\\\\\206=\\\\\\\\213\\\\\\\\&3\\\\\\\\v\\\\\\\\160G\\\\\\\\STX\\\\\\\\175\\\\\\\\255\\\\\\\\&5\\\\\\\\227\\\\\\\\US\\\\\\\\208\\\\\\\\FS\\\\\\\\198\\\\\\\\ETBk\\\\\\\\NUL;\\\\\\\\203*\\\\\\\\DC1Q^)\\\\\\\\196\\\\\\\\STX\\\\\\\\148\\\\\\\\v\\\\\\\\165\\\\\\\"],I 2],Constr 0 [Constr 0 [Constr 1 [B \\\\\\\" \\\\\\\\213?^j2mQ\\\\\\\\250\\\\\\\\135\\\\\\\\SOH\\\\\\\\182,p6\\\\\\\\ACK\\\\\\\\167\\\\\\\\132\\\\\\\\139k\\\\\\\\230\\\\\\\\235\\\\\\\\&6/\\\\\\\\189\\\\\\\\193\\\\\\\\176\\\\\\\\237\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 30000000)])],Constr 0 [],Constr 0 [B \\\\\\\" \\\\\\\\213?^j2mQ\\\\\\\\250\\\\\\\\135\\\\\\\\SOH\\\\\\\\182,p6\\\\\\\\ACK\\\\\\\\167\\\\\\\\132\\\\\\\\139k\\\\\\\\230\\\\\\\\235\\\\\\\\&6/\\\\\\\\189\\\\\\\\193\\\\\\\\176\\\\\\\\237\\\\\\\"]]],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\197\\\\\\\\206=\\\\\\\\213\\\\\\\\&3\\\\\\\\v\\\\\\\\160G\\\\\\\\STX\\\\\\\\175\\\\\\\\255\\\\\\\\&5\\\\\\\\227\\\\\\\\US\\\\\\\\208\\\\\\\\FS\\\\\\\\198\\\\\\\\ETBk\\\\\\\\NUL;\\\\\\\\203*\\\\\\\\DC1Q^)\\\\\\\\196\\\\\\\\STX\\\\\\\\148\\\\\\\\v\\\\\\\\165\\\\\\\"],I 3],Constr 0 [Constr 0 [Constr 1 [B \\\\\\\"iiB-\\\\\\\\\\\\\\\\\\\\\\\\SYN\\\\\\\\SOH}k\\\\\\\\244Q#\\\\\\\\231T\\\\\\\\192\\\\\\\\&5)\\\\\\\\167\\\\\\\\244\\\\\\\\164\\\\\\\\228\\\\\\\\220\\\\\\\\232\\\\\\\\148\\\\\\\\219\\\\\\\\129,e\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 30000000)])],Constr 0 [],Constr 0 [B \\\\\\\"iiB-\\\\\\\\\\\\\\\\\\\\\\\\SYN\\\\\\\\SOH}k\\\\\\\\244Q#\\\\\\\\231T\\\\\\\\192\\\\\\\\&5)\\\\\\\\167\\\\\\\\244\\\\\\\\164\\\\\\\\228\\\\\\\\220\\\\\\\\232\\\\\\\\148\\\\\\\\219\\\\\\\\129,e\\\\\\\"]]]],List [Constr 0 [Constr 0 [Constr 1 [B \\\\\\\" \\\\\\\\213?^j2mQ\\\\\\\\250\\\\\\\\135\\\\\\\\SOH\\\\\\\\182,p6\\\\\\\\ACK\\\\\\\\167\\\\\\\\132\\\\\\\\139k\\\\\\\\230\\\\\\\\235\\\\\\\\&6/\\\\\\\\189\\\\\\\\193\\\\\\\\176\\\\\\\\237\\\\\\\"],Constr 1 []],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 10000000)]),(B \\\\\\\"\\\\\\\\US\\\\\\\\180\\\\\\\\203\\\\\\\\186\\\\\\\\175\\\\\\\\201\\\\\\\\228M\\\\\\\\ETB\\\\\\\\234Q\\\\\\\\202'\\\\\\\\177\\\\\\\\160]P\\\\\\\\169#\\\\\\\\253^4\\\\\\\\220\\\\\\\\223Y\\\\\\\\bee\\\\\\\",Map [(B \\\\\\\"Thread Token Littercoin\\\\\\\",I 1)])],Constr 2 [List [I 10000000,I 50]],Constr 1 []],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"i\\\\\\\\176'\\\\\\\\150\\\\\\\\255\\\\\\\\128\\\\\\\\239\\\\\\\\193\\\\\\\\156bw\\\\\\\\147\\\\\\\\\\\\\\\\x,Qdai6\\\\\\\\189\\\\\\\\ENQ\\\\\\\\147\\\\\\\\159\\\\\\\\185\\\\\\\\a\\\\\\\\ENQ\\\\\\\\170\\\\\\\"],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"C9m\\\\\\\\ESC-uD\\\\\\\\NULQ\\\\\\\\160\\\\\\\\233\\\\\\\\220\\\\\\\\160\\\\\\\\RSn\\\\\\\\131V\\\\\\\\142\\\\\\\\168a6\\\\\\\\157C-\\\\\\\\230\\\\\\\\162\\\\\\\\131\\\\\\\\DC2\\\\\\\"]]]],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 2000000)]),(B \\\\\\\"iiB-\\\\\\\\\\\\\\\\\\\\\\\\SYN\\\\\\\\SOH}k\\\\\\\\244Q#\\\\\\\\231T\\\\\\\\192\\\\\\\\&5)\\\\\\\\167\\\\\\\\244\\\\\\\\164\\\\\\\\228\\\\\\\\220\\\\\\\\232\\\\\\\\148\\\\\\\\219\\\\\\\\129,e\\\\\\\",Map [(B \\\\\\\"Littercoin\\\\\\\",I 25)])],Constr 0 [],Constr 1 []],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\185\\\\\\\\171\\\\\\\\207hgQ\\\\\\\\158(\\\\\\\\EOT H\\\\\\\\170\\\\\\\\DC1 r\\\\\\\\DC4\\\\\\\\165.m]2\\\\\\\\136\\\\\\\\183R\\\\\\\\209\\\\\\\\194v\\\\\\\\130\\\\\\\"],Constr 0 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\241{\\\\\\\\ETB\\\\\\\\241Q\\\\\\\\CAN\\\\\\\\222\\\\\\\\198\\\\\\\\227L\\\\\\\\FS\\\\\\\\DC2t\\\\\\\\136\\\\\\\\180\\\\\\\\253\\\\\\\\RSk\\\\\\\\159\\\\\\\\155i\\\\\\\\v\\\\\\\\130\\\\\\\\195\\\\\\\\197;\\\\\\\\164\\\\\\\\214\\\\\\\"]]]],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 2739793916)])],Constr 0 [],Constr 1 []]],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 322566)])],Map [(B \\\\\\\"\\\\\\\",Map [(B \\\\\\\"\\\\\\\",I 0)]),(B \\\\\\\"iiB-\\\\\\\\\\\\\\\\\\\\\\\\SYN\\\\\\\\SOH}k\\\\\\\\244Q#\\\\\\\\231T\\\\\\\\192\\\\\\\\&5)\\\\\\\\167\\\\\\\\244\\\\\\\\164\\\\\\\\228\\\\\\\\220\\\\\\\\232\\\\\\\\148\\\\\\\\219\\\\\\\\129,e\\\\\\\",Map [(B \\\\\\\"Littercoin\\\\\\\",I 25)])],List [],Map [],Constr 0 [Constr 0 [Constr 0 [],Constr 1 []],Constr 0 [Constr 2 [],Constr 1 []]],List [B \\\\\\\"\\\\\\\\185\\\\\\\\171\\\\\\\\207hgQ\\\\\\\\158(\\\\\\\\EOT H\\\\\\\\170\\\\\\\\DC1 r\\\\\\\\DC4\\\\\\\\165.m]2\\\\\\\\136\\\\\\\\183R\\\\\\\\209\\\\\\\\194v\\\\\\\\130\\\\\\\"],Map [(Constr 1 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\250\\\\\\\\218\\\\\\\\246*\\\\\\\\209\\\\\\\\213L\\\\\\\\162\\\\\\\\EM\\\\\\\\166\\\\\\\\254\\\\\\\\&8F\\\\\\\\234\\\\\\\\181\\\\\\\\n\\\\\\\\143\\\\\\\\215\\\\\\\\210\\\\\\\\SO#m*\\\\\\\\GS\\\\\\\\130\\\\\\\\238e;\\\\\\\\172\\\\\\\\204#\\\\\\\\250\\\\\\\"],I 1]],Constr 1 []),(Constr 0 [B \\\\\\\"iiB-\\\\\\\\\\\\\\\\\\\\\\\\SYN\\\\\\\\SOH}k\\\\\\\\244Q#\\\\\\\\231T\\\\\\\\192\\\\\\\\&5)\\\\\\\\167\\\\\\\\244\\\\\\\\164\\\\\\\\228\\\\\\\\220\\\\\\\\232\\\\\\\\148\\\\\\\\219\\\\\\\\129,e\\\\\\\"],Constr 0 [B \\\\\\\" \\\\\\\\213?^j2mQ\\\\\\\\250\\\\\\\\135\\\\\\\\SOH\\\\\\\\182,p6\\\\\\\\ACK\\\\\\\\167\\\\\\\\132\\\\\\\\139k\\\\\\\\230\\\\\\\\235\\\\\\\\&6/\\\\\\\\189\\\\\\\\193\\\\\\\\176\\\\\\\\237\\\\\\\"])],Map [],Constr 0 [B \\\\\\\"Un\\\\\\\\255\\\\\\\\164B\\\\\\\\FSFE\\\\\\\\DC13\\\\\\\\181jI\\\\\\\\DC4\\\\\\\\192\\\\\\\\213\\\\\\\\150\\\\\\\\EM\\\\\\\\166gJ\\\\\\\\ACK\\\\\\\\135\\\\\\\\175\\\\\\\\247\\\\\\\\140*lk\\\\\\\\NAK\\\\\\\\152d\\\\\\\"]],Constr 1 [Constr 0 [Constr 0 [B \\\\\\\"\\\\\\\\250\\\\\\\\218\\\\\\\\246*\\\\\\\\209\\\\\\\\213L\\\\\\\\162\\\\\\\\EM\\\\\\\\166\\\\\\\\254\\\\\\\\&8F\\\\\\\\234\\\\\\\\181\\\\\\\\n\\\\\\\\143\\\\\\\\215\\\\\\\\210\\\\\\\\SO#m*\\\\\\\\GS\\\\\\\\130\\\\\\\\238e;\\\\\\\\172\\\\\\\\204#\\\\\\\\250\\\\\\\"],I 1]]]\\\\n\\\" \\\"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BASXoAgjkJmAQYAgAJgBgAgMgBgAkauhN1gAJGroTACABI1dEbrAASMiN1Bm4MAI3WgAm60AEjITdSbmAATBhABI3TmrojdYACRGYAYARABERkZG6czABABSAAIlMzVzRm4gAEAMTNXQGAIbqAATMAIAIzcAACkAEJuxSY3WgBEJgdGBwYG5gbGAQpgBAAkJkZgDGAKYBIARGbrzAFABACUwAgASEwOTBEABA3A2IyIzMAQAIAEAw3WAAkRGRmYAIAIAgAZESmZq5o1dGAELCpmauaMAE1dCAEJgCGroQAhMzADADNXRABAAgfAZEZCbqDNwQAKQAJutABIjIzAEADIzcEACAEbrQASIyMjI3TGYAIAIAZEpmauaNXRgAibskmEyM1dAZuwNVc6ACbpjMAQAQ3VmqueABMwAwAzV0QARq6EAEiUzNXNGrowARN2STCZGaugM3YGqudABN1BgCm601VzwAJmAGAGauiACNXQgAm6sAIjIjdQZuCACN1oAJutABABIAEiMwLwAiMwBAAQAiIyUzNXNGAMACJm68AIwBTAEABFKBgUGBOAERmBQACkAABQRm4c1VzpuqABSAAIyIyMzABABADN1oARESmZq5o1dGAELCpmauaM3EAApAACwqZmrmjNw4AKQAAmroQAhMzADADNXRABGbgQAUgAjdYACACRGZgdERgnGbiAAgAQAgASMiM3EABG60AE3WgAkRmB+brDADACIzdeACAEACRq6EwAgASNXRGAEACRq6IwAgASNXRGAEACRq6IwBgAQASIzdeAEACACRq6EwAgASNXRGAEACRq6IwHAASIzMiIzIjMwAgAgAQBSIlMzVzRq6MAEWFTM1c0ZuvNVc6auhABAFEzACACN1ZqrnjV0IAImZgBgBgBGrogASJTM1c0aujABFhUzNXNGbrzVXOmroQAQAxNVc8auhABEzACACNXRAAm6sAIwFwATAiABIyEwNzcyZKZmrmjNxAASQAAmbi0gWjMAEAEzcEAEkACJmACACAERGSmZq5ozcQAEkAoIAImbijMAMAMzcGAEkAoACZuLM3AGbhgAUgFEgYEiAQA3WgAkauhN1gAICwCJGRG6gzcCAEbrQATdaACRmAMAEACZgAm6lIkAN1KRAQAiM3SpAAGYAYAQAJEZq6AAIwAwASM1dAACBQRKZmrmjNw6QAButABEBUTMiN0xmroDN2AARumM1dAZuwABADN2STG7JJjAMACMBcAIjIjAyM3EABG60AE3WgAkRgJGYAYAQAJEZgFgBEZgCAAgBERkpmauaMAoAETN14ARgEGAMACKUDAEMAMAIAUAQjMAIAFIAIiUzNXNGbhzVXOm6oAIAEQAhYAEjV0JgHAAkZuHNVc6bqgAUgAiI3TmYAxusMAMAIAEAEjV0JgBAAkauiMAgAEiMzADACABAYIiMjMwAQAQBAAyIlMzVzRq6MAIQBBUzNXNGACauhACEzV0Bq6EAIzMAMAM1dEAEACJmYAYAZq6IAIAEjMwCgASIzAJACMAUAEAI3TG7JJgASNXQmAEACRq6IwAgASNVc8bqgASIzMAMiM3AABAAgBAAkRGZEZG6YzMAEAEzAPADACN2STERKZmrmjV0YAQgAiZkRkpmauaNXRgAiAEJmroDN2AAZumABACMzALAKMwEABwAjMBAAYAI1dCAEZmAGAGauiACABN1YARurABIiMjMwAQATMAwAMAI3ZJMREpmauaNXRgBCACJmRGSmZq5ozcOACkAAIAQmaugM3YABm6gAEAIzAIMwDwBwAjMA8AYAI1dCAEZmAGAGauiACABIyIjMwBQAwAgATdYACREZGZmACACAIAGAERESmZq5o1dGAGIAImZmAIAIauiADACMwAgATV0IAZEZmAGRGbhwAgAQAgASIjMiMjMAEAEzAKADACIlMzVzRq6MAEUoiZKZmrmjAaMzAKAIMwCQBQATMAkAQAEUoCZgBgBmrogAjV0IAJurACN1YAJEZGYAIAIAZEpmauaNXRgAibskmFTM1c0ZuvNVc6auhABADE3VmqueNXQgAiZgBABGrogASIjIzABABMwBgAwAiJTM1c0aujABFKImSmZq5owFjMAYzAHAFABMwBwBAARSgJmAGAGauiACNXQgAkRkZmACACAGAEREpmauaNXRgBCkAAKmZq5ozdeaq501dCAEACJutNVc8auhACEzMAMAM1dEAEACRGRkZGYBQAYAJmYAIAIAQAZESmZq5o1dGACIBQmSmZq5ozAJAFABEzMAQAQAM1dEAEJmroAATMwBABAAzV0QARqrnTV0IAJgBgBEZGYAIAIAREpmauaNXRgAiAMJmroDVXOmroQATMAIAI1dEACRGYAYARGbrwAQAiIyMzABAB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\\\" :| []))))))])\""
+}
+
+
+signed tx cbor:  84a80084825820a422e675e50597ae030724579e7aba1a90302d39e7a98e8aae4c01aceb56d82f01825820fadaf62ad1d54ca219a6fe3846eab50a8fd7d20e236d2a1d82ee653baccc23fa00825820fadaf62ad1d54ca219a6fe3846eab50a8fd7d20e236d2a1d82ee653baccc23fa01825820ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382000183a300581d7020d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed01821a00989680a1581c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565a15754687265616420546f6b656e204c6974746572636f696e01028201d818499f1a009896801832ffa20058390069b02796ff80efc19c6277935c782c5164616936bd05939fb90705aa43396d1b2d75440051a0e9dca01e6e83568ea861369d432de6a2831201821a001e8480a1581c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65a14a4c6974746572636f696e1819a200583900b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6011aa34deffc021a0004ec0609a1581c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65a14a4c6974746572636f696e18190b5820422a91c88ff997437d795221f6c6a0f1dbff421dec1314eb6ea77be2395f75440d818258206522b4166a88f3cfbb8e403dd91682e32667606a853a368df8f5458d5da23abe000e81581cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c276821282825820c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba502825820c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba503a200818258207afdf742e52fc46d9a6f2183204c3d5ca3533450b2674f61adff33172d6d9ad65840b0986ec2b2701fa1237cba3aad6c1618fccd82a0f06a1cbc621230f88a0f261f7af113c0898add7aaeedc766c7c87c8055a59992f922c9e955f7e19cc9f2000e0582840002d87a9fff821a000ee3bc1a1572379e840100d8799f581c20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0edff821a00064bec1a08b444a0f5f6
+
+
+{
+    "body": {
+        "inputs": [
+            {
+                "txId": "a422e675e50597ae030724579e7aba1a90302d39e7a98e8aae4c01aceb56d82f",
+                "utxoIdx": "1",
+                "origOutput": {
+                    "address": {
+                        "hex": "00b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+                        "bech32": "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n"
+                    },
+                    "value": {
+                        "lovelace": "2380809312",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": null
+                }
+            },
+            {
+                "txId": "fadaf62ad1d54ca219a6fe3846eab50a8fd7d20e236d2a1d82ee653baccc23fa",
+                "utxoIdx": "0",
+                "origOutput": {
+                    "address": {
+                        "hex": "00b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+                        "bech32": "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n"
+                    },
+                    "value": {
+                        "lovelace": "356307170",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": null
+                }
+            },
+            {
+                "txId": "fadaf62ad1d54ca219a6fe3846eab50a8fd7d20e236d2a1d82ee653baccc23fa",
+                "utxoIdx": "1",
+                "origOutput": {
+                    "address": {
+                        "hex": "7020d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed",
+                        "bech32": "addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq"
+                    },
+                    "value": {
+                        "lovelace": "10000000",
+                        "assets": {
+                            "1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565": {
+                                "54687265616420546f6b656e204c6974746572636f696e": "1"
+                            }
+                        }
+                    },
+                    "datum": {
+                        "inlineCbor": "9f1a009896801819ff",
+                        "inlineSchema": {
+                            "list": [
+                                {
+                                    "int": 10000000
+                                },
+                                {
+                                    "int": 25
+                                }
+                            ]
+                        }
+                    },
+                    "refScript": null
+                }
+            },
+            {
+                "txId": "ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382",
+                "utxoIdx": "0",
+                "origOutput": {
+                    "address": {
+                        "hex": "00b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+                        "bech32": "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n"
+                    },
+                    "value": {
+                        "lovelace": "5000000",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": null
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "address": {
+                    "hex": "7020d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed",
+                    "bech32": "addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq"
+                },
+                "value": {
+                    "lovelace": "10000000",
+                    "assets": {
+                        "1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565": {
+                            "54687265616420546f6b656e204c6974746572636f696e": "1"
+                        }
+                    }
+                },
+                "datum": {
+                    "inlineCbor": "9f1a009896801832ff",
+                    "inlineSchema": {
+                        "list": [
+                            {
+                                "int": 10000000
+                            },
+                            {
+                                "int": 50
+                            }
+                        ]
+                    }
+                },
+                "refScript": null
+            },
+            {
+                "address": {
+                    "hex": "0069b02796ff80efc19c6277935c782c5164616936bd05939fb90705aa43396d1b2d75440051a0e9dca01e6e83568ea861369d432de6a28312",
+                    "bech32": "addr_test1qp5mqfukl7qwlsvuvfmexhrc93gkgctfx67styulhyrst2jr89k3ktt4gsq9rg8fmjspum5r2682scfkn4pjme4zsvfq9hlece"
+                },
+                "value": {
+                    "lovelace": "2000000",
+                    "assets": {
+                        "6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65": {
+                            "4c6974746572636f696e": "25"
+                        }
+                    }
+                },
+                "datum": null,
+                "refScript": null
+            },
+            {
+                "address": {
+                    "hex": "00b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+                    "bech32": "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n"
+                },
+                "value": {
+                    "lovelace": "2739793916",
+                    "assets": {}
+                },
+                "datum": null,
+                "refScript": null
+            }
+        ],
+        "fee": "322566",
+        "lastValidSlot": null,
+        "firstValidSlot": null,
+        "minted": {
+            "6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65": {
+                "4c6974746572636f696e": "25"
+            }
+        },
+        "metadataHash": null,
+        "scriptDataHash": "422a91c88ff997437d795221f6c6a0f1dbff421dec1314eb6ea77be2395f7544",
+        "collateral": [
+            {
+                "txId": "6522b4166a88f3cfbb8e403dd91682e32667606a853a368df8f5458d5da23abe",
+                "utxoIdx": "0",
+                "origOutput": {
+                    "address": {
+                        "hex": "00b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
+                        "bech32": "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n"
+                    },
+                    "value": {
+                        "lovelace": "1757887",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": null
+                }
+            }
+        ],
+        "signers": [
+            "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
+        ],
+        "refInputs": [
+            {
+                "txId": "c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5",
+                "utxoIdx": "2",
+                "origOutput": {
+                    "address": {
+                        "hex": "7020d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed",
+                        "bech32": "addr_test1wqsd2067dgex6506suqmvtrsxcr20pytd0nwkd30hhqmpmga7p7dq"
+                    },
+                    "value": {
+                        "lovelace": "30000000",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": "590ccb590cc801000032323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222533357346660080060040022930b11119191919191992999ab9a3370e0029000092999ab9a530870153086010041323325333573466e1c0052004123232323308b01133086013307b3306000c00d3307601b0013089014901064c4356313a2000133086013305f002020308901491064c4356323a200030583024002330563023001302300e302030540011233083014a0610c02921064c4356333a200035573a6ea8004004c140c13c010544cc2000528184180a49064c4356343a200015333573466e1c00520021253335734a610e02a610c02008264664a666ae68cdc3800a4008246464646464a66ae70c230054c158cc154c1440380684cc234044cc234044cc234044cc234044cc22004cc13c010dd424000611602921064c4356353a2000133088013307d3306200e00f3307801d003308b01491064c4356363a2000133088013307d305100e001308b01491064c4356373a2000133088013304800e018308b01491064c4356383a2000133088013308d01133047375090000010998238011813802984580a481064c4356393a20003305f019001330583024003302401030583024002330563023001302300e302030540011233083014a0610c02921074c435631303a200035573a6ea8004004c140c13c010544cc2000528184180a49074c435631313a20001253335734a610e02a610c02008264664a666ae68cdc3800a40082464646464646464646464661240226612402266124022661240226611a02660a8012008612002921074c435631323a200013308d013308201330670130143307d022008309001491074c435631333a200013308d013304a3056013006309001491074c435631343a200013308d013304a30793304900137509001001984800a481074c435631353a200013308d013304a307933049001375090021983e81300c984800a481074c435631363a2000330430120013040302600c305d0013303d00300153024012330393305f01900153038375090011982c18120081812001982c18120011982b181180718118009810182a000891984180a50308601491074c435631373a200035573a6ea8004004c140c13c010544cc2000528184180a49074c435631383a200035573a6ea8004004018cc01c01c004cc158004008c0a80094c084004894ccd5cd2983e80088008a8991992999ab9a3370e002900209198101ba848008c12401048cc014014c07c010d55ce9baa001001304730460013304c0013750900119824000a980b983b2481194d65726368616e7420546f6b656e204c6974746572636f696e00302700137529111cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c2768200302500137529111cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c2768200330430015301230714910a4c6974746572636f696e00302200137529111c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c650033043001375090011981f800a98071836a491754687265616420546f6b656e204c6974746572636f696e00301e00137529111c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf5908656500303a00137509040497a0082390998041802000980180080c80180091aba1375800246ae84c0080048d5d11bac0012322375066e0c008dd68009bad001232137526e60004c1840048dd39aba23758002446600600440044464646e9ccc0040052000225333573466e2000400c4cd5d018021ba80013300200233700002900109bb1498dd680110981d181c181b981b18042980100090991980318029804801119baf3005001002530020012130393044001037036232233300400200100c375800244464666002002008006444a666ae68d5d18010b0a999ab9a300135742004260086ae840084ccc00c00cd5d100100081f01911909ba83370400290009bad0012232330040032337040020046eb400488c8c8c8dd319800800801912999ab9a3574600226ec92613233574066ec0d55ce8009ba63300400437566aae78004cc00c00cd5d10011aba100122533357346ae8c0044dd924c26466ae80cdd81aab9d0013750600a6eb4d55cf000998018019aba2002357420026eac0088c88dd419b82002375a0026eb4004004800488cc0bc0088cc01000400888c94ccd5cd1803000899baf0023005300400114a06050604e0044660500029000014119b8735573a6ea80052000232232333001001003375a004444a666ae68d5d18010b0a999ab9a3371000290000b0a999ab9a3370e002900009aba100213330030033574400466e04005200237580020024466607444609c66e200080040080048c88cdc40011bad001375a002446607e6eb0c00c0088cdd780080100091aba13002001235744600400246ae88c0080048d5d1180100091aba23006001001223375e00400200246ae84c0080048d5d1180100091aba2301c001223332223322333002002001005222533357346ae8c0045854ccd5cd19baf35573a6ae840040144cc008008dd59aab9e3574200226660060060046ae88004894ccd5cd1aba30011615333573466ebcd55ce9aba1001003135573c6ae840044cc008008d5d10009bab0023017001302200123213037373264a666ae68cdc400124000266e2d205a3300100133704004900089980080080111192999ab9a33710004900a0800899b8a3300300333706004900a00099b8b3370066e18005201448181220100375a00246ae84dd600080b00891911ba8337020046eb4004dd6800919803001000998009ba9489003752910100223374a9000198018010009119aba00023003001233574000205044a666ae68cdc3a40006eb400440544cc88dd319aba0337600046e98cd5d019bb00010033764931bb2498c030008c05c0088c88c0c8cdc40011bad001375a0024460246600600400244660160044660080020044464a666ae68c0280044cdd7801180418030008a503004300300200500423300200148008894ccd5cd19b8735573a6ea80080044008580048d5d09807000919b8735573a6ea8005200222374e6600c6eb0c00c0080040048d5d0980100091aba230080012233300300200101822232333001001004003222533357346ae8c008401054ccd5cd18009aba100213357406ae84008ccc00c00cd5d100100089998018019aba2002001233300a00122330090023005001002374c6ec926001235742600400246ae88c0080048d55cf1baa0012233300322337000040020040024446644646e98ccc004004cc03c00c008dd924c444a666ae68d5d1801080089991192999ab9a357460022004266ae80cdd80019ba600100233300b00a3301000700233010006002357420046660060066ae88008004dd58011bab001222323330010013300c0030023764931112999ab9a3574600420022664464a666ae68cdc3800a40002004266ae80cdd80019ba8001002330083300f0070023300f006002357420046660060066ae880080048c888ccc01400c008004dd600091119199980080080200180111112999ab9a357460062002266660080086ae8800c008cc008004d5d0801911998019119b87002001002001222332232330010013300a00300222533357346ae8c0045288992999ab9a301a33300a008330090050013300900400114a02660060066ae88008d5d08009bab002375600244646600200200644a666ae68d5d180089bb249854ccd5cd19baf35573a6ae8400400c4dd59aab9e357420022660040046ae88004888c8cc004004cc01800c008894ccd5cd1aba300114a2264a666ae68c058cc018cc01c014004cc01c0100045280998018019aba2002357420024464666002002006004444a666ae68d5d18010a40002a666ae68cdd79aab9d3574200400226eb4d55cf1aba10021333003003357440040024464646466014006002666002002004006444a666ae68d5d180088050992999ab9a33009005001133300400400335744004266ae80004ccc01001000cd5d10011aab9d3574200260060044646600200200444a666ae68d5d18008803099aba035573a6ae84004cc008008d5d10009119801801119baf0010022232333001001003002222533357346ae8c0085280a999ab9a30013574200429444ccc00c00cd5d10010009bb149888c8ccc00400400800c8894ccd5cd1aba3001100213357406ae84004ccc00c00c008d5d10009119ab9c300633004001530030020022130033335734002920104747275650049010566616c736500232230043372c004600a002600600246ea4dcc00091b99375c00244a666ae6940085400452811909aba300137580024260040024666ae68005282511"
+                }
+            },
+            {
+                "txId": "c5ce3dd5330ba04702afff35e31fd01cc6176b003bcb2a11515e29c402940ba5",
+                "utxoIdx": "3",
+                "origOutput": {
+                    "address": {
+                        "hex": "706969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c65",
+                        "bech32": "addr_test1wp5kjs3dtstqzltt73gj8e65cq6jnfl55njde6y5mwqjcegcqzfzz"
+                    },
+                    "value": {
+                        "lovelace": "30000000",
+                        "assets": {}
+                    },
+                    "datum": null,
+                    "refScript": "59054259053f0100003232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232322253335734660060040022930b1119191992999ab9a3370e002900009191981f198189980b0028008041820a49064d4c43313a20003013300c00112323303e33031330160050010083041491064d4c43323a20003013300b00135573a6ea800400400cc038004cc028004dd4240046600c002a600a607092011754687265616420546f6b656e204c6974746572636f696e00300a00137529111c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf5908656500012011232137526e60004c0d400488cdd2a4000660060040024466ae80008c00c0048cd5d0000816112999ab9a3370e90001bad001101713322374c66ae80cdd80011ba633574066ec000400cdd924c6ec926300e002301900200b001200122301233003002001223300b0022330040010022232533357346014002266ebc008c020c01800452818021801801002802119801000a400444a666ae68cdc39aab9d375400400220042c00246ae84c0380048cdc39aab9d37540029001111ba7330063758600600400200246ae84c0080048d5d118040009119980180100080d111191998008008020019112999ab9a3574600420082a666ae68c004d5d0801099aba0357420046660060066ae880080044ccc00c00cd5d10010009199805000911980480118028008011ba637649300091aba13002001235744600400246aae78dd5000911998019119b80002001002001222332232374c666002002660220060046ec926222533357346ae8c00840044cc88c94ccd5cd1aba30011002133574066ec000cdd300080119980580519808803801198088030011aba1002333003003357440040026eac008dd580091119199800800998070018011bb24988894ccd5cd1aba3002100113322325333573466e1c00520001002133574066ec000cdd40008011980419808003801198080030011aba1002333003003357440040024644466600a0060040026eb0004888c8cccc00400401000c00888894ccd5cd1aba300310011333300400435744006004660040026ae8400c00488ccc00c88c024cdc40010008010009111991191980080099805801801112999ab9a3574600229444c94ccd5cd180619980500419804802800998048020008a50133003003357440046ae84004dd58011bab00122323300100100322533357346ae8c0044dd924c2a666ae68cdd79aab9d3574200200626eacd55cf1aba10011330020023574400244464660020026600e00600444a666ae68d5d18008a511325333573460106600c6600e00a0026600e00800229404cc00c00cd5d10011aba10012232333001001003002222533357346ae8c0085200015333573466ebcd55ce9aba10020011375a6aae78d5d080109998018019aba2002001233357340029412891191919198050018009998008008010019112999ab9a357460022014264a666ae68cc0240140044ccc01001000cd5d1001099aba0001333004004003357440046aae74d5d0800980180111919800800801112999ab9a35746002200c266ae80d55ce9aba100133002002357440024466006004466ebc00400888c8ccc00400400c0088894ccd5cd1aba300214a02a666ae68c004d5d08010a511333003003357440040026ec5262232333001001002003222533357346ae8c00440084cd5d01aba1001333003003002357440024466ae70c018cc0100054c00c00800884c00cccd5cd000a4904747275650049010566616c736500232230043372c004600a002600600246ea4dcc00091b99375c0021"
+                }
+            }
+        ]
+    },
+    "witnesses": {
+        "signatures": [],
+        "datums": [],
+        "redeemers": [
+            {
+                "data": "1{}",
+                "exUnits": {
+                    "mem": "975804",
+                    "cpu": "359806878"
+                },
+                "type": 0,
+                "typeName": "spending",
+                "inputIndex": 2
+            },
+            {
+                "data": "0{#20d53f5e6a326d51fa8701b62c703606a7848b6be6eb362fbdc1b0ed}",
+                "exUnits": {
+                    "mem": "412652",
+                    "cpu": "146031776"
+                },
+                "type": 1,
+                "typeName": "minting",
+                "mphIndex": 0
+            }
+        ],
+        "scripts": [],
+        "refScripts": [
+            "590ccb590cc801000032323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222533357346660080060040022930b11119191919191992999ab9a3370e0029000092999ab9a530870153086010041323325333573466e1c0052004123232323308b01133086013307b3306000c00d3307601b0013089014901064c4356313a2000133086013305f002020308901491064c4356323a200030583024002330563023001302300e302030540011233083014a0610c02921064c4356333a200035573a6ea8004004c140c13c010544cc2000528184180a49064c4356343a200015333573466e1c00520021253335734a610e02a610c02008264664a666ae68cdc3800a4008246464646464a66ae70c230054c158cc154c1440380684cc234044cc234044cc234044cc234044cc22004cc13c010dd424000611602921064c4356353a2000133088013307d3306200e00f3307801d003308b01491064c4356363a2000133088013307d305100e001308b01491064c4356373a2000133088013304800e018308b01491064c4356383a2000133088013308d01133047375090000010998238011813802984580a481064c4356393a20003305f019001330583024003302401030583024002330563023001302300e302030540011233083014a0610c02921074c435631303a200035573a6ea8004004c140c13c010544cc2000528184180a49074c435631313a20001253335734a610e02a610c02008264664a666ae68cdc3800a40082464646464646464646464661240226612402266124022661240226611a02660a8012008612002921074c435631323a200013308d013308201330670130143307d022008309001491074c435631333a200013308d013304a3056013006309001491074c435631343a200013308d013304a30793304900137509001001984800a481074c435631353a200013308d013304a307933049001375090021983e81300c984800a481074c435631363a2000330430120013040302600c305d0013303d00300153024012330393305f01900153038375090011982c18120081812001982c18120011982b181180718118009810182a000891984180a50308601491074c435631373a200035573a6ea8004004c140c13c010544cc2000528184180a49074c435631383a200035573a6ea8004004018cc01c01c004cc158004008c0a80094c084004894ccd5cd2983e80088008a8991992999ab9a3370e002900209198101ba848008c12401048cc014014c07c010d55ce9baa001001304730460013304c0013750900119824000a980b983b2481194d65726368616e7420546f6b656e204c6974746572636f696e00302700137529111cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c2768200302500137529111cb9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c2768200330430015301230714910a4c6974746572636f696e00302200137529111c6969422d5c16017d6bf45123e754c03529a7f4a4e4dce894db812c650033043001375090011981f800a98071836a491754687265616420546f6b656e204c6974746572636f696e00301e00137529111c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf5908656500303a00137509040497a0082390998041802000980180080c80180091aba1375800246ae84c0080048d5d11bac0012322375066e0c008dd68009bad001232137526e60004c1840048dd39aba23758002446600600440044464646e9ccc0040052000225333573466e2000400c4cd5d018021ba80013300200233700002900109bb1498dd680110981d181c181b981b18042980100090991980318029804801119baf3005001002530020012130393044001037036232233300400200100c375800244464666002002008006444a666ae68d5d18010b0a999ab9a300135742004260086ae840084ccc00c00cd5d100100081f01911909ba83370400290009bad0012232330040032337040020046eb400488c8c8c8dd319800800801912999ab9a3574600226ec92613233574066ec0d55ce8009ba63300400437566aae78004cc00c00cd5d10011aba100122533357346ae8c0044dd924c26466ae80cdd81aab9d0013750600a6eb4d55cf000998018019aba2002357420026eac0088c88dd419b82002375a0026eb4004004800488cc0bc0088cc01000400888c94ccd5cd1803000899baf0023005300400114a06050604e0044660500029000014119b8735573a6ea80052000232232333001001003375a004444a666ae68d5d18010b0a999ab9a3371000290000b0a999ab9a3370e002900009aba100213330030033574400466e04005200237580020024466607444609c66e200080040080048c88cdc40011bad001375a002446607e6eb0c00c0088cdd780080100091aba13002001235744600400246ae88c0080048d5d1180100091aba23006001001223375e00400200246ae84c0080048d5d1180100091aba2301c001223332223322333002002001005222533357346ae8c0045854ccd5cd19baf35573a6ae840040144cc008008dd59aab9e3574200226660060060046ae88004894ccd5cd1aba30011615333573466ebcd55ce9aba1001003135573c6ae840044cc008008d5d10009bab0023017001302200123213037373264a666ae68cdc400124000266e2d205a3300100133704004900089980080080111192999ab9a33710004900a0800899b8a3300300333706004900a00099b8b3370066e18005201448181220100375a00246ae84dd600080b00891911ba8337020046eb4004dd6800919803001000998009ba9489003752910100223374a9000198018010009119aba00023003001233574000205044a666ae68cdc3a40006eb400440544cc88dd319aba0337600046e98cd5d019bb00010033764931bb2498c030008c05c0088c88c0c8cdc40011bad001375a0024460246600600400244660160044660080020044464a666ae68c0280044cdd7801180418030008a503004300300200500423300200148008894ccd5cd19b8735573a6ea80080044008580048d5d09807000919b8735573a6ea8005200222374e6600c6eb0c00c0080040048d5d0980100091aba230080012233300300200101822232333001001004003222533357346ae8c008401054ccd5cd18009aba100213357406ae84008ccc00c00cd5d100100089998018019aba2002001233300a00122330090023005001002374c6ec926001235742600400246ae88c0080048d55cf1baa0012233300322337000040020040024446644646e98ccc004004cc03c00c008dd924c444a666ae68d5d1801080089991192999ab9a357460022004266ae80cdd80019ba600100233300b00a3301000700233010006002357420046660060066ae88008004dd58011bab001222323330010013300c0030023764931112999ab9a3574600420022664464a666ae68cdc3800a40002004266ae80cdd80019ba8001002330083300f0070023300f006002357420046660060066ae880080048c888ccc01400c008004dd600091119199980080080200180111112999ab9a357460062002266660080086ae8800c008cc008004d5d0801911998019119b87002001002001222332232330010013300a00300222533357346ae8c0045288992999ab9a301a33300a008330090050013300900400114a02660060066ae88008d5d08009bab002375600244646600200200644a666ae68d5d180089bb249854ccd5cd19baf35573a6ae8400400c4dd59aab9e357420022660040046ae88004888c8cc004004cc01800c008894ccd5cd1aba300114a2264a666ae68c058cc018cc01c014004cc01c0100045280998018019aba2002357420024464666002002006004444a666ae68d5d18010a40002a666ae68cdd79aab9d3574200400226eb4d55cf1aba10021333003003357440040024464646466014006002666002002004006444a666ae68d5d180088050992999ab9a33009005001133300400400335744004266ae80004ccc01001000cd5d10011aab9d3574200260060044646600200200444a666ae68d5d18008803099aba035573a6ae84004cc008008d5d10009119801801119baf0010022232333001001003002222533357346ae8c0085280a999ab9a30013574200429444ccc00c00cd5d10010009bb149888c8ccc00400400800c8894ccd5cd1aba3001100213357406ae84004ccc00c00c008d5d10009119ab9c300633004001530030020022130033335734002920104747275650049010566616c736500232230043372c004600a002600600246ea4dcc00091b99375c00244a666ae6940085400452811909aba300137580024260040024666ae68005282511",
+            "59054259053f0100003232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232322253335734660060040022930b1119191992999ab9a3370e002900009191981f198189980b0028008041820a49064d4c43313a20003013300c00112323303e33031330160050010083041491064d4c43323a20003013300b00135573a6ea800400400cc038004cc028004dd4240046600c002a600a607092011754687265616420546f6b656e204c6974746572636f696e00300a00137529111c1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf5908656500012011232137526e60004c0d400488cdd2a4000660060040024466ae80008c00c0048cd5d0000816112999ab9a3370e90001bad001101713322374c66ae80cdd80011ba633574066ec000400cdd924c6ec926300e002301900200b001200122301233003002001223300b0022330040010022232533357346014002266ebc008c020c01800452818021801801002802119801000a400444a666ae68cdc39aab9d375400400220042c00246ae84c0380048cdc39aab9d37540029001111ba7330063758600600400200246ae84c0080048d5d118040009119980180100080d111191998008008020019112999ab9a3574600420082a666ae68c004d5d0801099aba0357420046660060066ae880080044ccc00c00cd5d10010009199805000911980480118028008011ba637649300091aba13002001235744600400246aae78dd5000911998019119b80002001002001222332232374c666002002660220060046ec926222533357346ae8c00840044cc88c94ccd5cd1aba30011002133574066ec000cdd300080119980580519808803801198088030011aba1002333003003357440040026eac008dd580091119199800800998070018011bb24988894ccd5cd1aba3002100113322325333573466e1c00520001002133574066ec000cdd40008011980419808003801198080030011aba1002333003003357440040024644466600a0060040026eb0004888c8cccc00400401000c00888894ccd5cd1aba300310011333300400435744006004660040026ae8400c00488ccc00c88c024cdc40010008010009111991191980080099805801801112999ab9a3574600229444c94ccd5cd180619980500419804802800998048020008a50133003003357440046ae84004dd58011bab00122323300100100322533357346ae8c0044dd924c2a666ae68cdd79aab9d3574200200626eacd55cf1aba10011330020023574400244464660020026600e00600444a666ae68d5d18008a511325333573460106600c6600e00a0026600e00800229404cc00c00cd5d10011aba10012232333001001003002222533357346ae8c0085200015333573466ebcd55ce9aba10020011375a6aae78d5d080109998018019aba2002001233357340029412891191919198050018009998008008010019112999ab9a357460022014264a666ae68cc0240140044ccc01001000cd5d1001099aba0001333004004003357440046aae74d5d0800980180111919800800801112999ab9a35746002200c266ae80d55ce9aba100133002002357440024466006004466ebc00400888c8ccc00400400c0088894ccd5cd1aba300214a02a666ae68c004d5d08010a511333003003357440040026ec5262232333001001002003222533357346ae8c00440084cd5d01aba1001333003003002357440024466ae70c018cc0100054c00c00800884c00cccd5cd000a4904747275650049010566616c736500232230043372c004600a002600600246ea4dcc00091b99375c0021"
+        ]
+    },
+    "valid": true,
+    "metadata": null
+}
+
+

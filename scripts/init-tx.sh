@@ -5,9 +5,14 @@
 ##############################################################
 #
 # Step 1.   Confirm you have 2 UTXO at admin address (5 Ada for Collateral, and anything greater than 5 Ada)
-# Step 2.   Update src/deploy.js with that UTXO (and admin pkh) 
-# Step 3.   deno run --allow-read --allow-write src/deploy.js
-# Step 4.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
+# Step 2.   update src/threadtoken.hl with admin UTXO
+# Step 3.   deno run --allow-read --allow-write src/deploy-init.js
+# Step 4.   update src/mint.hl and src/rewardsToken.hl with thread token value
+# Step 5.   deno run --allow-read --allow-write src/deploy-mint.js
+# Step 6.   update src/validator.hl with threadtoken, littercoin, rewards and merchant mph values
+# Step 7.   deno run --allow-read --allow-write src/deploy-val.js
+# Step 8.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
+# Step 9.   Copy src/*.hl app/contracts
 ##############################################################
 
 
@@ -48,6 +53,7 @@ mkdir -p $WORK-backup
 rm -f $WORK/*
 rm -f $WORK-backup/*
 
+
 # generate values from cardano-cli tool
 $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 
@@ -55,23 +61,14 @@ $CARDANO_CLI query protocol-parameters $network --out-file $WORK/pparms.json
 thread_token_script="$BASE/scripts/$ENV/data/tt-minting-policy.plutus"
 thread_token_mph=$(cat $BASE/scripts/$ENV/data/tt-minting-policy.hash)
 thread_token_name=$(cat $BASE/scripts/$ENV/data/tt-token-name.json | jq -r '.bytes')
-threat_token_redeemer_file_path="$BASE/scripts/$ENV/data/tt-redeemer-init.json"
 lc_validator_script="$BASE/scripts/$ENV/data/lc-validator.plutus"
 lc_validator_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_validator_script" $network)
-lc_mint_script="$BASE/scripts/$ENV/data/lc-minting-policy.plutus"
-lc_mint_script_addr=$($CARDANO_CLI address build --payment-script-file "$lc_mint_script" $network)
-lc_token_name=$(cat $BASE/scripts/$ENV/data/lc-token-name.json | jq -r '.bytes')
-lc_redeemer_file_path="$BASE/scripts/$ENV/data/lc-redeemer-init.json"
+redeemer_file_path="$BASE/scripts/$ENV/data/redeemer-init.json"
 
 echo "starting littercoin init-tx.sh"
 
-echo $lc_validator_script_addr > $BASE/scripts/$ENV/data/lc-validator.addr
-echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
-
-
 ################################################################
-# Mint the threadtoken and littercoins and lock it
-# to the littercoin smart contract
+# Mint the threadtoken and attach it to the littercoin contract
 ################################################################
 
 # Step 1: Get UTXOs from admin
@@ -81,18 +78,13 @@ echo $lc_mint_script_addr > $BASE/scripts/$ENV/data/lc-minting-policy.addr
 admin_utxo_addr=$($CARDANO_CLI address build $network --payment-verification-key-file "$ADMIN_VKEY")
 $CARDANO_CLI query utxo --address "$admin_utxo_addr" --cardano-mode $network --out-file $WORK/admin-utxo.json
 
-cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-valid.json
+cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace > '$MIN_ADA_OUTPUT_TX_REF' ) | .key' > $WORK/admin-utxo-valid.json
 readarray admin_utxo_valid_array < $WORK/admin-utxo-valid.json
 admin_utxo_in=$(echo $admin_utxo_valid_array | tr -d '\n')
 
 cat $WORK/admin-utxo.json | jq -r 'to_entries[] | select(.value.value.lovelace == '$COLLATERAL_ADA' ) | .key' > $WORK/admin-utxo-collateral-valid.json
 readarray admin_utxo_valid_array < $WORK/admin-utxo-collateral-valid.json
 admin_utxo_collateral_in=$(echo $admin_utxo_valid_array | tr -d '\n')
-
-# Update the littercoin datum accordingly
-cat $BASE/scripts/$ENV/data/lc-datum-init.json | \
-jq -c '
-  .list[0].int   |= '$MIN_ADA_OUTPUT_TX'' > $WORK/lc-datum-out.json
 
 
 # Step 2: Build and submit the transaction
@@ -103,16 +95,15 @@ $CARDANO_CLI transaction build \
   --change-address "$admin_utxo_addr" \
   --tx-in-collateral "$admin_utxo_collateral_in" \
   --tx-in "$admin_utxo_in" \
-  --mint "1 $thread_token_mph.$thread_token_name + $LC_SUPPLY $thread_token_mph.$lc_token_name" \
+  --mint "1 $thread_token_mph.$thread_token_name" \
   --mint-script-file "$thread_token_script" \
-  --mint-redeemer-file "$threat_token_redeemer_file_path" \
-  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name + $LC_SUPPLY $thread_token_mph.$lc_token_name" \
-  --tx-out-inline-datum-file "$WORK/lc-datum-out.json" \
+  --mint-redeemer-file "$redeemer_file_path" \
+  --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX + 1 $thread_token_mph.$thread_token_name" \
+  --tx-out-inline-datum-file "$BASE/scripts/$ENV/data/lc-datum-init.json" \
   --tx-out "$lc_validator_script_addr+$MIN_ADA_OUTPUT_TX_REF" \
   --tx-out-reference-script-file "$lc_validator_script" \
   --protocol-params-file "$WORK/pparms.json" \
   --out-file $WORK/init-tx-alonzo.body
-
 
 echo "tx has been built"
 

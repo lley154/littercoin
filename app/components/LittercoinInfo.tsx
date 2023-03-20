@@ -13,7 +13,6 @@ const LittercoinInfo = ({ littercoinInfo } : any) => {
             <p><b>Total Littercoin</b> &nbsp; {Number(lc).toLocaleString()}</p>
             <p><b>Lovelace / Littercoin Ratio</b> &nbsp; {Number(ratio).toLocaleString()}</p>
             <p><b>Address:</b> &nbsp; <a href={"https://preprod.cexplorer.io/address/" + littercoinInfo.address} target="_blank" rel="noopener noreferrer" >{littercoinInfo.address}</a></p>            
-            <p><b>Plutus Script:</b> &nbsp; <a href="/api/lcValidator" target="_blank" rel="noopener noreferrer">lcValidator.hl</a></p>
         </div>
     )
 }

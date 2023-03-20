@@ -1,46 +1,35 @@
 import * as helios from "./helios.js"
 
-const simplify = false;
+// Set compiler optimizer flag
+const optimize = false;
 
-// Thread Token
-
+// Thread token
 const threadTokenSrc = await Deno.readTextFile("./src/threadToken.hl");
 const programTT = helios.Program.new(threadTokenSrc);
-const myUplcProgramTT = programTT.compile(simplify);
-const mphTT = myUplcProgramTT.mintingPolicyHash;
-const tnTT = helios.ByteArrayData.fromString("Thread Token Littercoin");
 
-console.log("thread token mph: ", mphTT.hex);
-console.log("thread token name: ", tnTT.toString());
+const myUplcProgramTT = programTT.compile(optimize);
+const mph = myUplcProgramTT.mintingPolicyHash;
+const tn = helios.ByteArrayData.fromString("Thread Token Littercoin");
 
-const initRedeemerTT = programTT.evalParam("INIT_REDEEMER");
-const initRedeemerDataTT = initRedeemerTT.data;
+console.log("thread token mph: ", mph.hex);
+console.log("thread token name: ", tn.toSchemaJson());
 
-await Deno.writeTextFile("./deploy/tt-redeemer-init.json", initRedeemerDataTT.toSchemaJson());
-await Deno.writeTextFile("./deploy/tt-token-name.json", tnTT.toSchemaJson());
+const initRedeemer = programTT.evalParam("INIT_REDEEMER");
+const initRedeemerData = initRedeemer.data;
+
+await Deno.writeTextFile("./deploy/redeemer-init.json", initRedeemerData.toSchemaJson());
+await Deno.writeTextFile("./deploy/tt-token-name.json", tn.toSchemaJson());
 await Deno.writeTextFile("./deploy/tt-minting-policy.plutus", myUplcProgramTT.serialize());
-await Deno.writeTextFile("./deploy/tt-minting-policy.hash", mphTT.hex);
-
-
-// Littercoin Token
-
-const tnLC = helios.ByteArrayData.fromString("Littercoin");
-console.log("littercoin token name: ", tnLC.toString());
-
-await Deno.writeTextFile("./deploy/lc-token-name.json", tnLC.toSchemaJson());
-
-
-// Littercoin Metadata
+await Deno.writeTextFile("./deploy/tt-minting-policy.hash", mph.hex);
 
 const lcMetatdataSrc = await Deno.readTextFile("./src/lc-token-metadata.json");
 await Deno.writeTextFile("./deploy/lc-token-metadata.json", lcMetatdataSrc);
 
 
 // Merchant Token
-
 const merchTokenSrc = await Deno.readTextFile("./src/merchToken.hl");
 const programMT = helios.Program.new(merchTokenSrc);
-const myUplcProgramMT = programMT.compile(simplify);
+const myUplcProgramMT = programMT.compile(optimize);
 const mphMT = myUplcProgramMT.mintingPolicyHash;
 const tnMT = helios.ByteArrayData.fromString("Merchant Token Littercoin");
 

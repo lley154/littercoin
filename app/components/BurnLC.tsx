@@ -14,9 +14,9 @@ const BurnLC = ({ onBurnLC } : any) => {
 
         <form onSubmit={onSubmit}>
             <div>
-                <b>Littercoin Full Amount To Burn</b> 
+                <b>Littercoin Amount To Burn</b> 
                 <br></br>
-                <input name='qty' type='number' id='qty' placeholder='Enter Amount' 
+                <input name='qty' type='number' id='qty' placeholder='Enter Amount of Littercoin To Burn' 
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 />
