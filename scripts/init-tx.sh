@@ -11,8 +11,10 @@
 # Step 5.   deno run --allow-read --allow-write src/deploy-mint.js
 # Step 6.   update src/validator.hl with threadtoken, littercoin, rewards and merchant mph values
 # Step 7.   deno run --allow-read --allow-write src/deploy-val.js
-# Step 8.   Copy deploy/* scripts/[devnet|testnet|mainnet]/data
+# Step 8.   Copy deploy/* scripts/[preview|preprod|mainnet]/data
 # Step 9.   Copy src/*.hl app/contracts
+# Step 10.  cd scripts
+# Step 11.  ./init-tx.sh [preprod|mainnet]
 ##############################################################
 
 

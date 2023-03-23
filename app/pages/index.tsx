@@ -101,7 +101,7 @@ const signSubmitTx = async (tx: Tx) : Promise<string> => {
 export async function getServerSideProps() {
 
   // set in env variables
-  const optimize = false;
+  const optimize = true;
   const blockfrostAPI = process.env.NEXT_PUBLIC_BLOCKFROST_API as string;
   const networkParamsFilePath = process.env.NEXT_PUBLIC_NETWORK_PARAMS_FILE as string;
 
@@ -173,7 +173,7 @@ export async function getServerSideProps() {
 const Home: NextPage = (props: any) => {
 
   // Set the Helios compiler optimizer flag
-  const optimize = false;
+  const optimize = true;
 
   // Littercoin validator script
   const lcValScript = props.lcValScript as string;

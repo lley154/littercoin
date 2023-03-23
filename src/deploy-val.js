@@ -1,6 +1,6 @@
 import * as helios from "./helios.js"
 
-const optimize = false;
+const optimize = true;
 const lcValidatorSrc = await Deno.readTextFile("./src/lcValidator.hl");
 const programLC = helios.Program.new(lcValidatorSrc);
 const lcUplcProgramLC = programLC.compile(optimize);
