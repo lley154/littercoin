@@ -248,7 +248,7 @@ const TAB = "  ";
  * Set to false if using the library for mainnet (impacts Addresses)
  * @type {boolean}
  */
-export var IS_TESTNET = true;
+export var IS_TESTNET = false;
 
 
 ///////////////////////

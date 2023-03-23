@@ -22,7 +22,7 @@ const minAda : Int = 2000000
 const minAdaVal: Value = Value::lovelace(minAda)
 
 // Define thread token value
-const TT_MPH: ByteArray = #a7add6eea42ec499442e590f1990203a0c66d9b759dc00fb10080200
+const TT_MPH: ByteArray = #f456f66885409440856f472ece25af2f04d588b6137e4ef1cb7cc368
 const ttMph: MintingPolicyHash = MintingPolicyHash::new(TT_MPH)
 const ttAssetclass: AssetClass = AssetClass::new(
         ttMph, 
@@ -31,7 +31,7 @@ const ttAssetclass: AssetClass = AssetClass::new(
 const ttVal : Value = Value::new(ttAssetclass, 1)
 
 // Define the mph of the littercoin minting policy
-const LC_MPH: ByteArray = #108985b19877e4bd4300d0e18a90239471ac475f54ded96a7f014efd
+const LC_MPH: ByteArray = #514f5b7f2a80f2b3bb7d7e052e88e8d7f456ff530eab96800db0cb68
 const lcMph: MintingPolicyHash = MintingPolicyHash::new(LC_MPH)
 const lcAssetClass: AssetClass = AssetClass::new(
         lcMph, 
@@ -39,7 +39,7 @@ const lcAssetClass: AssetClass = AssetClass::new(
     )
 
 // Define the mph of the donation rewards token minting policy
-const REWARDS_MPH: ByteArray = #5ae137d386575082c5649c8e057b1fae349f34246bd0ded4d5fe6eaf
+const REWARDS_MPH: ByteArray = #0c350910a83afb34c29fea32d2f1dc60da2ca55a98b168ae31ef275c
 const rewardsMph: MintingPolicyHash = MintingPolicyHash::new(REWARDS_MPH)
 const rewardsAssetClass: AssetClass = AssetClass::new(
         rewardsMph, 
@@ -47,11 +47,11 @@ const rewardsAssetClass: AssetClass = AssetClass::new(
     )
 
 // Define the merchant token
-const MERCHANT_MPH: ByteArray = #10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
+const MERCHANT_MPH: ByteArray = #237ca9c3fc9c0576cb62b7cb1007f2e8b4386e02649d02246cf77d12
 const merchMph: MintingPolicyHash = MintingPolicyHash::new(MERCHANT_MPH)
 
 // Define the pkh of the owner
-const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682 
+const OWNER_PKH: ByteArray = #9428918792cf4eeee2308afdff8d8f10186b25abe3f5c5bfa4c61627 
 const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
 
 
