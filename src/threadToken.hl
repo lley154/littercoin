@@ -4,7 +4,7 @@ enum Redeemer {
     Init 
 }
 
-const TX_ID: ByteArray = #dbbf9aea2bbe5d0753b5de4784f0c3cf37576f156ff79c1d2caadc1af6f16dd4
+const TX_ID: ByteArray = #d0223d928e21f026b924a0fa33e0e78c2db4fbb019b14ccf852067b503950c6d
 const txId: TxId = TxId::new(TX_ID)
 const outputId: TxOutputId = TxOutputId::new(txId, 0)
 
