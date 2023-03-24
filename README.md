@@ -228,7 +228,7 @@ littercoin validator address:  addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44
 ```
 12.  Now copy the source and generated files in the src and deploy directories respectively
 ```
-cp src/* app/contracts/src
+cp src/*.hl app/contracts/
 cp deploy/* scripts/preprod/data
 ```
 
