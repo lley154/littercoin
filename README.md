@@ -166,35 +166,6 @@ ff5141fe2535284719b2261e78a97b2c3e7111210b6af56b5f6107a2938ee382     0        50
 Note: 1 Ada = 1,000,000 lovelace.
 
 
-#### Determine The Owner PKH
-The Owner is a business owner and does not have to be same person as the admin and does not require a technical background.  The owner is the only one who can mint littercoin and mint merchant tokens.  We need to obtain the owner key so it can be hard coded into the smart contract.
-
-A Cardano address is derived by the public key hash (PKH) that was created when you created your wallet.   The easiest way to get your pkh from the owner's wallet is to use the cardano-address command.   Open the Nami wallet and copy the receiving address to your clipboard.  Then, follow these steps:
-
-1. Go to your Web VS Code in your browser
-2. Select the hamburger menu (top left) and Terminal -> New Terminal
-3. cd ~/workspace/cardano-wallet-v2022-12-14-linux64
-4. Execute the following command to get your pkh
-```
-echo "paste-the-owner-address-from-nami-here" | ./cardano-address address inspect
-```
-Note: Please grant Web VS Code permission to access your clipboard
-
-You will see something like the following, and the value of the spending_key_hash without the quotes and is the pkh that we will need.
-```
-abc@hallowed-birthday-3qoq5k-0:~/workspace/cardano-wallet-v2022-12-14-linux64$ echo "addr_test1qzu6hnmgvageu2qyypy25yfqwg222tndt5eg3d6j68p8dqh30vtlz5gcmmrwxnquzf6g3d8are4elxmfpwpv83fm5ntqrew03n" | ./cardano-address address inspect
-{
-    "address_style": "Shelley",
-    "address_type": 0,
-    "network_tag": 0,
-    "spending_key_hash": "b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682",
-    "spending_key_hash_bech32": "addr_vkh1hx4u76r82x0zsppqfz4pzgrjzjjjum2ax2ytw5k3cfmgymje4ul",
-    "stake_key_hash": "f17b17f15118dec6e34c1c127488b4fd1e6b9f9b690b82c3c53ba4d6",
-    "stake_key_hash_bech32": "stake_vkh179a30u23rr0vdc6vrsf8fz95l50xh8umdy9c9s798wjdv8f4pge",
-    "stake_reference": "by value"
-}
-```
-
 #### Compile Smart Contract Code and Deploy 
 1. Open the Web VS Code editor and open the explorer tab on the left.  
 2. Navigate to the src directory and open threadToken.hl file.
