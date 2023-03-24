@@ -251,11 +251,11 @@ a5508a1bf3b5e33a0cd9363b5642e63a61f813d32ba87eba2d80766ce09f91c4     1        30
 1. Using Web VS Code explorer, File->Open and in the popup window enter /config/.bashrc 
 2. Add the following lines at the end of it, and use the correct values obtained from the above steps.
 ```
-export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
+export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-api-key-from-blockfrost"
 export NEXT_PUBLIC_BLOCKFROST_API="https://cardano-preprod.blockfrost.io/api/v0"
 export NEXT_PUBLIC_MIN_ADA=2000000
-export MAX_TX_FEE=500000
-export MIN_CHANGE_AMT=1000000
+export NEXT_PUBLIC_MAX_TX_FEE=500000
+export NEXT_PUBLIC_MIN_CHANGE_AMT=1000000
 export NEXT_PUBLIC_NETWORK=preprod
 export NEXT_PUBLIC_NETWORK_PARAMS_FILE="preprod.json"
 export NEXT_PUBLIC_OPTIMIZED="false"
