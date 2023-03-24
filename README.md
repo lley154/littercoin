@@ -276,15 +276,15 @@ cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc
 ```
 export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
 export NEXT_PUBLIC_BLOCKFROST_API="https://cardano-preprod.blockfrost.io/api/v0"
-export NEXT_PUBLIC_LC_SUPPLY=1000000000
 export NEXT_PUBLIC_MIN_ADA=2000000
-export NEXT_PUBLIC_NETWORK_PARAMS_URL="https://d1t0d7c2nekuk0.cloudfront.net/preprod.json"
+export MAX_TX_FEE=500000
+export MIN_CHANGE_AMT=1000000
+export NEXT_PUBLIC_NETWORK=preprod
+export NEXT_PUBLIC_NETWORK_PARAMS_FILE="preprod.json"
 export NEXT_PUBLIC_OPTIMIZED="false"
-export NEXT_PUBLIC_THREAD_TOKEN_MPH="1fb4cbbaafc9e44d17ea51ca27b1a05d50a923fd5e34dcdf59086565"
 export NEXT_PUBLIC_THREAD_TOKEN_NAME="54687265616420546f6b656e204c6974746572636f696e"
 export NEXT_PUBLIC_LC_TOKEN_NAME="4c6974746572636f696e"
 export NEXT_PUBLIC_OWNER_PKH="b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682"
-export NEXT_PUBLIC_MERCH_TOKEN_MPH="b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67"
 export NEXT_PUBLIC_MERCH_TOKEN_NAME="4d65726368616e7420546f6b656e204c6974746572636f696e"
 ```
 3. Now read in the environment variables using the terminal window.
