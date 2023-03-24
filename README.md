@@ -180,12 +180,12 @@ const TX_ID: ByteArray = #d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed55
 const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
 ```
 
-6. Save the file
-7. In a terminal window, go to the project root directory by typing 
+Save the file
+6. In a terminal window, go to the project root directory by typing 
 ```
 cd ~/workspace/repo
 ```
-8. Install deno testing a simple welcome typescript program
+7. Install deno testing a simple welcome typescript program
 ```
 npx deno-bin run https://deno.land/std/examples/welcome.ts
 ```
@@ -240,15 +240,15 @@ cd scripts
 ```
 2. After waiting 10-60 seconds, you should be able to query the blockchain and see the threadtoken and littercoin locked at the smart contract.
 ```
-cardano-cli query utxo --address addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44gdt8aldqp9hr70 --cardano-mode --testnet-magic 1
+cardano-cli query utxo --address addr_test1wz4t9har763a2wrv8qv2ltf400lkjpmxh8wa2ujyqc05fzgauxtdx --cardano-mode --testnet-magic 1
                            TxHash                                 TxIx        Amount
 --------------------------------------------------------------------------------------
-2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     1        2000000 lovelace + 1000000000 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.4c6974746572636f696e + 1 1abf5744ba4c86034e50bcb23e2f04ef13cd7fb1b93b7d9fd2367835.54687265616420546f6b656e204c6974746572636f696e + TxOutDatumInline ReferenceTxInsScriptsInlineDatumsInBabbageEra (ScriptDataList [ScriptDataNumber 0,ScriptDataNumber 0])
-2ae13d9556351eefe2acd20bfe8c084847907140a6043a5b49849f21f469fe84     2        30000000 lovelace + TxOutDatumNone
+a5508a1bf3b5e33a0cd9363b5642e63a61f813d32ba87eba2d80766ce09f91c4     0        2000000 lovelace + 1 c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a.54687265616420546f6b656e204c6974746572636f696e + TxOutDatumInline ReferenceTxInsScriptsInlineDatumsInBabbageEra (ScriptDataList [ScriptDataNumber 2000000,ScriptDataNumber 2])
+a5508a1bf3b5e33a0cd9363b5642e63a61f813d32ba87eba2d80766ce09f91c4     1        30000000 lovelace + TxOutDatumNone
 ```
 ## Starting The Web App
 #### Update Environment variables and Start Next.js
-1. Using Web VS Code explorer, navigate to the .bashrc file located in your home directory (cd ~).
+1. Using Web VS Code explorer, File->Open and in the popup window enter /config/.bashrc 
 2. Add the following lines at the end of it, and use the correct values obtained from the above steps.
 ```
 export NEXT_PUBLIC_BLOCKFROST_API_KEY="get-your-key-from-blockfrost.io"
@@ -269,16 +269,15 @@ export NEXT_PUBLIC_MERCH_TOKEN_NAME="4d65726368616e7420546f6b656e204c69747465726
 source ~/.bashrc
 ```
 4. cd app
-5. npm install --global yarn
-6. npm install
-7. yarn dev
+5. npm install
+6. npm run dev
 ```
-yarn run v1.22.19
-$ next dev
+> app@0.1.0 dev
+> next dev
+
 ready - started server on 0.0.0.0:3000, url: http://localhost:3000
-event - compiled client and server successfully in 1702 ms (173 modules)
 ```
-8. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  The URL will look like the following:
+7. Now go to the proxy URL which was obtained when we exposed the port 3000 in the Demeter setup steps above.  The URL will look like the following:
 ```
 https://3000-venomous-audience-7gg1mp.us1.demeter.run/
 ```
