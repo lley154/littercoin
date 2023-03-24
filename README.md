@@ -180,33 +180,40 @@ const TX_ID: ByteArray = #d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed55
 const OWNER_PKH: ByteArray = #b9abcf6867519e28042048aa11207214a52e6d5d3288b752d1c27682
 ```
 
-7. Save the file
-8. In a terminal window, go to the project root directory by typing 
+6. Save the file
+7. In a terminal window, go to the project root directory by typing 
 ```
 cd ~/workspace/repo
 ```
-7. Install deno testing a simple welcome typescript program
+8. Install deno testing a simple welcome typescript program
 ```
 npx deno-bin run https://deno.land/std/examples/welcome.ts
 ```
-8. Then execute the following command to compile the threadToken.hl file
+Then execute the following command to compile the threadToken.hl file
 ```
 npx deno-bin run --allow-read --allow-write ./src/deploy-init.js
-thread token mph:  87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
-thread token name:  #54687265616420546f6b656e204c6974746572636f696e
-littercoin token name:  #4c6974746572636f696e
+thread token mph:  c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a
+thread token name:  {"bytes": "54687265616420546f6b656e204c6974746572636f696e"}
 merchant token mph:  10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 merchant token name:  #4d65726368616e7420546f6b656e204c6974746572636f696e
 ```
-9. Using the Web VS Code explorer, open the lcValidator.hl file
-10. Replace the threadtoken mph, the merchant mph and owner pkh with the output from above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
+8. Using the Web VS Code explorer, open lcMint.hl and rewardsToken.hl and update with the new thread token mph
+9.Then execute the following command to compile the littercoin and rewards minting policies.
+```
+npx deno-bin run --allow-read --allow-write ./src/deploy-mint.js 
+littercoin mph:  1f6b4c1fbe934b6e778e7086147b8c0a37b1cae31c2d118276c757cd
+littercoin token name:  {"bytes": "4c6974746572636f696e"}
+Donation rewards mph:  21b3fdc9da10189c19680788c1110d6e684c315614d7e725528827c1
+Donation rewards token name:  {"bytes": "446f6e6174696f6e2052657761726473204c6974746572636f696e"
+```
+10.  Using the Web VS Code explorer, open the lcValidator.hl file and replace the threadtoken mph, the merchant mph and owner pkh with the output from above.  The other values remain the same so you don't need to update them unless you are changing the thread token name, littercoin token name and merchant token name.
 ```
 // Define thread token value
-const TT_MPH: ByteArray = #87e05280991949a0d85ad03a604bd81dbc4330cbd6ecbecb70f91ea8
+const TT_MPH: ByteArray = #c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a
 ```
 ```
 // Define the merchant token
-const MERCHANT_MPH: ByteArray = #b63f671dcfbb0daaaf081f3b339243c7a533637d9755e5387a232a67
+const MERCHANT_MPH: ByteArray = #10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 ```
 ```
 // Define the pkh of the owner
