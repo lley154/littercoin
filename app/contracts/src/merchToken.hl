@@ -1,9 +1,0 @@
-minting signed
-
-// Define the owner public key hash (PKH)
-const OWNER_PKH: ByteArray = #b68cf82d0cf89438a84bbf5506801e5a9372c3bcc7cfb7fb59b8d901
-const ownerPkh: PubKeyHash = PubKeyHash::new(OWNER_PKH)
-
-func main(ctx: ScriptContext) -> Bool {
-    ctx.tx.is_signed_by(ownerPkh)
-}
