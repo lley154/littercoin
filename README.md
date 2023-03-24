@@ -17,7 +17,6 @@
   - [Create The Admin Keys And Address](#create-the-admin-keys-and-address)
   - [Send Ada To The Admin Address](#send-ada-to-the-admin-address)
   - [Determine The Admin UTXO](#determine-the-admin-utxo)
-  - [Determine The Owner PKH](#determine-the-owner-pkh) 
   - [Compile Smart Contract Code and Deploy](#compile-smart-contract-code-and-deploy)
   - [Threadtoken and Littercoin Initialization](#threadtoken-and-littercoin-initialization)
 - [Starting The Web App](#starting-the-web-app)
@@ -172,7 +171,7 @@ Note: 1 Ada = 1,000,000 lovelace.
 3. Find and replace the UTXO that you identified in finding the UTXO step above
 ```
 // Define the UTXO to be spent
-const TX_ID: ByteArray = #8256ba4c73bf44e221b3f6fc759deafb309d1cec3c553d67c13537b248816027
+const TX_ID: ByteArray = #d36e0a777ac7234a1dcf30a485dea1c68b81f1286f3c016e35ed5598652976e8
 ```
 4. Using the Web VS Code explorer, open merchToken.hl
 5. Find and replace the PKH of the owner that was obtained above.
