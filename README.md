@@ -212,7 +212,15 @@ Donation rewards token name:  {"bytes": "446f6e6174696f6e2052657761726473204c697
 const TT_MPH: ByteArray = #c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a
 ```
 ```
-// Define the merchant token
+// Define the littercoin mph
+const LC_MPH: ByteArray = #c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a
+```
+```
+// Define the rewards mph
+const REWARDS_MPH: ByteArray = #c644be7457a17fe5d6a2636bc30dc2acc2ef32cbecfa44daec10b58a
+```
+```
+// Define the merchant mph
 const MERCHANT_MPH: ByteArray = #10009086d699dfdd386ab1ddbfb6d6492228e039172f78af780f4686
 ```
 ```
