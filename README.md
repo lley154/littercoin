@@ -233,6 +233,9 @@ const OWNER_PKH: ByteArray = #b68cf82d0cf89438a84bbf5506801e5a9372c3bcc7cfb7fb59
 npx deno-bin run --allow-read --allow-write src/deploy-val.js 
 littercoin validator hash:  1289f3bf1ffb1a1dd43f590dd641d85c3dc4f97bd60510216388a8d3
 littercoin validator address:  addr_test1wrq55l5av8ff570h42cz88xhcl2fv0q5452hc44gdt8aldqp9hr70
+
+Note: For production, the following flag need to be set false in helios.js
+export var IS_TESTNET = false;
 ```
 12.  Now copy the source and generated files in the src and deploy directories respectively
 ```
